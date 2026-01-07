@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = [
+    "rbxsync-core",
+    "rbxsync-server",
+    "rbxsync-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["RbxSync Team"]
+repository = "https://github.com/rbxsync/rbxsync"
+
+[workspace.dependencies]
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# HTTP server
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Utilities
+uuid = { version = "1.0", features = ["v4", "serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# File watching
+notify = "6.0"
+
+# Compression
+flate2 = "1.0"
+
+# HTTP client (for API dump)
+reqwest = { version = "0.11", features = ["json"] }
