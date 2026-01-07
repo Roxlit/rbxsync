@@ -45,8 +45,11 @@ pub struct AppState {
     /// Per-project request queues for multi-workspace support
     pub project_queues: RwLock<HashMap<String, VecDeque<PluginRequest>>>,
 
-    /// Registry of connected Studio places (projectDir → PlaceInfo)
+    /// Registry of connected Studio places (session_id → PlaceInfo)
     pub place_registry: RwLock<HashMap<String, PlaceInfo>>,
+
+    /// Counter for generating unique session IDs
+    pub session_counter: std::sync::atomic::AtomicU64,
 
     /// Map of request ID to response channel
     pub response_channels: RwLock<HashMap<Uuid, mpsc::UnboundedSender<PluginResponse>>>,
@@ -68,6 +71,7 @@ impl AppState {
             request_queue: Mutex::new(VecDeque::new()),
             project_queues: RwLock::new(HashMap::new()),
             place_registry: RwLock::new(HashMap::new()),
+            session_counter: std::sync::atomic::AtomicU64::new(1),
             response_channels: RwLock::new(HashMap::new()),
             trigger,
             trigger_rx,
@@ -170,11 +174,12 @@ async fn handle_register(
 ) -> impl IntoResponse {
     let mut registry = state.place_registry.write().await;
 
-    // Check if another place was connected to this project
-    let previous = registry.get(&req.project_dir).cloned();
+    // Generate unique session ID for each registration
+    let session_id = state.session_counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let key = format!("session_{}", session_id);
 
-    // Register (or update) this place
-    registry.insert(req.project_dir.clone(), PlaceInfo {
+    // Register this place with unique session key
+    registry.insert(key.clone(), PlaceInfo {
         place_id: req.place_id,
         place_name: req.place_name.clone(),
         project_dir: req.project_dir.clone(),
@@ -188,25 +193,17 @@ async fn handle_register(
     }
 
     tracing::info!(
-        "Studio registered: {} (PlaceId: {}) -> {}",
+        "Studio registered: {} (PlaceId: {}, Session: {}) -> {}",
         req.place_name,
         req.place_id,
+        session_id,
         req.project_dir
     );
 
-    if let Some(prev) = previous {
-        if prev.place_id != req.place_id {
-            tracing::info!(
-                "Replaced previous connection from {} (PlaceId: {})",
-                prev.place_name,
-                prev.place_id
-            );
-        }
-    }
-
     Json(serde_json::json!({
         "success": true,
-        "message": "Registered successfully"
+        "message": "Registered successfully",
+        "session_id": session_id
     }))
 }
 
@@ -259,11 +256,13 @@ async fn handle_request_poll(
         return (StatusCode::OK, Json(serde_json::to_value(&request).unwrap()));
     }
 
-    // Update heartbeat if projectDir provided
+    // Update heartbeat for all places matching this projectDir
     if let Some(ref dir) = params.project_dir {
         let mut registry = state.place_registry.write().await;
-        if let Some(place) = registry.get_mut(dir) {
-            place.last_heartbeat = Some(Instant::now());
+        for place in registry.values_mut() {
+            if place.project_dir == *dir {
+                place.last_heartbeat = Some(Instant::now());
+            }
         }
     }
 
