@@ -7,8 +7,9 @@ Extract and sync Roblox games to git-friendly files, directly from VS Code.
 - **Connect to Studio** - One-click connection to your Roblox Studio instance
 - **Extract Game** - Pull your entire game into version-controlled files
 - **Sync Changes** - Push local edits back to Studio instantly
-- **Instance Explorer** - Browse your game structure in the sidebar
-- **Git Integration** - View staged/modified files and commit directly
+- **Auto-Extract** - Changes in Studio automatically sync to files
+- **Console Streaming** - View Studio console output in VS Code terminal
+- **E2E Testing Mode** - AI-powered development with real-time feedback
 
 ## Requirements
 
@@ -18,7 +19,7 @@ Extract and sync Roblox games to git-friendly files, directly from VS Code.
    rbxsync serve
    ```
 
-2. **RbxSync Studio Plugin** - Purchase and install the plugin from [rbxsync.dev](https://rbxsync.dev)
+2. **RbxSync Studio Plugin** - Build from source or download from releases
 
 ## Getting Started
 
@@ -35,8 +36,22 @@ Extract and sync Roblox games to git-friendly files, directly from VS Code.
 | `RbxSync: Connect to Studio` | Connect to the RbxSync server |
 | `RbxSync: Extract Game from Studio` | Extract game to local files |
 | `RbxSync: Sync Changes to Studio` | Push local changes to Studio |
+| `RbxSync: Open Console` | Open Studio console output terminal |
+| `RbxSync: Toggle E2E Mode` | Enable/disable E2E testing mode |
 | `RbxSync: Show Git Status` | Display git repository status |
 | `RbxSync: Commit Changes` | Commit staged changes |
+
+## Console Streaming
+
+The extension can stream Studio console output to a VS Code terminal:
+
+1. Run `RbxSync: Open Console` to open the console terminal
+2. All `print()`, `warn()`, and `error()` from Studio appear in real-time
+3. Messages are color-coded: white (info), yellow (warn), red (error)
+
+### E2E Testing Mode
+
+When E2E mode is enabled, the console terminal auto-opens during operations - useful for AI-powered development workflows.
 
 ## Configuration
 
@@ -62,4 +77,4 @@ my-game/
 
 ## License
 
-The VS Code extension is free. The Roblox Studio plugin requires a license.
+MIT - All components are free and open source.
