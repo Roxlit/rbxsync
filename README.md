@@ -5,12 +5,13 @@ A professional tool for syncing Roblox games between Studio and VS Code with ful
 ## Features
 
 - **Complete DataModel Extraction**: Captures ALL properties using API dump reflection
-- **Two-Way Sync**: Push changes from VS Code to Studio and extract from Studio to files
+- **Two-Way Sync**: Push changes from VS Code to Studio and auto-extract changes from Studio to files
 - **VS Code Extension**: Native integration with status bar, activity panel, and keyboard shortcuts
+- **E2E Testing Mode**: Stream Studio console output to VS Code for AI-powered development workflows
 - **MCP Integration**: AI agents can extract, sync, run code, and test games
 - **Git-Friendly**: Clean file structure designed for version control
 - **Multi-Studio Support**: Work with multiple Studio instances simultaneously
-- **Play Testing**: Run automated tests with console output capture
+- **Auto-Extract**: Changes made in Studio are automatically synced back to files
 
 ## Project Structure
 
@@ -205,6 +206,44 @@ Folders and other instances use `init.rbxjson`:
 │  • Play test automation                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## E2E Testing Mode
+
+RbxSync includes E2E testing mode for AI-powered development. When enabled, Studio console output streams to VS Code in real-time.
+
+### Enable E2E Mode
+
+1. In VS Code, run command: `RbxSync: Toggle E2E Mode`
+2. Open the console: `RbxSync: Open Console`
+3. Studio `print()`, `warn()`, and `error()` output will stream to the terminal
+
+### Console Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /console/subscribe` | SSE stream of console messages |
+| `GET /console/history` | Get recent console history |
+| `POST /console/push` | Push messages (used by plugin) |
+
+## Troubleshooting
+
+### Server won't start
+- Check if port 44755 is already in use: `lsof -i :44755`
+- Try stopping existing server: `rbxsync stop`
+
+### Plugin not connecting
+- Ensure the server is running: `rbxsync status`
+- Check the project path in the plugin matches your VS Code workspace
+- Enable HttpService in Roblox Studio (Game Settings > Security)
+
+### Changes not syncing
+- Verify the connection is established (green dot in plugin)
+- Check the VS Code output panel for errors
+- Restart the server if needed
+
+### Auto-extract not working
+- Make sure you're connected (not just server running)
+- Changes must be in tracked services (Workspace, ReplicatedStorage, etc.)
 
 ## Development
 
