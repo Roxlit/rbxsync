@@ -8,6 +8,7 @@ import { connectCommand, disconnectCommand } from './commands/connect';
 import { extractCommand } from './commands/extract';
 import { syncCommand } from './commands/sync';
 import { runPlayTest, disposeTestChannel } from './commands/test';
+import { openConsole, closeConsole, toggleE2EMode, initE2EMode, disposeConsole, isE2EMode } from './commands/console';
 
 let client: RbxSyncClient;
 let statusBar: StatusBarManager;
@@ -21,6 +22,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Initialize components
   client = new RbxSyncClient(port);
+
+  // Initialize E2E mode from saved state
+  initE2EMode(context);
 
   // Set project directory for multi-workspace support
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -149,6 +153,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       exclude['**/*.rbxjson'] = !isHidden;
       await filesConfig.update('exclude', exclude, vscode.ConfigurationTarget.Workspace);
+    }),
+
+    // Console commands for E2E testing
+    vscode.commands.registerCommand('rbxsync.openConsole', async () => {
+      await openConsole(client);
+    }),
+
+    vscode.commands.registerCommand('rbxsync.closeConsole', () => {
+      closeConsole();
+    }),
+
+    vscode.commands.registerCommand('rbxsync.toggleE2EMode', () => {
+      const enabled = toggleE2EMode(context);
+      activityView.setE2EMode(enabled);
     })
   ];
 
@@ -189,4 +207,5 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   disposeTestChannel();
+  disposeConsole();
 }

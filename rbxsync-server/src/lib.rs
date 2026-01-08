@@ -19,7 +19,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, watch, Mutex, RwLock};
+use tokio::sync::{broadcast, mpsc, watch, Mutex, RwLock};
 use uuid::Uuid;
 
 /// Server configuration
@@ -45,6 +45,18 @@ pub struct VsCodeWorkspace {
     #[serde(skip)]
     pub last_heartbeat: Option<Instant>,
 }
+
+/// Console message from Studio
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsoleMessage {
+    pub timestamp: String,
+    pub message_type: String,  // "info", "warn", "error"
+    pub message: String,
+    pub source: Option<String>,  // e.g., "sync", "extract", "plugin"
+}
+
+/// Max console messages to keep in buffer
+const CONSOLE_BUFFER_SIZE: usize = 1000;
 
 /// Shared application state
 pub struct AppState {
@@ -86,12 +98,19 @@ pub struct AppState {
 
     /// Track which Studio places we've logged (to prevent spam)
     pub logged_studio_places: RwLock<HashSet<String>>,
+
+    /// Console message buffer (ring buffer of recent messages)
+    pub console_buffer: RwLock<VecDeque<ConsoleMessage>>,
+
+    /// Broadcast channel for real-time console streaming
+    pub console_tx: broadcast::Sender<ConsoleMessage>,
 }
 
 impl AppState {
     pub fn new() -> Arc<Self> {
         let (trigger, trigger_rx) = watch::channel(());
         let (file_change_tx, file_change_rx) = mpsc::unbounded_channel();
+        let (console_tx, _) = broadcast::channel(100);  // Buffer 100 messages for slow subscribers
         Arc::new(Self {
             request_queue: Mutex::new(VecDeque::new()),
             project_queues: RwLock::new(HashMap::new()),
@@ -106,6 +125,8 @@ impl AppState {
             file_change_rx: Mutex::new(file_change_rx),
             logged_vscode_workspaces: RwLock::new(HashSet::new()),
             logged_studio_places: RwLock::new(HashSet::new()),
+            console_buffer: RwLock::new(VecDeque::with_capacity(CONSOLE_BUFFER_SIZE)),
+            console_tx,
         })
     }
 }
@@ -177,6 +198,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/test/start", post(handle_test_start))
         .route("/test/status", get(handle_test_status))
         .route("/test/stop", post(handle_test_stop))
+        // Console output streaming (for E2E testing mode)
+        .route("/console/push", post(handle_console_push))
+        .route("/console/subscribe", get(handle_console_subscribe))
+        .route("/console/history", get(handle_console_history))
         // Run arbitrary Luau code (for MCP)
         .route("/run", post(handle_run_code))
         // Health check
@@ -1001,6 +1026,7 @@ async fn handle_sync_batch(
 #[derive(Debug, Deserialize)]
 pub struct SyncFromStudioRequest {
     pub operations: Vec<StudioChangeOperation>,
+    #[serde(rename = "projectDir")]
     pub project_dir: String,
 }
 
@@ -1016,6 +1042,11 @@ pub struct StudioChangeOperation {
 
 /// Handle changes from Studio and write them to files
 async fn handle_sync_from_studio(Json(req): Json<SyncFromStudioRequest>) -> impl IntoResponse {
+    tracing::info!("handle_sync_from_studio called with {} operations", req.operations.len());
+    for (i, op) in req.operations.iter().enumerate() {
+        tracing::info!("  Op {}: type={}, path={}, className={:?}, has_data={}",
+            i, op.change_type, op.path, op.class_name, op.data.is_some());
+    }
     let src_dir = PathBuf::from(&req.project_dir).join("src");
 
     if !src_dir.exists() {
@@ -1079,29 +1110,37 @@ async fn handle_sync_from_studio(Json(req): Json<SyncFromStudioRequest>) -> impl
                         .unwrap_or("");
 
                     let is_script = matches!(class_name, "Script" | "LocalScript" | "ModuleScript");
+                    tracing::info!("Processing {} - class_name: '{}', is_script: {}, data: {:?}", inst_path, class_name, is_script, data);
 
                     if is_script {
-                        // Extract script source
-                        if let Some(props) = data.get("properties") {
-                            if let Some(source) = props.get("Source")
-                                .and_then(|v| v.get("value"))
-                                .and_then(|v| v.as_str())
-                            {
-                                let extension = match class_name {
-                                    "Script" => ".server.luau",
-                                    "LocalScript" => ".client.luau",
-                                    _ => ".luau",
-                                };
-                                let script_path = format!("{}{}", full_path.to_string_lossy(), extension);
+                        // Extract script source - try multiple formats
+                        // Format 1: data.source (from ChangeTracker)
+                        // Format 2: data.properties.Source.value (from full extraction)
+                        let source = data.get("source")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| {
+                                data.get("properties")
+                                    .and_then(|p| p.get("Source"))
+                                    .and_then(|s| s.get("value"))
+                                    .and_then(|v| v.as_str())
+                            });
 
-                                match std::fs::write(&script_path, source) {
-                                    Ok(_) => {
-                                        tracing::info!("Studio sync: wrote {}", script_path);
-                                        files_written += 1;
-                                    }
-                                    Err(e) => {
-                                        errors.push(format!("Failed to write {}: {}", script_path, e));
-                                    }
+                        tracing::debug!("Source extraction result: {:?}", source.map(|s| s.len()));
+                        if let Some(source) = source {
+                            let extension = match class_name {
+                                "Script" => ".server.luau",
+                                "LocalScript" => ".client.luau",
+                                _ => ".luau",
+                            };
+                            let script_path = format!("{}{}", full_path.to_string_lossy(), extension);
+
+                            match std::fs::write(&script_path, source) {
+                                Ok(_) => {
+                                    tracing::info!("Studio sync: wrote {}", script_path);
+                                    files_written += 1;
+                                }
+                                Err(e) => {
+                                    errors.push(format!("Failed to write {}: {}", script_path, e));
                                 }
                             }
                         }
@@ -1110,6 +1149,10 @@ async fn handle_sync_from_studio(Json(req): Json<SyncFromStudioRequest>) -> impl
                     // Write .rbxjson for non-source properties
                     let mut clean_data = data.clone();
                     if is_script {
+                        // Remove source from both formats
+                        if let Some(obj) = clean_data.as_object_mut() {
+                            obj.remove("source");
+                        }
                         if let Some(props) = clean_data.get_mut("properties") {
                             if let Some(obj) = props.as_object_mut() {
                                 obj.remove("Source");
@@ -1550,6 +1593,102 @@ async fn handle_test_stop(State(state): State<Arc<AppState>>) -> impl IntoRespon
     }
 }
 
+// ============================================================================
+// Console Streaming Endpoints (for E2E Testing Mode)
+// ============================================================================
+
+/// Request to push console message(s) from plugin
+#[derive(Debug, Deserialize)]
+struct ConsolePushRequest {
+    messages: Vec<ConsoleMessage>,
+}
+
+/// Push console messages from plugin to server
+async fn handle_console_push(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ConsolePushRequest>,
+) -> impl IntoResponse {
+    let mut buffer = state.console_buffer.write().await;
+    let count = req.messages.len();
+
+    for msg in req.messages {
+        // Broadcast to any active subscribers
+        let _ = state.console_tx.send(msg.clone());
+
+        // Add to buffer (ring buffer behavior)
+        if buffer.len() >= CONSOLE_BUFFER_SIZE {
+            buffer.pop_front();
+        }
+        buffer.push_back(msg);
+    }
+
+    Json(serde_json::json!({
+        "success": true,
+        "received": count
+    }))
+}
+
+/// Get console message history
+async fn handle_console_history(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ConsoleHistoryQuery>,
+) -> impl IntoResponse {
+    let buffer = state.console_buffer.read().await;
+    let limit = params.limit.unwrap_or(100).min(CONSOLE_BUFFER_SIZE);
+
+    // Get last N messages
+    let messages: Vec<&ConsoleMessage> = buffer.iter().rev().take(limit).collect();
+    let messages: Vec<&ConsoleMessage> = messages.into_iter().rev().collect();
+
+    Json(serde_json::json!({
+        "messages": messages,
+        "total": buffer.len()
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+struct ConsoleHistoryQuery {
+    limit: Option<usize>,
+}
+
+/// Subscribe to console messages via Server-Sent Events
+async fn handle_console_subscribe(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    use axum::response::sse::{Event, Sse};
+    use std::convert::Infallible;
+
+    let mut rx = state.console_tx.subscribe();
+
+    let stream = async_stream::stream! {
+        loop {
+            match rx.recv().await {
+                Ok(msg) => {
+                    let json = serde_json::to_string(&msg).unwrap_or_default();
+                    yield Ok::<_, Infallible>(Event::default().data(json));
+                }
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    // Client fell behind, continue
+                    continue;
+                }
+                Err(broadcast::error::RecvError::Closed) => {
+                    break;
+                }
+            }
+        }
+    };
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(std::time::Duration::from_secs(15))
+            .text("keepalive")
+    )
+}
+
+// ============================================================================
+// Run Code Endpoint
+// ============================================================================
+
 /// Request structure for running code
 #[derive(Debug, Deserialize)]
 struct RunCodeRequest {
@@ -1692,18 +1831,21 @@ async fn process_file_changes(state: Arc<AppState>) {
                 };
 
                 // Send to project-specific queue if we know the project
+                // Only fall back to global queue if project queue doesn't exist
+                let mut sent = false;
                 if let Some(ref dir) = project_dir {
                     let mut queues = state.project_queues.write().await;
                     if let Some(queue) = queues.get_mut(dir) {
                         tracing::info!("Queued {} operations for project {}", operations.len(), dir);
                         queue.push_back(plugin_request.clone());
+                        sent = true;
                     } else {
                         tracing::warn!("No queue for project {}, available queues: {:?}", dir, queues.keys().collect::<Vec<_>>());
                     }
                 }
 
-                // Also send to global queue as fallback
-                {
+                // Only use global queue as fallback if project queue wasn't available
+                if !sent {
                     let mut queue = state.request_queue.lock().await;
                     queue.push_back(plugin_request);
                 }
