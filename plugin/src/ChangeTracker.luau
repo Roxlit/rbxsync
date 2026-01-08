@@ -2,8 +2,8 @@
 --[[
     Change Tracker Module
 
-    Monitors changes made in Roblox Studio and reports them to the server
-    for syncing back to the file system (two-way sync).
+    Monitors changes made in Roblox Studio and automatically extracts
+    changes to the file system (auto-extract).
 ]]
 
 local HttpService = game:GetService("HttpService")
@@ -163,9 +163,7 @@ local function sendPendingChanges()
     end)
 
     if ok and result.Success then
-        print("[RbxSync] Synced " .. #operations .. " change(s) to files")
-    else
-        -- Server might not have this endpoint yet, that's okay
+        print("[RbxSync] Auto-extracted " .. #operations .. " change(s)")
     end
 end
 
@@ -283,7 +281,7 @@ function ChangeTracker.start()
     end
 
     isTracking = true
-    print("[RbxSync] Change tracking enabled (two-way sync)")
+    print("[RbxSync] Auto-extract enabled")
 
     -- Set up tracking for all services
     for _, serviceName in trackedServices do
@@ -313,7 +311,7 @@ function ChangeTracker.stop()
     table.clear(connections)
     table.clear(pendingChanges)
 
-    print("[RbxSync] Change tracking disabled")
+    print("[RbxSync] Auto-extract disabled")
 end
 
 -- Check if tracking is active

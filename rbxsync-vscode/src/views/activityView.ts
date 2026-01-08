@@ -25,6 +25,7 @@ export class ActivityViewProvider implements vscode.TreeDataProvider<StatusItem>
   private currentOperation: string | null = null;
   private lastResult: { label: string; success: boolean; time: Date } | null = null;
   private clearResultTimeout: NodeJS.Timeout | null = null;
+  private e2eModeEnabled: boolean = false;
 
   setConnectionStatus(
     status: 'connected' | 'disconnected' | 'connecting',
@@ -45,6 +46,11 @@ export class ActivityViewProvider implements vscode.TreeDataProvider<StatusItem>
 
   setCurrentOperation(operation: string | null): void {
     this.currentOperation = operation;
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
+  setE2EMode(enabled: boolean): void {
+    this.e2eModeEnabled = enabled;
     this._onDidChangeTreeData.fire(undefined);
   }
 
@@ -273,6 +279,39 @@ export class ActivityViewProvider implements vscode.TreeDataProvider<StatusItem>
         command: { command: 'rbxsync.refresh', title: 'Refresh' }
       });
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // CONSOLE SECTION (E2E Testing)
+    // ═══════════════════════════════════════════════════════════
+    items.push({
+      id: 'header-console',
+      type: 'header',
+      label: 'CONSOLE',
+      icon: 'terminal',
+      description: this.e2eModeEnabled ? 'E2E Mode On' : '',
+      iconColor: this.e2eModeEnabled
+        ? new vscode.ThemeColor('testing.iconPassed')
+        : new vscode.ThemeColor('foreground')
+    });
+
+    items.push({
+      id: 'action-open-console',
+      type: 'action',
+      label: '    Open Console',
+      icon: 'terminal-view-icon',
+      command: { command: 'rbxsync.openConsole', title: 'Open Console' }
+    });
+
+    items.push({
+      id: 'action-toggle-e2e',
+      type: 'action',
+      label: this.e2eModeEnabled ? '    E2E Mode: ON' : '    E2E Mode: OFF',
+      icon: this.e2eModeEnabled ? 'check' : 'circle-outline',
+      iconColor: this.e2eModeEnabled
+        ? new vscode.ThemeColor('testing.iconPassed')
+        : new vscode.ThemeColor('disabledForeground'),
+      command: { command: 'rbxsync.toggleE2EMode', title: 'Toggle E2E Mode' }
+    });
 
     // ═══════════════════════════════════════════════════════════
     // SETTINGS SECTION

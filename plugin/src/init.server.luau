@@ -11,6 +11,7 @@ local HttpService = game:GetService("HttpService")
 local Selection = game:GetService("Selection")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local LogService = game:GetService("LogService")
 
 -- Configuration defaults
 local POLL_INTERVAL = 1 -- seconds
@@ -21,7 +22,6 @@ local Reflection = require(script.Reflection)
 local Serializer = require(script.Serializer)
 local Sync = require(script.Sync)
 local Config = require(script.Config)
-local Git = require(script.Git)
 local TestRunner = require(script.TestRunner)
 local ChangeTracker = require(script.ChangeTracker)
 
@@ -33,11 +33,19 @@ local isConnected = false
 local isExtracting = false
 local isSyncing = false
 local userDisconnected = false  -- True when user explicitly clicks Disconnect (prevents auto-reconnect)
-local twoWaySyncEnabled = false  -- Two-way sync (Studio → files)
 local cachedPlaceName: string? = nil
 local lastExtractTime: number? = nil  -- Track last extraction time for estimates
 local lastInstanceCount: number? = nil  -- Track last instance count
 local hasLoggedLink: boolean = false  -- Prevent spam logging of "Linked to" messages
+
+-- Console capture state (for E2E testing mode)
+local consoleCapture = {
+    enabled = false,
+    connection = nil :: RBXScriptConnection?,
+    pendingMessages = {} :: {{timestamp: string, message_type: string, message: string, source: string?}},
+    lastFlush = 0,
+    FLUSH_INTERVAL = 0.5,  -- Flush every 500ms
+}
 
 -- Forward declaration for UI update function (defined later)
 local updateConnectionUI: () -> ()
@@ -73,8 +81,105 @@ local function getServerUrl(): string
     return Config.getServerUrl()
 end
 
+-- Console capture functions
+local function getMessageType(messageType: Enum.MessageType): string
+    if messageType == Enum.MessageType.MessageError then
+        return "error"
+    elseif messageType == Enum.MessageType.MessageWarning then
+        return "warn"
+    else
+        return "info"
+    end
+end
+
+local function flushConsoleMessages()
+    if #consoleCapture.pendingMessages == 0 then
+        return
+    end
+
+    local messages = consoleCapture.pendingMessages
+    consoleCapture.pendingMessages = {}
+
+    local url = getServerUrl() .. "/console/push"
+    local payload = HttpService:JSONEncode({
+        messages = messages
+    })
+
+    pcall(function()
+        HttpService:RequestAsync({
+            Url = url,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = payload,
+        })
+    end)
+end
+
+local function startConsoleCapture()
+    if consoleCapture.enabled then
+        return
+    end
+
+    consoleCapture.enabled = true
+    consoleCapture.pendingMessages = {}
+
+    -- Hook into LogService to capture all console output
+    consoleCapture.connection = LogService.MessageOut:Connect(function(message, messageType)
+        -- Skip RbxSync's own debug messages to avoid noise
+        if string.find(message, "%[RbxSync") then
+            return
+        end
+
+        local now = os.date("%H:%M:%S")
+        table.insert(consoleCapture.pendingMessages, {
+            timestamp = now,
+            message_type = getMessageType(messageType),
+            message = message,
+            source = "studio",
+        })
+
+        -- Auto-flush if we have enough messages or enough time has passed
+        local currentTime = tick()
+        if #consoleCapture.pendingMessages >= 10 or (currentTime - consoleCapture.lastFlush) >= consoleCapture.FLUSH_INTERVAL then
+            consoleCapture.lastFlush = currentTime
+            task.spawn(flushConsoleMessages)
+        end
+    end)
+
+    print("[RbxSync] Console capture enabled")
+end
+
+local function stopConsoleCapture()
+    if not consoleCapture.enabled then
+        return
+    end
+
+    consoleCapture.enabled = false
+
+    if consoleCapture.connection then
+        consoleCapture.connection:Disconnect()
+        consoleCapture.connection = nil
+    end
+
+    -- Flush any remaining messages
+    flushConsoleMessages()
+
+    print("[RbxSync] Console capture disabled")
+end
+
+-- Format number with commas (1234 -> "1,234")
+local function formatNumber(n: number): string
+    local formatted = tostring(n)
+    local k
+    while true do
+        formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+        if k == 0 then break end
+    end
+    return formatted
+end
+
 -- Count instances by class in standard services
-local function getInstanceBreakdown(): {total: number, classes: {[string]: number}}
+local function getInstanceBreakdown(): {total: number, classes: {[string]: number}, scripts: number}
     local servicesToCount = {
         "Workspace",
         "ReplicatedStorage",
@@ -86,14 +191,11 @@ local function getInstanceBreakdown(): {total: number, classes: {[string]: numbe
         "StarterPlayer",
         "Lighting",
         "SoundService",
-        "Teams",
-        "Chat",
-        "LocalizationService",
-        "TestService",
     }
 
     local total = 0
     local classes = {}
+    local scripts = 0
 
     for _, serviceName in servicesToCount do
         local service = game:FindFirstChild(serviceName)
@@ -105,42 +207,29 @@ local function getInstanceBreakdown(): {total: number, classes: {[string]: numbe
             -- Count descendants
             for _, descendant in service:GetDescendants() do
                 total += 1
+                if descendant:IsA("LuaSourceContainer") then
+                    scripts += 1
+                end
                 classes[descendant.ClassName] = (classes[descendant.ClassName] or 0) + 1
             end
         end
     end
 
-    return { total = total, classes = classes }
+    return { total = total, classes = classes, scripts = scripts }
 end
 
--- Get formatted class breakdown string
+-- Get clean instance display string
 local function getClassBreakdownString(): string
     local breakdown = getInstanceBreakdown()
 
-    -- Sort classes by count (descending)
-    local sorted = {}
-    for className, count in pairs(breakdown.classes) do
-        table.insert(sorted, {name = className, count = count})
-    end
-    table.sort(sorted, function(a, b) return a.count > b.count end)
+    -- Clean format: "1,247 instances • 89 scripts"
+    local display = formatNumber(breakdown.total) .. " instances"
 
-    -- Build display string with top classes
-    local parts = {}
-    local shown = 0
-    for _, item in ipairs(sorted) do
-        if shown >= 4 then break end -- Show top 4 classes
-        -- Only show significant classes (scripts, parts, etc.)
-        if item.count >= 5 or item.name:find("Script") or item.name == "Part" or item.name == "Model" or item.name == "Folder" then
-            table.insert(parts, item.count .. " " .. item.name)
-            shown += 1
-        end
+    if breakdown.scripts > 0 then
+        display = display .. " • " .. formatNumber(breakdown.scripts) .. " scripts"
     end
 
-    if #parts == 0 then
-        return string.format("%d instances", breakdown.total)
-    end
-
-    return table.concat(parts, ", ")
+    return display
 end
 
 -- Legacy function for backward compatibility
@@ -836,68 +925,181 @@ local widgetInfo = DockWidgetPluginGuiInfo.new(
 local widget = plugin:CreateDockWidgetPluginGui("RbxSyncPanel", widgetInfo)
 widget.Title = "RbxSync"
 
--- UI State
-local gitStatus: Git.GitStatus? = nil
+-- ============================================================================
+-- DESIGN TOKENS
+-- ============================================================================
 
--- Create main frame
+local Colors = {
+    background = Color3.fromRGB(30, 30, 30),
+    surface = Color3.fromRGB(38, 38, 38),
+    surfaceHover = Color3.fromRGB(48, 48, 48),
+    accent = Color3.fromRGB(0, 212, 255),
+    accentMuted = Color3.fromRGB(0, 160, 200),
+    success = Color3.fromRGB(80, 200, 120),
+    warning = Color3.fromRGB(255, 180, 80),
+    error = Color3.fromRGB(255, 100, 100),
+    textPrimary = Color3.fromRGB(240, 240, 240),
+    textSecondary = Color3.fromRGB(160, 160, 160),
+    textMuted = Color3.fromRGB(100, 100, 100),
+}
+
+-- ============================================================================
+-- BUTTON STATE MANAGEMENT
+-- ============================================================================
+
+-- Sync button state enum
+local SyncButtonState = {
+    IDLE = "idle",
+    SYNCING = "syncing",
+    DISCONNECTED = "disconnected",
+    SUCCESS = "success",
+}
+
+local currentSyncState = SyncButtonState.DISCONNECTED
+local syncPulseConnection: RBXScriptConnection? = nil
+
+-- Forward declarations for button state functions (defined after buttons exist)
+local updateSyncButtonState: (state: string) -> ()
+local updateExtractButtonState: (connected: boolean) -> ()
+
+-- ============================================================================
+-- MAIN FRAME
+-- ============================================================================
+
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(1, 0, 1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
+mainFrame.BackgroundColor3 = Colors.background
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = widget
 
 local layout = Instance.new("UIListLayout")
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 12)
+layout.Padding = UDim.new(0, 0)
 layout.Parent = mainFrame
 
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 16)
-padding.PaddingBottom = UDim.new(0, 16)
-padding.PaddingLeft = UDim.new(0, 16)
-padding.PaddingRight = UDim.new(0, 16)
-padding.Parent = mainFrame
+-- ============================================================================
+-- HEADER SECTION
+-- ============================================================================
+
+local headerFrame = Instance.new("Frame")
+headerFrame.Name = "Header"
+headerFrame.Size = UDim2.new(1, 0, 0, 52)
+headerFrame.BackgroundColor3 = Colors.surface
+headerFrame.BorderSizePixel = 0
+headerFrame.LayoutOrder = 0
+headerFrame.Parent = mainFrame
+
+local accentLine = Instance.new("Frame")
+accentLine.Size = UDim2.new(1, 0, 0, 2)
+accentLine.BackgroundColor3 = Colors.accent
+accentLine.BorderSizePixel = 0
+accentLine.Parent = headerFrame
+
+local headerPadding = Instance.new("UIPadding")
+headerPadding.PaddingTop = UDim.new(0, 14)
+headerPadding.PaddingLeft = UDim.new(0, 16)
+headerPadding.Parent = headerFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 18)
+titleLabel.Position = UDim2.new(0, 0, 0, 2)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "RBXSYNC"
+titleLabel.TextColor3 = Colors.textPrimary
+titleLabel.TextSize = 15
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = headerFrame
+
+local subtitleLabel = Instance.new("TextLabel")
+subtitleLabel.Size = UDim2.new(1, 0, 0, 14)
+subtitleLabel.Position = UDim2.new(0, 0, 0, 22)
+subtitleLabel.BackgroundTransparency = 1
+subtitleLabel.Text = "Studio ↔ VS Code"
+subtitleLabel.TextColor3 = Colors.textMuted
+subtitleLabel.TextSize = 10
+subtitleLabel.Font = Enum.Font.Gotham
+subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+subtitleLabel.Parent = headerFrame
 
 -- ============================================================================
 -- Connection Status + Button
 -- ============================================================================
 
+local connectionSection = Instance.new("Frame")
+connectionSection.Size = UDim2.new(1, 0, 0, 56)
+connectionSection.BackgroundTransparency = 1
+connectionSection.LayoutOrder = 1
+connectionSection.Parent = mainFrame
+
+local connectionPadding = Instance.new("UIPadding")
+connectionPadding.PaddingTop = UDim.new(0, 12)
+connectionPadding.PaddingLeft = UDim.new(0, 16)
+connectionPadding.PaddingRight = UDim.new(0, 16)
+connectionPadding.Parent = connectionSection
+
 local connectionFrame = Instance.new("Frame")
-connectionFrame.Size = UDim2.new(1, 0, 0, 32)
-connectionFrame.BackgroundTransparency = 1
-connectionFrame.LayoutOrder = 1
-connectionFrame.Parent = mainFrame
+connectionFrame.Size = UDim2.new(1, 0, 0, 36)
+connectionFrame.BackgroundColor3 = Colors.surface
+connectionFrame.BorderSizePixel = 0
+connectionFrame.Parent = connectionSection
+
+local connectionCorner = Instance.new("UICorner")
+connectionCorner.CornerRadius = UDim.new(0, 6)
+connectionCorner.Parent = connectionFrame
+
+local connectionStroke = Instance.new("UIStroke")
+connectionStroke.Color = Colors.textMuted
+connectionStroke.Thickness = 1
+connectionStroke.Transparency = 0.8
+connectionStroke.Parent = connectionFrame
 
 local connectionDot = Instance.new("Frame")
-connectionDot.Size = UDim2.new(0, 10, 0, 10)
-connectionDot.Position = UDim2.new(0, 0, 0.5, -5)
-connectionDot.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+connectionDot.Size = UDim2.new(0, 8, 0, 8)
+connectionDot.Position = UDim2.new(0, 12, 0.5, -4)
+connectionDot.BackgroundColor3 = Colors.textMuted
+connectionDot.BorderSizePixel = 0
 connectionDot.Parent = connectionFrame
 
 local dotCorner = Instance.new("UICorner")
 dotCorner.CornerRadius = UDim.new(1, 0)
 dotCorner.Parent = connectionDot
 
+-- Glow effect behind dot
+local dotGlow = Instance.new("Frame")
+dotGlow.Size = UDim2.new(0, 16, 0, 16)
+dotGlow.Position = UDim2.new(0.5, -8, 0.5, -8)
+dotGlow.BackgroundColor3 = Colors.success
+dotGlow.BackgroundTransparency = 0.7
+dotGlow.BorderSizePixel = 0
+dotGlow.ZIndex = 0
+dotGlow.Visible = false
+dotGlow.Parent = connectionDot
+
+local dotGlowCorner = Instance.new("UICorner")
+dotGlowCorner.CornerRadius = UDim.new(1, 0)
+dotGlowCorner.Parent = dotGlow
+
 local connectionLabel = Instance.new("TextLabel")
-connectionLabel.Size = UDim2.new(0, 100, 1, 0)
-connectionLabel.Position = UDim2.new(0, 20, 0, 0)
+connectionLabel.Size = UDim2.new(1, -100, 1, 0)
+connectionLabel.Position = UDim2.new(0, 28, 0, 0)
 connectionLabel.BackgroundTransparency = 1
 connectionLabel.Text = "Disconnected"
-connectionLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-connectionLabel.TextSize = 14
+connectionLabel.TextColor3 = Colors.textSecondary
+connectionLabel.TextSize = 12
 connectionLabel.Font = Enum.Font.GothamMedium
 connectionLabel.TextXAlignment = Enum.TextXAlignment.Left
 connectionLabel.Parent = connectionFrame
 
 local connectButton = Instance.new("TextButton")
-connectButton.Size = UDim2.new(0, 80, 0, 28)
-connectButton.Position = UDim2.new(1, -80, 0.5, -14)
-connectButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+connectButton.Size = UDim2.new(0, 76, 0, 26)
+connectButton.Position = UDim2.new(1, -81, 0.5, -13)
+connectButton.BackgroundColor3 = Colors.accent
 connectButton.BorderSizePixel = 0
 connectButton.Text = "Connect"
-connectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-connectButton.TextSize = 12
-connectButton.Font = Enum.Font.GothamMedium
+connectButton.TextColor3 = Colors.background
+connectButton.TextSize = 11
+connectButton.Font = Enum.Font.GothamBold
 connectButton.AutoButtonColor = true
 connectButton.Parent = connectionFrame
 
@@ -908,16 +1110,26 @@ connectBtnCorner.Parent = connectButton
 updateConnectionUI = function()
     if isConnected then
         connectionLabel.Text = "Connected"
-        connectionLabel.TextColor3 = Color3.fromRGB(100, 200, 100)
-        connectionDot.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        connectionLabel.TextColor3 = Colors.success
+        connectionDot.BackgroundColor3 = Colors.success
+        dotGlow.Visible = true
         connectButton.Text = "Disconnect"
-        connectButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        connectButton.BackgroundColor3 = Colors.surface
+        connectButton.TextColor3 = Colors.textPrimary
+        -- Update button states
+        updateSyncButtonState(SyncButtonState.IDLE)
+        updateExtractButtonState(true)
     else
         connectionLabel.Text = "Disconnected"
-        connectionLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        connectionDot.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+        connectionLabel.TextColor3 = Colors.textSecondary
+        connectionDot.BackgroundColor3 = Colors.textMuted
+        dotGlow.Visible = false
         connectButton.Text = "Connect"
-        connectButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+        connectButton.BackgroundColor3 = Colors.accent
+        connectButton.TextColor3 = Colors.background
+        -- Update button states
+        updateSyncButtonState(SyncButtonState.DISCONNECTED)
+        updateExtractButtonState(false)
     end
 end
 
@@ -928,6 +1140,7 @@ connectButton.MouseButton1Click:Connect(function()
         userDisconnected = true  -- Prevent auto-reconnect
         hasLoggedLink = false  -- Reset so we log again on reconnect
         ChangeTracker.stop()  -- Stop change tracking when disconnected
+        stopConsoleCapture()  -- Stop console capture when disconnected
         print("Disconnected by user")
     else
         -- User clicked Connect
@@ -936,10 +1149,10 @@ connectButton.MouseButton1Click:Connect(function()
         if success then
             isConnected = true
             registerWithServer()
-            -- Start change tracker if two-way sync is enabled
-            if twoWaySyncEnabled then
-                ChangeTracker.start()
-            end
+            -- Start change tracker for auto-extract
+            ChangeTracker.start()
+            -- Start console capture for E2E testing
+            startConsoleCapture()
         else
             isConnected = false
             warn("Could not connect to server")
@@ -952,65 +1165,94 @@ end)
 -- Project Path with Workspace Dropdown
 -- ============================================================================
 
+local projectSection = Instance.new("Frame")
+projectSection.Size = UDim2.new(1, 0, 0, 72)
+projectSection.BackgroundTransparency = 1
+projectSection.LayoutOrder = 2
+projectSection.Parent = mainFrame
+
+local projectPadding = Instance.new("UIPadding")
+projectPadding.PaddingTop = UDim.new(0, 0)
+projectPadding.PaddingLeft = UDim.new(0, 16)
+projectPadding.PaddingRight = UDim.new(0, 16)
+projectPadding.Parent = projectSection
+
+local projectLabel = Instance.new("TextLabel")
+projectLabel.Size = UDim2.new(1, 0, 0, 16)
+projectLabel.BackgroundTransparency = 1
+projectLabel.Text = "PROJECT"
+projectLabel.TextColor3 = Colors.textMuted
+projectLabel.TextSize = 10
+projectLabel.Font = Enum.Font.GothamBold
+projectLabel.TextXAlignment = Enum.TextXAlignment.Left
+projectLabel.Parent = projectSection
+
 local projectPathFrame = Instance.new("Frame")
-projectPathFrame.Size = UDim2.new(1, 0, 0, 32)
-projectPathFrame.BackgroundTransparency = 1
-projectPathFrame.LayoutOrder = 2
-projectPathFrame.Parent = mainFrame
+projectPathFrame.Size = UDim2.new(1, 0, 0, 36)
+projectPathFrame.Position = UDim2.new(0, 0, 0, 20)
+projectPathFrame.BackgroundColor3 = Colors.surface
+projectPathFrame.BorderSizePixel = 0
+projectPathFrame.Parent = projectSection
+
+local projectPathCorner = Instance.new("UICorner")
+projectPathCorner.CornerRadius = UDim.new(0, 6)
+projectPathCorner.Parent = projectPathFrame
+
+local projectPathStroke = Instance.new("UIStroke")
+projectPathStroke.Color = Colors.textMuted
+projectPathStroke.Thickness = 1
+projectPathStroke.Transparency = 0.8
+projectPathStroke.Parent = projectPathFrame
 
 local projectDirInput = Instance.new("TextBox")
-projectDirInput.Size = UDim2.new(1, -36, 1, 0)
-projectDirInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-projectDirInput.BorderSizePixel = 0
+projectDirInput.Size = UDim2.new(1, -40, 1, 0)
+projectDirInput.BackgroundTransparency = 1
 projectDirInput.Text = Config.getProjectDir()
 projectDirInput.PlaceholderText = "~/path/to/project"
-projectDirInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-projectDirInput.TextColor3 = Color3.fromRGB(200, 200, 200)
+projectDirInput.PlaceholderColor3 = Colors.textMuted
+projectDirInput.TextColor3 = Colors.textPrimary
 projectDirInput.TextSize = 12
-projectDirInput.Font = Enum.Font.Code
+projectDirInput.Font = Enum.Font.Gotham
 projectDirInput.TextXAlignment = Enum.TextXAlignment.Left
 projectDirInput.ClearTextOnFocus = false
 projectDirInput.Parent = projectPathFrame
 
-local inputCorner = Instance.new("UICorner")
-inputCorner.CornerRadius = UDim.new(0, 4)
-inputCorner.Parent = projectDirInput
-
 local inputPadding = Instance.new("UIPadding")
-inputPadding.PaddingLeft = UDim.new(0, 10)
-inputPadding.PaddingRight = UDim.new(0, 10)
+inputPadding.PaddingLeft = UDim.new(0, 12)
+inputPadding.PaddingRight = UDim.new(0, 12)
 inputPadding.Parent = projectDirInput
 
 -- Dropdown toggle button
 local dropdownButton = Instance.new("TextButton")
-dropdownButton.Size = UDim2.new(0, 32, 1, 0)
-dropdownButton.Position = UDim2.new(1, -32, 0, 0)
-dropdownButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-dropdownButton.BorderSizePixel = 0
-dropdownButton.Text = "▼"
-dropdownButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-dropdownButton.TextSize = 10
+dropdownButton.Size = UDim2.new(0, 36, 1, 0)
+dropdownButton.Position = UDim2.new(1, -36, 0, 0)
+dropdownButton.BackgroundTransparency = 1
+dropdownButton.Text = "▾"
+dropdownButton.TextColor3 = Colors.textMuted
+dropdownButton.TextSize = 14
 dropdownButton.Font = Enum.Font.GothamBold
 dropdownButton.AutoButtonColor = true
 dropdownButton.Parent = projectPathFrame
 
-local dropdownBtnCorner = Instance.new("UICorner")
-dropdownBtnCorner.CornerRadius = UDim.new(0, 4)
-dropdownBtnCorner.Parent = dropdownButton
-
 -- Dropdown menu frame (hidden by default)
 local dropdownFrame = Instance.new("Frame")
-dropdownFrame.Size = UDim2.new(1, 0, 0, 0) -- Height set dynamically
+dropdownFrame.Size = UDim2.new(1, 0, 0, 0)
 dropdownFrame.Position = UDim2.new(0, 0, 1, 4)
-dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+dropdownFrame.BackgroundColor3 = Colors.surface
 dropdownFrame.BorderSizePixel = 0
 dropdownFrame.Visible = false
 dropdownFrame.ZIndex = 10
 dropdownFrame.Parent = projectPathFrame
 
 local dropdownCorner = Instance.new("UICorner")
-dropdownCorner.CornerRadius = UDim.new(0, 4)
+dropdownCorner.CornerRadius = UDim.new(0, 6)
 dropdownCorner.Parent = dropdownFrame
+
+local dropdownStroke = Instance.new("UIStroke")
+dropdownStroke.Color = Colors.textMuted
+dropdownStroke.Thickness = 1
+dropdownStroke.Transparency = 0.8
+dropdownStroke.Parent = dropdownFrame
 
 local dropdownLayout = Instance.new("UIListLayout")
 dropdownLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1043,7 +1285,7 @@ local function updateRecentProjectsDropdown()
         noProjects.Size = UDim2.new(1, -8, 0, 24)
         noProjects.BackgroundTransparency = 1
         noProjects.Text = "No recent projects"
-        noProjects.TextColor3 = Color3.fromRGB(120, 120, 120)
+        noProjects.TextColor3 = Colors.textMuted
         noProjects.TextSize = 11
         noProjects.Font = Enum.Font.Gotham
         noProjects.TextXAlignment = Enum.TextXAlignment.Left
@@ -1056,14 +1298,15 @@ local function updateRecentProjectsDropdown()
 
     -- Create recent project option buttons
     for i, projectPath in ipairs(recentProjects) do
+        local isActive = projectPath == currentPath
         local option = Instance.new("TextButton")
         option.Size = UDim2.new(1, -8, 0, 24)
-        option.BackgroundColor3 = projectPath == currentPath and Color3.fromRGB(0, 100, 180) or Color3.fromRGB(60, 60, 60)
+        option.BackgroundColor3 = isActive and Colors.accent or Colors.surfaceHover
         option.BorderSizePixel = 0
         option.Text = "  " .. projectPath
-        option.TextColor3 = projectPath == currentPath and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+        option.TextColor3 = isActive and Colors.background or Colors.textSecondary
         option.TextSize = 11
-        option.Font = Enum.Font.Code
+        option.Font = Enum.Font.Gotham
         option.TextXAlignment = Enum.TextXAlignment.Left
         option.TextTruncate = Enum.TextTruncate.AtEnd
         option.AutoButtonColor = true
@@ -1072,14 +1315,14 @@ local function updateRecentProjectsDropdown()
         option.Parent = dropdownFrame
 
         local optionCorner = Instance.new("UICorner")
-        optionCorner.CornerRadius = UDim.new(0, 3)
+        optionCorner.CornerRadius = UDim.new(0, 4)
         optionCorner.Parent = option
 
         option.MouseButton1Click:Connect(function()
             Config.setProjectDir(projectPath)
             projectDirInput.Text = projectPath
             dropdownFrame.Visible = false
-            dropdownButton.Text = "▼"
+            dropdownButton.Text = "▾"
             -- Re-register with server after path change
             if isConnected then
                 registerWithServer()
@@ -1096,7 +1339,7 @@ end
 -- Toggle dropdown
 dropdownButton.MouseButton1Click:Connect(function()
     dropdownFrame.Visible = not dropdownFrame.Visible
-    dropdownButton.Text = dropdownFrame.Visible and "▲" or "▼"
+    dropdownButton.Text = dropdownFrame.Visible and "▴" or "▾"
     if dropdownFrame.Visible then
         updateRecentProjectsDropdown()
     end
@@ -1116,11 +1359,22 @@ end)
 -- Action Buttons (side by side)
 -- ============================================================================
 
+local actionsSection = Instance.new("Frame")
+actionsSection.Size = UDim2.new(1, 0, 0, 56)
+actionsSection.BackgroundTransparency = 1
+actionsSection.LayoutOrder = 3
+actionsSection.Parent = mainFrame
+
+local actionsPadding = Instance.new("UIPadding")
+actionsPadding.PaddingTop = UDim.new(0, 0)
+actionsPadding.PaddingLeft = UDim.new(0, 16)
+actionsPadding.PaddingRight = UDim.new(0, 16)
+actionsPadding.Parent = actionsSection
+
 local actionsFrame = Instance.new("Frame")
-actionsFrame.Size = UDim2.new(1, 0, 0, 36)
+actionsFrame.Size = UDim2.new(1, 0, 0, 40)
 actionsFrame.BackgroundTransparency = 1
-actionsFrame.LayoutOrder = 3
-actionsFrame.Parent = mainFrame
+actionsFrame.Parent = actionsSection
 
 local actionsLayout = Instance.new("UIListLayout")
 actionsLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -1128,27 +1382,24 @@ actionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 actionsLayout.Padding = UDim.new(0, 8)
 actionsLayout.Parent = actionsFrame
 
-local function createActionButton(text: string, color: Color3, order: number, callback: () -> ()): TextButton
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.5, -4, 1, 0)
-    btn.BackgroundColor3 = color
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 13
-    btn.Font = Enum.Font.GothamMedium
-    btn.LayoutOrder = order
-    btn.AutoButtonColor = true
+-- Extract Button (Primary - accent color)
+local extractButton = Instance.new("TextButton")
+extractButton.Size = UDim2.new(0.5, -4, 1, 0)
+extractButton.BackgroundColor3 = Colors.accent
+extractButton.BorderSizePixel = 0
+extractButton.Text = "⬆  Extract"
+extractButton.TextColor3 = Colors.background
+extractButton.TextSize = 13
+extractButton.Font = Enum.Font.GothamBold
+extractButton.LayoutOrder = 1
+extractButton.AutoButtonColor = true
+extractButton.Parent = actionsFrame
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = btn
+local extractCorner = Instance.new("UICorner")
+extractCorner.CornerRadius = UDim.new(0, 6)
+extractCorner.Parent = extractButton
 
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
-local extractButton = createActionButton("Extract", Color3.fromRGB(0, 120, 215), 1, function()
+extractButton.MouseButton1Click:Connect(function()
     if not isConnected then
         warn("Not connected. Click Connect first.")
         return
@@ -1159,9 +1410,111 @@ local extractButton = createActionButton("Extract", Color3.fromRGB(0, 120, 215),
     end
     extractGame({})
 end)
-extractButton.Parent = actionsFrame
 
-local syncButton = createActionButton("Sync", Color3.fromRGB(80, 80, 80), 2, function()
+-- Sync Button (Secondary - surface with stroke)
+local syncButton = Instance.new("TextButton")
+syncButton.Size = UDim2.new(0.5, -4, 1, 0)
+syncButton.BackgroundColor3 = Colors.surface
+syncButton.BorderSizePixel = 0
+syncButton.Text = "⬇  Sync"
+syncButton.TextColor3 = Colors.textPrimary
+syncButton.TextSize = 13
+syncButton.Font = Enum.Font.GothamBold
+syncButton.LayoutOrder = 2
+syncButton.AutoButtonColor = true
+syncButton.Parent = actionsFrame
+
+local syncCorner = Instance.new("UICorner")
+syncCorner.CornerRadius = UDim.new(0, 6)
+syncCorner.Parent = syncButton
+
+local syncStroke = Instance.new("UIStroke")
+syncStroke.Color = Colors.textMuted
+syncStroke.Thickness = 1
+syncStroke.Transparency = 0.8
+syncStroke.Parent = syncButton
+
+-- Define button state update functions
+updateSyncButtonState = function(state: string)
+    currentSyncState = state
+
+    -- Clean up any existing pulse animation
+    if syncPulseConnection then
+        syncPulseConnection:Disconnect()
+        syncPulseConnection = nil
+    end
+
+    -- Reset transparency
+    syncButton.BackgroundTransparency = 0
+
+    if state == SyncButtonState.IDLE then
+        -- Ready state: subtle secondary style
+        syncButton.BackgroundColor3 = Colors.surface
+        syncButton.TextColor3 = Colors.textPrimary
+        syncButton.Text = "⬇  Sync"
+        syncStroke.Color = Colors.textMuted
+        syncStroke.Transparency = 0.8
+
+    elseif state == SyncButtonState.SYNCING then
+        -- Active syncing: accent color with pulse
+        syncButton.BackgroundColor3 = Colors.accent
+        syncButton.TextColor3 = Colors.background
+        syncButton.Text = "⬇  Syncing..."
+        syncStroke.Color = Colors.accent
+        syncStroke.Transparency = 0
+
+        -- Subtle pulse animation
+        local pulseUp = true
+        syncPulseConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            local current = syncButton.BackgroundTransparency
+            if pulseUp then
+                syncButton.BackgroundTransparency = math.min(current + 0.02, 0.3)
+                if current >= 0.28 then pulseUp = false end
+            else
+                syncButton.BackgroundTransparency = math.max(current - 0.02, 0)
+                if current <= 0.02 then pulseUp = true end
+            end
+        end)
+
+    elseif state == SyncButtonState.DISCONNECTED then
+        -- Disabled/disconnected: muted appearance
+        syncButton.BackgroundColor3 = Colors.surface
+        syncButton.TextColor3 = Colors.textMuted
+        syncButton.Text = "⬇  Sync"
+        syncStroke.Color = Colors.textMuted
+        syncStroke.Transparency = 0.9
+        syncButton.BackgroundTransparency = 0.5
+
+    elseif state == SyncButtonState.SUCCESS then
+        -- Brief success flash
+        syncButton.BackgroundColor3 = Colors.success
+        syncButton.TextColor3 = Colors.background
+        syncButton.Text = "✓  Done"
+        syncStroke.Color = Colors.success
+        syncStroke.Transparency = 0
+
+        -- Return to idle after 1.5s
+        task.delay(1.5, function()
+            if currentSyncState == SyncButtonState.SUCCESS then
+                updateSyncButtonState(SyncButtonState.IDLE)
+            end
+        end)
+    end
+end
+
+updateExtractButtonState = function(connected: boolean)
+    if connected then
+        extractButton.BackgroundColor3 = Colors.accent
+        extractButton.TextColor3 = Colors.background
+        extractButton.BackgroundTransparency = 0
+    else
+        extractButton.BackgroundColor3 = Colors.accent
+        extractButton.TextColor3 = Colors.background
+        extractButton.BackgroundTransparency = 0.5
+    end
+end
+
+syncButton.MouseButton1Click:Connect(function()
     if not isConnected then
         warn("Not connected. Click Connect first.")
         return
@@ -1175,6 +1528,9 @@ local syncButton = createActionButton("Sync", Color3.fromRGB(80, 80, 80), 2, fun
         return
     end
 
+    -- Show syncing state
+    updateSyncButtonState(SyncButtonState.SYNCING)
+
     -- Request file tree from server
     local success, result = httpPost("/sync/read-tree", {
         project_dir = projectDir,
@@ -1182,12 +1538,14 @@ local syncButton = createActionButton("Sync", Color3.fromRGB(80, 80, 80), 2, fun
 
     if not success or not result.success then
         warn("Can't read files. " .. (result and result.error or "Try again."))
+        updateSyncButtonState(SyncButtonState.IDLE)
         return
     end
 
     local instances = result.instances
     if not instances or #instances == 0 then
-        return -- Silent - nothing to sync
+        updateSyncButtonState(SyncButtonState.IDLE)
+        return
     end
 
     -- Convert to operations
@@ -1204,112 +1562,59 @@ local syncButton = createActionButton("Sync", Color3.fromRGB(80, 80, 80), 2, fun
     end)
 
     syncBatch({ operations = operations })
-end)
-syncButton.Parent = actionsFrame
 
--- ============================================================================
--- Two-Way Sync Toggle
--- ============================================================================
-
-local twoWaySyncFrame = Instance.new("Frame")
-twoWaySyncFrame.Size = UDim2.new(1, 0, 0, 24)
-twoWaySyncFrame.BackgroundTransparency = 1
-twoWaySyncFrame.LayoutOrder = 3.5  -- Between actions and info
-twoWaySyncFrame.Parent = mainFrame
-
-local twoWaySyncCheckbox = Instance.new("TextButton")
-twoWaySyncCheckbox.Size = UDim2.new(0, 18, 0, 18)
-twoWaySyncCheckbox.Position = UDim2.new(0, 0, 0.5, -9)
-twoWaySyncCheckbox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-twoWaySyncCheckbox.BorderSizePixel = 0
-twoWaySyncCheckbox.Text = ""
-twoWaySyncCheckbox.AutoButtonColor = true
-twoWaySyncCheckbox.Parent = twoWaySyncFrame
-
-local checkboxCorner = Instance.new("UICorner")
-checkboxCorner.CornerRadius = UDim.new(0, 3)
-checkboxCorner.Parent = twoWaySyncCheckbox
-
-local checkmark = Instance.new("TextLabel")
-checkmark.Size = UDim2.new(1, 0, 1, 0)
-checkmark.BackgroundTransparency = 1
-checkmark.Text = ""
-checkmark.TextColor3 = Color3.fromRGB(100, 200, 100)
-checkmark.TextSize = 14
-checkmark.Font = Enum.Font.GothamBold
-checkmark.Parent = twoWaySyncCheckbox
-
-local twoWaySyncLabel = Instance.new("TextLabel")
-twoWaySyncLabel.Size = UDim2.new(1, -26, 1, 0)
-twoWaySyncLabel.Position = UDim2.new(0, 26, 0, 0)
-twoWaySyncLabel.BackgroundTransparency = 1
-twoWaySyncLabel.Text = "Two-way sync (Studio → Files)"
-twoWaySyncLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-twoWaySyncLabel.TextSize = 11
-twoWaySyncLabel.Font = Enum.Font.Gotham
-twoWaySyncLabel.TextXAlignment = Enum.TextXAlignment.Left
-twoWaySyncLabel.Parent = twoWaySyncFrame
-
-local function updateTwoWaySyncUI()
-    if twoWaySyncEnabled then
-        checkmark.Text = "✓"
-        twoWaySyncCheckbox.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
-    else
-        checkmark.Text = ""
-        twoWaySyncCheckbox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    end
-end
-
-twoWaySyncCheckbox.MouseButton1Click:Connect(function()
-    twoWaySyncEnabled = not twoWaySyncEnabled
-    updateTwoWaySyncUI()
-
-    if twoWaySyncEnabled and isConnected then
-        ChangeTracker.start()
-        setStatus("Two-way sync enabled", Color3.fromRGB(100, 200, 100), 3)
-    else
-        ChangeTracker.stop()
-        if not twoWaySyncEnabled then
-            setStatus("Two-way sync disabled", Color3.fromRGB(180, 180, 180), 3)
-        end
-    end
+    -- Show success state
+    updateSyncButtonState(SyncButtonState.SUCCESS)
 end)
 
 -- ============================================================================
 -- Project Info Section
 -- ============================================================================
 
+local infoSection = Instance.new("Frame")
+infoSection.Size = UDim2.new(1, 0, 0, 88)
+infoSection.BackgroundTransparency = 1
+infoSection.LayoutOrder = 4
+infoSection.Parent = mainFrame
+
+local infoSectionPadding = Instance.new("UIPadding")
+infoSectionPadding.PaddingTop = UDim.new(0, 0)
+infoSectionPadding.PaddingLeft = UDim.new(0, 16)
+infoSectionPadding.PaddingRight = UDim.new(0, 16)
+infoSectionPadding.PaddingBottom = UDim.new(0, 16)
+infoSectionPadding.Parent = infoSection
+
 local infoFrame = Instance.new("Frame")
-infoFrame.Size = UDim2.new(1, 0, 0, 66)  -- Taller to fit status line
-infoFrame.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+infoFrame.Size = UDim2.new(1, 0, 1, 0)
+infoFrame.BackgroundColor3 = Colors.surface
 infoFrame.BorderSizePixel = 0
-infoFrame.LayoutOrder = 4
-infoFrame.Parent = mainFrame
+infoFrame.Parent = infoSection
 
 local infoFrameCorner = Instance.new("UICorner")
-infoFrameCorner.CornerRadius = UDim.new(0, 4)
+infoFrameCorner.CornerRadius = UDim.new(0, 6)
 infoFrameCorner.Parent = infoFrame
 
 local infoLayout = Instance.new("UIListLayout")
 infoLayout.SortOrder = Enum.SortOrder.LayoutOrder
-infoLayout.Padding = UDim.new(0, 2)
+infoLayout.Padding = UDim.new(0, 4)
 infoLayout.Parent = infoFrame
 
 local infoPadding = Instance.new("UIPadding")
-infoPadding.PaddingTop = UDim.new(0, 6)
-infoPadding.PaddingLeft = UDim.new(0, 8)
-infoPadding.PaddingRight = UDim.new(0, 8)
+infoPadding.PaddingTop = UDim.new(0, 12)
+infoPadding.PaddingLeft = UDim.new(0, 12)
+infoPadding.PaddingRight = UDim.new(0, 12)
 infoPadding.Parent = infoFrame
 
 -- Place name line
 local placeNameLine = Instance.new("TextLabel")
-placeNameLine.Size = UDim2.new(1, 0, 0, 16)
+placeNameLine.Size = UDim2.new(1, 0, 0, 18)
 placeNameLine.BackgroundTransparency = 1
 placeNameLine.Text = "Loading..."
-placeNameLine.TextColor3 = Color3.fromRGB(200, 200, 200)
-placeNameLine.TextSize = 12
+placeNameLine.TextColor3 = Colors.textPrimary
+placeNameLine.TextSize = 13
 placeNameLine.Font = Enum.Font.GothamMedium
 placeNameLine.TextXAlignment = Enum.TextXAlignment.Left
+placeNameLine.TextTruncate = Enum.TextTruncate.AtEnd
 placeNameLine.LayoutOrder = 1
 placeNameLine.Parent = infoFrame
 
@@ -1318,7 +1623,7 @@ local instanceLine = Instance.new("TextLabel")
 instanceLine.Size = UDim2.new(1, 0, 0, 14)
 instanceLine.BackgroundTransparency = 1
 instanceLine.Text = "..."
-instanceLine.TextColor3 = Color3.fromRGB(140, 140, 140)
+instanceLine.TextColor3 = Colors.textMuted
 instanceLine.TextSize = 11
 instanceLine.Font = Enum.Font.Gotham
 instanceLine.TextXAlignment = Enum.TextXAlignment.Left
@@ -1330,7 +1635,7 @@ local statusLine = Instance.new("TextLabel")
 statusLine.Size = UDim2.new(1, 0, 0, 14)
 statusLine.BackgroundTransparency = 1
 statusLine.Text = ""
-statusLine.TextColor3 = Color3.fromRGB(100, 180, 255)
+statusLine.TextColor3 = Colors.accent
 statusLine.TextSize = 11
 statusLine.Font = Enum.Font.GothamMedium
 statusLine.TextXAlignment = Enum.TextXAlignment.Left
@@ -1341,7 +1646,7 @@ statusLine.Parent = infoFrame
 local statusClearTimeout: thread? = nil
 setStatus = function(text: string, color: Color3?, duration: number?)
     statusLine.Text = text
-    statusLine.TextColor3 = color or Color3.fromRGB(100, 180, 255)
+    statusLine.TextColor3 = color or Colors.accent
 
     -- Clear previous timeout
     if statusClearTimeout then
@@ -1356,87 +1661,6 @@ setStatus = function(text: string, color: Color3?, duration: number?)
         end)
     end
 end
-
--- ============================================================================
--- Git Status Section
--- ============================================================================
-
-local gitLine = Instance.new("TextLabel")
-gitLine.Size = UDim2.new(1, 0, 0, 20)
-gitLine.BackgroundTransparency = 1
-gitLine.Text = ""
-gitLine.TextColor3 = Color3.fromRGB(140, 140, 140)
-gitLine.TextSize = 12
-gitLine.Font = Enum.Font.Gotham
-gitLine.TextXAlignment = Enum.TextXAlignment.Left
-gitLine.LayoutOrder = 5
-gitLine.Parent = mainFrame
-
--- ============================================================================
--- Commit Input + Button
--- ============================================================================
-
-local commitFrame = Instance.new("Frame")
-commitFrame.Size = UDim2.new(1, 0, 0, 32)
-commitFrame.BackgroundTransparency = 1
-commitFrame.LayoutOrder = 5
-commitFrame.Parent = mainFrame
-
-local commitInput = Instance.new("TextBox")
-commitInput.Size = UDim2.new(1, -70, 1, 0)
-commitInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-commitInput.BorderSizePixel = 0
-commitInput.Text = ""
-commitInput.PlaceholderText = "Commit message..."
-commitInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-commitInput.TextColor3 = Color3.fromRGB(200, 200, 200)
-commitInput.TextSize = 12
-commitInput.Font = Enum.Font.Gotham
-commitInput.TextXAlignment = Enum.TextXAlignment.Left
-commitInput.ClearTextOnFocus = false
-commitInput.Parent = commitFrame
-
-local commitInputCorner = Instance.new("UICorner")
-commitInputCorner.CornerRadius = UDim.new(0, 4)
-commitInputCorner.Parent = commitInput
-
-local commitInputPadding = Instance.new("UIPadding")
-commitInputPadding.PaddingLeft = UDim.new(0, 10)
-commitInputPadding.PaddingRight = UDim.new(0, 10)
-commitInputPadding.Parent = commitInput
-
-local commitButton = Instance.new("TextButton")
-commitButton.Size = UDim2.new(0, 60, 1, 0)
-commitButton.Position = UDim2.new(1, -60, 0, 0)
-commitButton.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
-commitButton.BorderSizePixel = 0
-commitButton.Text = "Commit"
-commitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-commitButton.TextSize = 12
-commitButton.Font = Enum.Font.GothamMedium
-commitButton.AutoButtonColor = true
-commitButton.Parent = commitFrame
-
-local commitBtnCorner = Instance.new("UICorner")
-commitBtnCorner.CornerRadius = UDim.new(0, 4)
-commitBtnCorner.Parent = commitButton
-
-commitButton.MouseButton1Click:Connect(function()
-    local message = commitInput.Text
-    if message == "" then
-        warn("Enter a commit message.")
-        return
-    end
-
-    local success, err = Git.commit(message, true)
-    if success then
-        print("Committed: " .. message)
-        commitInput.Text = ""
-        task.spawn(updateGitDisplay)
-    else
-        warn("Commit failed. " .. (err or "Try again."))
-    end
-end)
 
 -- Function to update project info display
 local function updateInfoDisplay()
@@ -1453,74 +1677,6 @@ local function updateInfoDisplay()
     instanceLine.Text = getClassBreakdownString()
 end
 
--- Function to update git display
-local function updateGitDisplay()
-    local ok, status = Git.getStatus()
-    if ok and status then
-        gitStatus = status
-        local changes = Git.getChangedCount(status)
-        local branchInfo = status.branch or "unknown"
-
-        -- Add ahead/behind info if available
-        if status.ahead and status.ahead > 0 then
-            branchInfo = branchInfo .. " ↑" .. status.ahead
-        end
-        if status.behind and status.behind > 0 then
-            branchInfo = branchInfo .. " ↓" .. status.behind
-        end
-
-        if changes > 0 then
-            -- Show actual changed files (top 3-4)
-            local changedFiles = status.changed_files or {}
-            local fileInfo = {}
-
-            for i, file in ipairs(changedFiles) do
-                if i > 3 then break end  -- Limit to 3 files
-
-                -- Convert file path to Roblox-friendly format
-                -- e.g., "src/ServerScriptService/MyScript.server.luau" -> "ServerScriptService/MyScript"
-                local displayPath = file.path
-                    :gsub("^src/", "")  -- Remove src/ prefix
-                    :gsub("%.server%.luau$", "")  -- Remove .server.luau
-                    :gsub("%.client%.luau$", "")  -- Remove .client.luau
-                    :gsub("%.luau$", "")  -- Remove .luau
-                    :gsub("%.rbxjson$", "")  -- Remove .rbxjson
-
-                -- Shorten long paths
-                local parts = string.split(displayPath, "/")
-                if #parts > 2 then
-                    displayPath = parts[1] .. "/.../" .. parts[#parts]
-                end
-
-                -- Add status indicator
-                local statusIcon = ({
-                    modified = "~",
-                    added = "+",
-                    deleted = "-",
-                    renamed = "→",
-                    untracked = "?",
-                })[file.status] or "•"
-
-                table.insert(fileInfo, statusIcon .. displayPath)
-            end
-
-            local remaining = changes - #fileInfo
-            if remaining > 0 then
-                table.insert(fileInfo, "+" .. remaining .. " more")
-            end
-
-            gitLine.Text = branchInfo .. " • " .. table.concat(fileInfo, ", ")
-            gitLine.TextColor3 = Color3.fromRGB(255, 200, 100)
-        else
-            gitLine.Text = branchInfo .. " • clean"
-            gitLine.TextColor3 = Color3.fromRGB(100, 200, 100)
-        end
-    else
-        gitLine.Text = "Not a git repo"
-        gitLine.TextColor3 = Color3.fromRGB(140, 140, 140)
-    end
-end
-
 -- ============================================================================
 -- Panel Button
 -- ============================================================================
@@ -1531,7 +1687,6 @@ panelButton.Click:Connect(function()
 
     if widget.Enabled then
         task.spawn(updateInfoDisplay)
-        task.spawn(updateGitDisplay)
     end
 end)
 
@@ -1555,8 +1710,12 @@ task.spawn(function()
                 if isConnected then
                     print("Connected")
                     registerWithServer()
+                    ChangeTracker.start()
+                    startConsoleCapture()
                 else
                     print("Disconnected")
+                    ChangeTracker.stop()
+                    stopConsoleCapture()
                 end
                 updateConnectionUI()
             elseif isConnected then
@@ -1585,9 +1744,6 @@ task.spawn(function()
     while true do
         if widget.Enabled then
             updateInfoDisplay()
-            if Config.getProjectDir() ~= "" then
-                updateGitDisplay()
-            end
         end
         task.wait(10)
     end

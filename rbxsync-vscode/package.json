@@ -64,6 +64,19 @@
       {
         "command": "rbxsync.refresh",
         "title": "RbxSync: Refresh"
+      },
+      {
+        "command": "rbxsync.openConsole",
+        "title": "RbxSync: Open Console",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "rbxsync.closeConsole",
+        "title": "RbxSync: Close Console"
+      },
+      {
+        "command": "rbxsync.toggleE2EMode",
+        "title": "RbxSync: Toggle E2E Testing Mode"
       }
     ],
     "keybindings": [
