@@ -1474,6 +1474,16 @@
             box-shadow: 0 4px 12px rgba(194, 60, 64, 0.15);
         }
 
+        .extract-file.extract-rainbow {
+            background: linear-gradient(90deg, #ff7b7b, #ffdd67, #5ce1ff, #ffafff, #64b0ff, #8b5cf6, #ff7b7b);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow-flow 3s linear infinite;
+            font-weight: 700;
+        }
+
         /* E2E Testing Section */
         .e2e-section {
             display: grid;
@@ -2855,7 +2865,7 @@
                         <span class="extract-file">ServerScriptService/</span>
                         <span class="extract-file">ReplicatedStorage/</span>
                         <span class="extract-file">StarterGui/</span>
-                        <span class="extract-file rbxjson-rainbow">.rbxjson</span>
+                        <span class="extract-file extract-rainbow">.rbxjson</span>
                         <span class="extract-file">.luau</span>
                     </div>
                 </div>
