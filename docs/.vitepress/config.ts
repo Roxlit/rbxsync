@@ -1,15 +1,20 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'RbxSync',
-  description: 'Full property sync for Roblox Studio. Two-way sync, AI integration, and version control.',
+  title: 'RbxSync Docs',
+  description: 'Documentation for RbxSync – two-way sync between Roblox Studio and VS Code.',
 
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
     ['meta', { name: 'theme-color', content: '#c23c40' }],
     ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'RbxSync' }],
     ['meta', { property: 'og:title', content: 'RbxSync Docs' }],
-    ['meta', { property: 'og:description', content: 'Full property sync for Roblox Studio' }],
+    ['meta', { property: 'og:description', content: 'Documentation for RbxSync – two-way sync between Roblox Studio and VS Code.' }],
+    ['meta', { property: 'og:image', content: 'https://rbxsync.dev/og-image.png' }],
+    ['meta', { name: 'twitter:card', content: 'summary' }],
+    ['meta', { name: 'twitter:title', content: 'RbxSync Docs' }],
+    ['meta', { name: 'twitter:description', content: 'Documentation for RbxSync – two-way sync between Roblox Studio and VS Code.' }],
   ],
 
   themeConfig: {
@@ -113,7 +118,7 @@ export default defineConfig({
 
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright 2024 RbxSync',
+      copyright: '© 2025 RbxSync',
     },
   },
 
