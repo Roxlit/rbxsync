@@ -109,7 +109,7 @@ Common issues and solutions.
 If you're still stuck:
 
 1. Check the [GitHub Issues](https://github.com/devmarissa/rbxsync/issues)
-2. Join the [Discord server](https://discord.gg/rbxsync)
+2. Join the [Discord server](https://discord.gg/dURVrFVAEs)
 3. Run with debug logging:
    ```bash
    RUST_LOG=debug rbxsync serve
