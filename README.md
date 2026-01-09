@@ -1,6 +1,6 @@
 # RbxSync
 
-Professional-grade sync between Roblox Studio and Git with full property preservation, AI integration, and end-to-end testing.
+The sync tool that should have been: One-click extraction, two-way sync for all instance types (Scripts, Parts, GUIs, Animations, Sounds & more), native AI integration & E2E testing. Zero setup.
 
 ## Why RbxSync?
 
