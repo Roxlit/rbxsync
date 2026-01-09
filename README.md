@@ -362,4 +362,4 @@ RUST_LOG=debug rbxsync serve
 
 ## License
 
-MIT
+Proprietary - See LICENSE file
