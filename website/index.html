@@ -325,6 +325,7 @@
             position: relative;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 0.4rem;
             padding: 0.5rem 0.85rem;
             height: 34px;
@@ -332,6 +333,8 @@
             border-radius: 8px;
             border: none;
             outline: none;
+            -webkit-appearance: none;
+            appearance: none;
             font-size: 0.8rem;
             font-weight: 600;
             color: white;
@@ -343,6 +346,8 @@
             background-size: 200% auto;
             animation: rainbow-shift 3s linear infinite;
             transition: transform 0.2s, box-shadow 0.2s;
+            isolation: isolate;
+            overflow: visible;
         }
 
         .discord-btn::before {
@@ -366,6 +371,7 @@
         .discord-btn svg {
             width: 16px;
             height: 16px;
+            background: transparent;
         }
 
         @keyframes rainbow-shift {
