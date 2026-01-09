@@ -2427,10 +2427,16 @@
 
         /* Testimonial Cards - 3D Tilt Effect */
         .testimonials-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 1.5rem;
             perspective: 1000px;
+        }
+
+        .testimonials-grid .testimonial-card {
+            flex: 0 1 calc(25% - 1.25rem);
+            min-width: 240px;
         }
 
         .testimonial-card {
@@ -2594,7 +2600,7 @@
 
         /* Responsive */
         @media (max-width: 1100px) {
-            .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+            .testimonials-grid .testimonial-card { flex: 0 1 calc(50% - 1rem); }
         }
 
         @media (max-width: 1000px) {
@@ -2617,7 +2623,6 @@
             .cli-grid { grid-template-columns: 1fr 1fr; }
             .cli-categories { grid-template-columns: 1fr; gap: 1.5rem; }
             .comparison-grid { grid-template-columns: 1fr; gap: 1rem; }
-            .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
         @media (max-width: 768px) {
@@ -2785,8 +2790,12 @@
 
             /* Testimonials - keep 2 columns on mobile */
             .testimonials-grid {
-                grid-template-columns: repeat(2, 1fr);
                 gap: 1rem;
+            }
+
+            .testimonials-grid .testimonial-card {
+                flex: 0 1 calc(50% - 0.5rem);
+                min-width: 140px;
             }
 
             .testimonial-card {
