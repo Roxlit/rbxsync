@@ -117,8 +117,8 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Released under the MIT License.',
-      copyright: '© 2025 RbxSync',
+      message: '',
+      copyright: '© 2026 Smokestack Games',
     },
   },
 

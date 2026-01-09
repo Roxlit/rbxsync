@@ -1,5 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import CustomNav from './CustomNav.vue'
+import CustomFooter from './CustomFooter.vue'
 import './style.css'
 import { h } from 'vue'
 
@@ -7,7 +8,8 @@ export default {
   extends: DefaultTheme,
   Layout() {
     return h(DefaultTheme.Layout, null, {
-      'nav-bar-content-after': () => h(CustomNav)
+      'nav-bar-content-after': () => h(CustomNav),
+      'doc-after': () => h(CustomFooter)
     })
   },
   enhanceApp({ app, router }) {
