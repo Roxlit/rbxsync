@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "MCP server for RbxSync - integrate Roblox game extraction with Claude"
+description = "MCP server for RbxSync - integrate Roblox game extraction with AI agents"
 
 [[bin]]
 name = "rbxsync-mcp"

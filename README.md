@@ -266,7 +266,7 @@ RbxSync includes an MCP server for AI agent integration:
 | `git_status` | Get project git status |
 | `git_commit` | Commit changes |
 
-### Claude Desktop Config
+### MCP Client Config
 
 ```json
 {

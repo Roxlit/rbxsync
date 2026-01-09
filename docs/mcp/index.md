@@ -4,7 +4,7 @@ RbxSync includes an MCP (Model Context Protocol) server for AI agent integration
 
 ## Overview
 
-The MCP server lets AI agents like Claude:
+The MCP server lets AI agents:
 - Extract games to files
 - Sync changes to Studio
 - Run code in Studio
@@ -19,11 +19,11 @@ The MCP server lets AI agents like Claude:
    cargo build --release
    ```
 
-2. Configure Claude Desktop (see [Setup](/mcp/setup))
+2. Configure your MCP client (see [Setup](/mcp/setup))
 
 3. Connect Studio to RbxSync
 
-4. Claude can now control your Roblox development!
+4. Your AI agent can now control your Roblox development!
 
 ## Available Tools
 
@@ -54,5 +54,5 @@ Create and modify instances through AI commands.
 
 ## Next Steps
 
-- [Setup](/mcp/setup) - Configure Claude Desktop
+- [Setup](/mcp/setup) - Configure your MCP client
 - [Tools](/mcp/tools) - Complete tool reference

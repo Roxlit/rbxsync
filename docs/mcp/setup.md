@@ -1,6 +1,6 @@
 # MCP Setup
 
-Configure Claude Desktop to use the RbxSync MCP server.
+Configure your MCP client to use the RbxSync MCP server.
 
 ## Prerequisites
 
@@ -14,15 +14,9 @@ Configure Claude Desktop to use the RbxSync MCP server.
    target/release/rbxsync-mcp
    ```
 
-## Claude Desktop Configuration
+## MCP Client Configuration
 
-Edit your Claude Desktop config file:
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-Add the RbxSync MCP server:
+Add the RbxSync MCP server to your client's configuration:
 
 ```json
 {
@@ -48,11 +42,11 @@ Replace `/path/to/rbxsync-mcp` with your actual path:
 
 ## Verify Setup
 
-1. Restart Claude Desktop
+1. Restart your MCP client
 2. Start a new conversation
-3. Ask Claude: "What RbxSync tools do you have available?"
+3. Ask: "What RbxSync tools do you have available?"
 
-Claude should list the available MCP tools.
+The AI should list the available MCP tools.
 
 ## Connecting to Studio
 
@@ -62,7 +56,7 @@ Before AI can use RbxSync tools:
 2. Open Studio with the RbxSync plugin
 3. Connect the plugin to the server
 
-Now Claude can control your Roblox development!
+Now your AI agent can control your Roblox development!
 
 ## Troubleshooting
 
@@ -77,5 +71,5 @@ Now Claude can control your Roblox development!
 - Check that port 44755 is not blocked
 
 ### Tools not appearing
-- Restart Claude Desktop after config changes
+- Restart your MCP client after config changes
 - Check config JSON syntax is valid
