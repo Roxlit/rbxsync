@@ -95,7 +95,7 @@ cargo build --release
 
 ### 2. Install Studio Plugin
 
-**Option A: Roblox Creator Store (recommended)** - [Install from Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync)
+**Option A: Roblox Creator Store (recommended)** - [Install from Creator Store](https://create.roblox.com/store/asset/89280418878393/RbxSync)
 
 **Option B: Download from GitHub** - Get `RbxSync.rbxm` from [Releases](https://github.com/devmarissa/rbxsync/releases), copy to:
 - macOS: `~/Documents/Roblox/Plugins/`

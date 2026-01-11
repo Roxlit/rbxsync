@@ -78,7 +78,7 @@ Choose one option:
 
 **Option A: Roblox Creator Store (Recommended)**
 
-Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync) - one click, automatic updates.
+Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/89280418878393/RbxSync) - one click, automatic updates.
 
 **Option B: Download from GitHub**
 
