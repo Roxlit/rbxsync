@@ -27,7 +27,45 @@ The sync tool that should have been: One-click extraction, two-way sync for all 
 
 ## Installation
 
+### Prerequisites
+
+<details open>
+<summary><strong>macOS / Linux</strong></summary>
+
+```bash
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# For VS Code extension: Install Node.js from https://nodejs.org
+```
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+**Step 1:** Install Visual Studio Build Tools (REQUIRED for Rust)
+- Download from [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- Run installer and select **"Desktop development with C++"**
+
+**Step 2:** Install Rust
+- Download from [rustup.rs](https://rustup.rs)
+- Run `rustup-init.exe` and follow prompts
+
+**Step 3:** Restart your terminal, then verify:
+```powershell
+rustc --version
+cargo --version
+```
+
+For VS Code extension: Install Node.js from https://nodejs.org
+
+</details>
+
 ### 1. Build from Source
+
+<details open>
+<summary><strong>macOS / Linux</strong></summary>
 
 ```bash
 git clone https://github.com/devmarissa/rbxsync
@@ -38,13 +76,33 @@ cargo build --release
 cp target/release/rbxsync /usr/local/bin/
 ```
 
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+```powershell
+git clone https://github.com/devmarissa/rbxsync
+cd rbxsync
+cargo build --release
+
+# Add to PATH (PowerShell as Admin):
+Copy-Item target\release\rbxsync.exe C:\Windows\System32\
+
+# Or add the target\release folder to your PATH environment variable
+```
+
+</details>
+
 ### 2. Install Studio Plugin
 
 ```bash
 rbxsync build-plugin --install
 ```
 
-The plugin will be installed to `~/Documents/Roblox/Plugins/RbxSync.rbxm`
+Plugin locations:
+- **macOS:** `~/Documents/Roblox/Plugins/RbxSync.rbxm`
+- **Windows:** `%LOCALAPPDATA%\Roblox\Plugins\RbxSync.rbxm`
 
 ### 3. Install VS Code Extension (Optional)
 

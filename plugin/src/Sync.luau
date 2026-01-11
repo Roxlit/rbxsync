@@ -229,6 +229,9 @@ end
 local recentlyCreated: {[string]: Instance} = {}
 
 function Sync.findInstanceAtPath(path: string): Instance?
+    -- Normalize path delimiters (Windows uses backslash, we use forward slash)
+    path = string.gsub(path, "\\", "/")
+
     -- First check if we created this recently (handles name mismatches)
     if recentlyCreated[path] then
         local inst = recentlyCreated[path]
@@ -294,6 +297,8 @@ end
 
 -- Register a created instance for path lookup
 function Sync.registerCreated(path: string, instance: Instance)
+    -- Normalize path delimiters
+    path = string.gsub(path, "\\", "/")
     recentlyCreated[path] = instance
 end
 
@@ -501,6 +506,8 @@ end
 -- Delete an instance by path
 -- Uses Parent = nil instead of Destroy() to allow undo
 function Sync.deleteInstance(path: string): boolean
+    -- Normalize path delimiters
+    path = string.gsub(path, "\\", "/")
     local instance = Sync.findInstanceAtPath(path)
     if instance then
         instance.Parent = nil

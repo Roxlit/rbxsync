@@ -2239,6 +2239,61 @@
             margin-bottom: 2rem;
         }
 
+        /* OS Toggle Tabs */
+        .os-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+
+        .os-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .os-toggle-btn:hover {
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .os-toggle-btn.active {
+            background: var(--rbx-red);
+            border-color: var(--rbx-red);
+            color: white;
+        }
+
+        .os-toggle-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .os-content {
+            display: none;
+        }
+
+        .os-content.active {
+            display: block;
+        }
+
+        .os-inline {
+            display: none;
+        }
+
+        .os-inline.active {
+            display: inline;
+        }
+
         .step-num {
             flex-shrink: 0;
             width: 32px;
@@ -3807,25 +3862,59 @@
                 <p class="section-desc">Up and running in minutes with a few simple commands.</p>
             </div>
 
+            <!-- OS Toggle -->
+            <div class="os-toggle">
+                <button class="os-toggle-btn active" data-os="mac">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    macOS
+                </button>
+                <button class="os-toggle-btn" data-os="windows">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.21L20 3zM3 13l6 .09v6.81l-6-1.15V13zm17 .25V22l-10-1.91V13.1l10 .15z"/></svg>
+                    Windows
+                </button>
+            </div>
+
             <div class="install-steps">
                 <div class="install-step">
                     <div class="step-num">0</div>
                     <div class="step-content">
                         <h4>Prerequisites</h4>
                         <p>Install the required tools before building:</p>
-                        <div class="code-block-wrapper">
-                            <div class="code-block" data-copy="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh">
-                                <span class="comment"># Install Rust (if not already installed)</span><br>
-                                <span class="cmd">curl</span> --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh<br><br>
-                                <span class="comment"># For VS Code extension: Install Node.js from https://nodejs.org</span><br>
-                                <span class="comment"># Then verify:</span><br>
-                                <span class="cmd">node</span> --version<br>
-                                <span class="cmd">npm</span> --version
+
+                        <!-- macOS Prerequisites -->
+                        <div class="os-content active" data-os="mac">
+                            <div class="code-block-wrapper">
+                                <div class="code-block" data-copy="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh">
+                                    <span class="comment"># Install Rust (if not already installed)</span><br>
+                                    <span class="cmd">curl</span> --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh<br><br>
+                                    <span class="comment"># For VS Code extension: Install Node.js from https://nodejs.org</span><br>
+                                    <span class="comment"># Then verify:</span><br>
+                                    <span class="cmd">node</span> --version<br>
+                                    <span class="cmd">npm</span> --version
+                                </div>
+                                <button class="copy-btn" aria-label="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
                             </div>
-                            <button class="copy-btn" aria-label="Copy to clipboard">
-                                <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                            </button>
+                        </div>
+
+                        <!-- Windows Prerequisites -->
+                        <div class="os-content" data-os="windows">
+                            <div class="code-block-wrapper">
+                                <div class="code-block">
+                                    <span class="comment"># Step 1: Install Visual Studio Build Tools (REQUIRED for Rust)</span><br>
+                                    <span class="comment"># Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/</span><br>
+                                    <span class="comment"># Run installer, select "Desktop development with C++"</span><br><br>
+                                    <span class="comment"># Step 2: Install Rust</span><br>
+                                    <span class="comment"># Download from: https://rustup.rs</span><br>
+                                    <span class="comment"># Run rustup-init.exe and follow prompts</span><br><br>
+                                    <span class="comment"># Step 3: Restart your terminal, then verify:</span><br>
+                                    <span class="cmd">rustc</span> --version<br>
+                                    <span class="cmd">cargo</span> --version<br><br>
+                                    <span class="comment"># For VS Code extension: Install Node.js from https://nodejs.org</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3835,19 +3924,42 @@
                     <div class="step-content">
                         <h4>Build from Source</h4>
                         <p>Clone the repository and build with Cargo.</p>
-                        <div class="code-block-wrapper">
-                            <div class="code-block" data-copy="git clone https://github.com/devmarissa/rbxsync && cd rbxsync && cargo build --release">
-                                <span class="comment"># Clone and build</span><br>
-                                <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
-                                <span class="cmd">cd</span> rbxsync<br>
-                                <span class="cmd">cargo build</span> --release<br><br>
-                                <span class="comment"># Add to PATH (optional)</span><br>
-                                <span class="cmd">cp</span> target/release/rbxsync /usr/local/bin/
+
+                        <!-- macOS Build -->
+                        <div class="os-content active" data-os="mac">
+                            <div class="code-block-wrapper">
+                                <div class="code-block" data-copy="git clone https://github.com/devmarissa/rbxsync && cd rbxsync && cargo build --release">
+                                    <span class="comment"># Clone and build</span><br>
+                                    <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
+                                    <span class="cmd">cd</span> rbxsync<br>
+                                    <span class="cmd">cargo build</span> --release<br><br>
+                                    <span class="comment"># Add to PATH (optional)</span><br>
+                                    <span class="cmd">cp</span> target/release/rbxsync /usr/local/bin/
+                                </div>
+                                <button class="copy-btn" aria-label="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
                             </div>
-                            <button class="copy-btn" aria-label="Copy to clipboard">
-                                <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                            </button>
+                        </div>
+
+                        <!-- Windows Build -->
+                        <div class="os-content" data-os="windows">
+                            <div class="code-block-wrapper">
+                                <div class="code-block" data-copy="git clone https://github.com/devmarissa/rbxsync && cd rbxsync && cargo build --release">
+                                    <span class="comment"># Clone and build (PowerShell or Git Bash)</span><br>
+                                    <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
+                                    <span class="cmd">cd</span> rbxsync<br>
+                                    <span class="cmd">cargo build</span> --release<br><br>
+                                    <span class="comment"># Add to PATH (PowerShell as Admin):</span><br>
+                                    <span class="cmd">Copy-Item</span> target\release\rbxsync.exe C:\Windows\System32\<br><br>
+                                    <span class="comment"># Or add target\release to your PATH environment variable</span>
+                                </div>
+                                <button class="copy-btn" aria-label="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3857,16 +3969,35 @@
                     <div class="step-content">
                         <h4>Install Studio Plugin</h4>
                         <p>Build and install the Roblox Studio plugin.</p>
-                        <div class="code-block-wrapper">
-                            <div class="code-block" data-copy="rbxsync build-plugin --install">
-                                <span class="cmd">rbxsync build-plugin</span> --install<br><br>
-                                <span class="comment"># Or manually: the plugin will be at</span><br>
-                                <span class="comment"># ~/Documents/Roblox/Plugins/RbxSync.rbxm</span>
+
+                        <!-- macOS Plugin -->
+                        <div class="os-content active" data-os="mac">
+                            <div class="code-block-wrapper">
+                                <div class="code-block" data-copy="rbxsync build-plugin --install">
+                                    <span class="cmd">rbxsync build-plugin</span> --install<br><br>
+                                    <span class="comment"># Plugin location:</span><br>
+                                    <span class="comment"># ~/Documents/Roblox/Plugins/RbxSync.rbxm</span>
+                                </div>
+                                <button class="copy-btn" aria-label="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
                             </div>
-                            <button class="copy-btn" aria-label="Copy to clipboard">
-                                <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                            </button>
+                        </div>
+
+                        <!-- Windows Plugin -->
+                        <div class="os-content" data-os="windows">
+                            <div class="code-block-wrapper">
+                                <div class="code-block" data-copy="rbxsync build-plugin --install">
+                                    <span class="cmd">rbxsync build-plugin</span> --install<br><br>
+                                    <span class="comment"># Plugin location:</span><br>
+                                    <span class="comment"># %LOCALAPPDATA%\Roblox\Plugins\RbxSync.rbxm</span>
+                                </div>
+                                <button class="copy-btn" aria-label="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3885,12 +4016,10 @@
                                 <span class="cmd">npm run package</span><br><br>
                                 <span class="comment"># Install the .vsix file (pick one):</span><br><br>
                                 <span class="comment"># Option 1: VS Code UI (Recommended)</span><br>
-                                <span class="comment"># 1. Press Cmd+Shift+P (Mac) or Ctrl+Shift+P (Win)</span><br>
+                                <span class="comment"># 1. Press <span class="os-inline active" data-os="mac">Cmd+Shift+P</span><span class="os-inline" data-os="windows">Ctrl+Shift+P</span></span><br>
                                 <span class="comment"># 2. Type "Extensions: Install from VSIX"</span><br>
                                 <span class="comment"># 3. Select rbxsync-1.0.0.vsix from the file picker</span><br><br>
-                                <span class="comment"># Option 2: Command line (requires 'code' in PATH)</span><br>
-                                <span class="comment"># If 'code' not found: In VS Code, press Cmd+Shift+P</span><br>
-                                <span class="comment"># and run "Shell Command: Install 'code' command in PATH"</span><br>
+                                <span class="comment"># Option 2: Command line</span><br>
                                 <span class="cmd">code</span> --install-extension rbxsync-1.0.0.vsix
                             </div>
                             <button class="copy-btn" aria-label="Copy to clipboard">
@@ -3924,15 +4053,32 @@
                     <div class="step-content">
                         <h4>Connect Studio</h4>
                         <p>Open Roblox Studio and restart it to load the plugin:</p>
-                        <div class="code-block-wrapper">
-                            <div class="code-block">
-                                <span class="comment"># 1. Restart Roblox Studio to load the plugin</span><br>
-                                <span class="comment"># 2. Go to View menu → click "RbxSync" to open the widget</span><br>
-                                <span class="comment"># 3. In the widget, enter your project's full path:</span><br>
-                                <span class="comment">#    Mac: /Users/yourname/MyGame</span><br>
-                                <span class="comment">#    Win: C:\Users\yourname\MyGame</span><br>
-                                <span class="comment"># 4. Click "Connect" - status should turn green</span><br>
-                                <span class="comment"># 5. Enable HttpService: Game Settings → Security → Allow HTTP Requests</span>
+
+                        <!-- macOS Connect -->
+                        <div class="os-content active" data-os="mac">
+                            <div class="code-block-wrapper">
+                                <div class="code-block">
+                                    <span class="comment"># 1. Restart Roblox Studio to load the plugin</span><br>
+                                    <span class="comment"># 2. Go to View menu → click "RbxSync" to open the widget</span><br>
+                                    <span class="comment"># 3. In the widget, enter your project's full path:</span><br>
+                                    <span class="comment">#    /Users/yourname/MyGame</span><br>
+                                    <span class="comment"># 4. Click "Connect" - status should turn green</span><br>
+                                    <span class="comment"># 5. Enable HttpService: Game Settings → Security → Allow HTTP Requests</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Windows Connect -->
+                        <div class="os-content" data-os="windows">
+                            <div class="code-block-wrapper">
+                                <div class="code-block">
+                                    <span class="comment"># 1. Restart Roblox Studio to load the plugin</span><br>
+                                    <span class="comment"># 2. Go to View menu → click "RbxSync" to open the widget</span><br>
+                                    <span class="comment"># 3. In the widget, enter your project's full path:</span><br>
+                                    <span class="comment">#    C:\Users\yourname\MyGame</span><br>
+                                    <span class="comment"># 4. Click "Connect" - status should turn green</span><br>
+                                    <span class="comment"># 5. Enable HttpService: Game Settings → Security → Allow HTTP Requests</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4195,6 +4341,48 @@
 
             // Start the interval
             startInterval();
+        })();
+
+        // OS Toggle functionality
+        (function() {
+            const toggleBtns = document.querySelectorAll('.os-toggle-btn');
+            const osContents = document.querySelectorAll('.os-content');
+            const osInlines = document.querySelectorAll('.os-inline');
+
+            // Auto-detect OS
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const defaultOS = isMac ? 'mac' : 'windows';
+
+            function setOS(os) {
+                // Update buttons
+                toggleBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.os === os);
+                });
+
+                // Update content blocks
+                osContents.forEach(content => {
+                    content.classList.toggle('active', content.dataset.os === os);
+                });
+
+                // Update inline spans
+                osInlines.forEach(inline => {
+                    inline.classList.toggle('active', inline.dataset.os === os);
+                });
+
+                // Save preference
+                localStorage.setItem('rbxsync-os', os);
+            }
+
+            // Set initial OS (from localStorage or auto-detect)
+            const savedOS = localStorage.getItem('rbxsync-os');
+            setOS(savedOS || defaultOS);
+
+            // Handle toggle clicks
+            toggleBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setOS(btn.dataset.os);
+                });
+            });
         })();
 
         // Copy button functionality (install section)

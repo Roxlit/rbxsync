@@ -479,6 +479,13 @@ local function syncCreate(payload: any): {success: boolean, error: string?}
         return { success = false, error = "Missing path or data" }
     end
 
+    -- Normalize path delimiters (Windows uses backslash)
+    path = string.gsub(path, "\\", "/")
+    payload.path = path
+    if data.path then
+        data.path = string.gsub(data.path, "\\", "/")
+    end
+
     print("[RbxSync Debug] syncCreate: " .. path .. " (class=" .. tostring(data.className) .. ", name=" .. tostring(data.name) .. ")")
 
     -- Find parent (use '/' delimiter to handle instance names with periods)
@@ -515,6 +522,13 @@ local function syncUpdate(payload: any): {success: boolean, error: string?, skip
 
     if not path or not data then
         return { success = false, error = "Missing path or data" }
+    end
+
+    -- Normalize path delimiters (Windows uses backslash)
+    path = string.gsub(path, "\\", "/")
+    payload.path = path
+    if data.path then
+        data.path = string.gsub(data.path, "\\", "/")
     end
 
     local instance = Sync.findInstanceAtPath(path)
@@ -819,6 +833,61 @@ local function handleCommand(command: string, payload: any)
             return { success = false, error = "Runtime error: " .. tostring(runErr), output = table.concat(output, "\n") }
         end
         return { success = true, output = table.concat(output, "\n") }
+    elseif command == "insert:model" then
+        -- Insert a model from the Roblox marketplace
+        local query = payload.query
+        if not query or query == "" then
+            return { success = false, error = "No search query provided" }
+        end
+
+        -- Use InsertService to search and load the model
+        local InsertService = game:GetService("InsertService")
+        local MarketplaceService = game:GetService("MarketplaceService")
+
+        -- Search for free models matching the query
+        local searchSuccess, searchResult = pcall(function()
+            return InsertService:GetFreeModels(query)
+        end)
+
+        if not searchSuccess then
+            return { success = false, error = "Search failed: " .. tostring(searchResult) }
+        end
+
+        if not searchResult or #searchResult == 0 then
+            return { success = false, error = "No models found for query: " .. query }
+        end
+
+        -- Get the first result
+        local firstResult = searchResult[1]
+        local assetId = firstResult.AssetId
+        local assetName = firstResult.Name or "Unknown"
+
+        -- Load and insert the model
+        local loadSuccess, model = pcall(function()
+            return InsertService:LoadAsset(assetId)
+        end)
+
+        if not loadSuccess then
+            return { success = false, error = "Failed to load model: " .. tostring(model) }
+        end
+
+        -- Move contents to workspace
+        if model then
+            for _, child in ipairs(model:GetChildren()) do
+                child.Parent = workspace
+            end
+            model:Destroy()
+
+            return {
+                success = true,
+                data = {
+                    modelName = assetName,
+                    assetId = assetId
+                }
+            }
+        else
+            return { success = false, error = "Model loaded but was empty" }
+        end
     else
         return { success = false, error = "Unknown command" }
     end

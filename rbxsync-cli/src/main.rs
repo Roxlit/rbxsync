@@ -186,6 +186,17 @@ enum Commands {
 
     /// Show current version and check for updates
     Version,
+
+    /// Start the Flux agent (control Studio via iMessage)
+    Flux {
+        /// Run in local mode (terminal testing, no iMessage)
+        #[arg(long)]
+        local: bool,
+
+        /// Set the Anthropic API key
+        #[arg(long)]
+        set_api_key: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -307,6 +318,16 @@ async fn main() -> Result<()> {
         }
         Commands::Version => {
             cmd_version()?;
+        }
+        Commands::Flux { local, set_api_key } => {
+            // Flux agent is not yet implemented in the CLI
+            println!("Flux agent coming soon. Use the flux-agent npm package directly for now.");
+            if local {
+                println!("  --local flag noted");
+            }
+            if let Some(key) = set_api_key {
+                println!("  API key would be set to: {}...", &key[..8.min(key.len())]);
+            }
         }
     }
 

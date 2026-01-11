@@ -29,6 +29,7 @@ export default defineConfig({
       { text: 'VS Code', link: '/vscode/' },
       { text: 'File Formats', link: '/file-formats/' },
       { text: 'MCP', link: '/mcp/' },
+      { text: 'FAQ', link: '/faq' },
     ],
 
     sidebar: {

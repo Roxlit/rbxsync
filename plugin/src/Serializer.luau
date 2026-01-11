@@ -28,12 +28,15 @@ local function getInstanceUUID(instance: Instance): string
     end
 
     uuidCounter += 1
-    local uuid = string.format("%08x-%04x-%04x-%04x-%012x",
+    -- Generate last 12 hex digits using three 16-bit randoms (safer than one large number)
+    local uuid = string.format("%08x-%04x-%04x-%04x-%04x%04x%04x",
         uuidCounter,
         math.random(0, 0xFFFF),
         math.random(0, 0xFFFF),
         math.random(0, 0xFFFF),
-        math.random(0, 0xFFFFFFFFFFFF)
+        math.random(0, 0xFFFF),
+        math.random(0, 0xFFFF),
+        math.random(0, 0xFFFF)
     )
     instanceUUIDs[instance] = uuid
     return uuid
