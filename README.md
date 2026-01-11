@@ -33,9 +33,37 @@ You need three components: the **CLI** (runs the sync server), the **Studio Plug
 
 The CLI runs the sync server that connects Studio and VS Code.
 
-<details>
-<summary><strong>macOS / Linux</strong></summary>
+**macOS (one command):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh
+```
 
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+```
+
+<details>
+<summary><strong>Alternative: Manual Download</strong></summary>
+
+Download pre-built binaries from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases):
+
+| Platform | Binary |
+|----------|--------|
+| macOS (Apple Silicon) | `rbxsync-macos-aarch64` |
+| macOS (Intel) | `rbxsync-macos-x86_64` |
+| Windows | `rbxsync-windows-x86_64.exe` |
+
+**macOS:** Move to `/usr/local/bin/` and run `chmod +x rbxsync`
+
+**Windows:** Move to a folder in your PATH, or add the download location to PATH
+
+</details>
+
+<details>
+<summary><strong>Alternative: Build from Source</strong></summary>
+
+**macOS:**
 ```bash
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -52,42 +80,16 @@ sudo cp target/release/rbxsync /usr/local/bin/
 rbxsync version
 ```
 
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-**Step 1: Install Build Tools**
-1. Download [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-2. Run installer → select **"Desktop development with C++"**
-3. Wait for installation (10-15 min)
-
-**Step 2: Install Rust**
-1. Download from [rustup.rs](https://rustup.rs)
-2. Run `rustup-init.exe` → follow prompts
-3. **Restart your terminal**
-
-**Step 3: Build RbxSync**
+**Windows:**
+1. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "Desktop development with C++"
+2. Install Rust from [rustup.rs](https://rustup.rs)
+3. Build:
 ```powershell
 git clone https://github.com/devmarissa/rbxsync
 cd rbxsync
 cargo build --release
 ```
-
-**Step 4: Add to PATH**
-1. Press `Win + R`, type `sysdm.cpl`, press Enter
-2. Click **Advanced** → **Environment Variables**
-3. Under "User variables", select **Path** → **Edit** → **New**
-4. Add the full path to `target\release`, e.g.: `C:\Users\YourName\rbxsync\target\release`
-5. Click OK on all dialogs
-6. **Restart your terminal**
-
-**Step 5: Verify**
-```powershell
-rbxsync version
-```
-
-> **Troubleshooting:** If you get "'rbxsync' is not recognized", the PATH wasn't set correctly. Try using the full path: `.\target\release\rbxsync.exe version`
+4. Add `target\release` to your PATH
 
 </details>
 

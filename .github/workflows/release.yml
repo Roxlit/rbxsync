@@ -9,8 +9,54 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and Release
+  # Build CLI binaries for each platform
+  build-cli:
+    name: Build CLI (${{ matrix.name }})
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-x86_64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build CLI
+        run: cargo build --release --target ${{ matrix.target }} -p rbxsync
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/rbxsync rbxsync-${{ matrix.name }}
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          copy target\${{ matrix.target }}\release\rbxsync.exe rbxsync-${{ matrix.name }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.name }}
+          path: rbxsync-${{ matrix.name }}*
+
+  # Build plugin and VS Code extension (only needs to run once)
+  build-assets:
+    name: Build Plugin & Extension
     runs-on: ubuntu-latest
 
     steps:
@@ -18,9 +64,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Build CLI
+      - name: Build CLI (for plugin build)
         run: cargo build --release -p rbxsync
 
       - name: Build Plugin
@@ -38,12 +84,41 @@ jobs:
           npm run build
           npx vsce package
 
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin
+          path: build/RbxSync.rbxm
+
+      - name: Upload VS Code extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: rbxsync-vscode/*.vsix
+
+  # Create release with all artifacts
+  release:
+    name: Create Release
+    needs: [build-cli, build-assets]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
-        id: changelog
         run: |
           # Get commits since last tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -53,32 +128,46 @@ jobs:
             CHANGES=$(git log --pretty=format:"- %s" --no-merges -10)
           fi
 
-          # Write to file for multiline support
-          echo "## Changes" > changelog.md
-          echo "" >> changelog.md
+          cat > changelog.md << 'EOF'
+          ## Downloads
+
+          ### CLI (Pre-built Binaries)
+          | Platform | Download |
+          |----------|----------|
+          | macOS (Apple Silicon) | `rbxsync-macos-aarch64` |
+          | macOS (Intel) | `rbxsync-macos-x86_64` |
+          | Windows | `rbxsync-windows-x86_64.exe` |
+
+          ### Quick Install
+
+          **macOS:**
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh
+          ```
+
+          **Windows (PowerShell):**
+          ```powershell
+          irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+          ```
+
+          ### Other Downloads
+          - **RbxSync.rbxm** - Roblox Studio plugin (or install from [Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync))
+          - **rbxsync-*.vsix** - VS Code extension (or install from [Marketplace](https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync))
+
+          ## Changes
+
+          EOF
           echo "$CHANGES" >> changelog.md
-          echo "" >> changelog.md
-          echo "## Installation" >> changelog.md
-          echo "" >> changelog.md
-          echo "**Option 1: Update existing installation**" >> changelog.md
-          echo '```bash' >> changelog.md
-          echo "rbxsync update" >> changelog.md
-          echo '```' >> changelog.md
-          echo "" >> changelog.md
-          echo "**Option 2: Download plugin directly**" >> changelog.md
-          echo "Download \`RbxSync.rbxm\` below and copy to your plugins folder:" >> changelog.md
-          echo "- **macOS:** \`~/Documents/Roblox/Plugins/\`" >> changelog.md
-          echo "- **Windows:** \`%LOCALAPPDATA%\\Roblox\\Plugins\\\`" >> changelog.md
-          echo "" >> changelog.md
-          echo "Then restart Roblox Studio." >> changelog.md
-          echo "" >> changelog.md
-          echo "**VS Code Extension**" >> changelog.md
-          echo "Download \`rbxsync-*.vsix\` below, then in VS Code: \`Cmd+Shift+P\` → \"Install from VSIX\"" >> changelog.md
+
+      - name: Setup Node (for vsce)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Publish VS Code Extension
-        working-directory: rbxsync-vscode
-        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }}
-        continue-on-error: true  # Don't fail release if marketplace publish fails
+        working-directory: artifacts/vscode-extension
+        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }} --packagePath *.vsix
+        continue-on-error: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -86,8 +175,9 @@ jobs:
           name: RbxSync ${{ steps.version.outputs.VERSION }}
           body_path: changelog.md
           files: |
-            build/RbxSync.rbxm
-            rbxsync-vscode/*.vsix
+            artifacts/cli-*/*
+            artifacts/plugin/*
+            artifacts/vscode-extension/*
           draft: false
           prerelease: false
         env:
