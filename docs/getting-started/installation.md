@@ -1,155 +1,135 @@
 # Installation
 
-## Quick Install (Recommended)
-
-Most users only need the **Studio Plugin** and optionally the **VS Code Extension**. No command line required!
-
-### Studio Plugin
-
-Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync) - one click, automatic updates.
-
-### VS Code Extension (Optional)
-
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync) or search "RbxSync" in Extensions.
-
-::: tip That's it!
-With just the plugins installed, you can sync between Studio and your filesystem. The CLI is only needed for advanced features like `rbxsync init`, `rbxsync build`, or running the sync server manually.
-:::
+RbxSync requires three components:
+1. **CLI** - Runs the sync server (required)
+2. **Studio Plugin** - Connects Roblox Studio to the server
+3. **VS Code Extension** - Optional, provides editor integration
 
 ---
 
-## Advanced: CLI Installation
+## 1. Install CLI (Required)
 
-The CLI provides additional features like project initialization, building `.rbxl` files, and running the sync server. Only install if you need these features.
-
-### Prerequisites
+The CLI runs the sync server that bridges Studio and your filesystem.
 
 ::: details macOS / Linux
 ```bash
-# Install Rust (if not already installed)
+# Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Restart your terminal, then verify:
-rustc --version
-cargo --version
-```
-:::
-
-::: details Windows
-**Step 1:** Install Visual Studio Build Tools (REQUIRED for Rust)
-- Download from [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-- Run the installer
-- Select **"Desktop development with C++"** workload
-- Complete the installation (this may take 10-15 minutes)
-
-**Step 2:** Install Rust
-- Download from [rustup.rs](https://rustup.rs)
-- Run `rustup-init.exe`
-- Follow the prompts (default options are fine)
-
-**Step 3:** Restart your terminal (important!) and verify:
-```powershell
-rustc --version
-cargo --version
-```
-:::
-
-### Build from Source
-
-::: code-group
-
-```bash [macOS / Linux]
-# Clone and build
+# Restart terminal, then clone and build
 git clone https://github.com/devmarissa/rbxsync
 cd rbxsync
 cargo build --release
 
-# Add to PATH (choose one):
-# Option 1: Copy to system bin
+# Add to PATH
 sudo cp target/release/rbxsync /usr/local/bin/
 
-# Option 2: Add to your shell profile (~/.zshrc or ~/.bashrc)
-export PATH="$PATH:/path/to/rbxsync/target/release"
+# Verify
+rbxsync version
 ```
+:::
 
-```powershell [Windows]
-# Clone and build (in PowerShell or Git Bash)
+::: details Windows (Step by Step)
+
+### Step 1: Install Visual Studio Build Tools
+
+1. Download from [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+2. Run the installer
+3. Select **"Desktop development with C++"** workload
+4. Click Install (takes 10-15 minutes)
+
+### Step 2: Install Rust
+
+1. Download from [rustup.rs](https://rustup.rs)
+2. Run `rustup-init.exe`
+3. Follow prompts (default options are fine)
+4. **Close and reopen your terminal** (important!)
+
+### Step 3: Build RbxSync
+
+Open PowerShell and run:
+
+```powershell
 git clone https://github.com/devmarissa/rbxsync
 cd rbxsync
 cargo build --release
-
-# The executable is now at: target\release\rbxsync.exe
 ```
 
-:::
+### Step 4: Add to PATH
 
-### Adding to PATH on Windows
-
-After building, you need to add `rbxsync.exe` to your PATH so you can run it from anywhere.
-
-**Option A: Add folder to PATH (Recommended)**
 1. Press `Win + R`, type `sysdm.cpl`, press Enter
-2. Click **Advanced** tab → **Environment Variables**
-3. Under "User variables", select **Path** and click **Edit**
-4. Click **New** and add the full path to your `target\release` folder, e.g.:
+2. Click the **Advanced** tab
+3. Click **Environment Variables**
+4. Under "User variables for [YourName]", find and select **Path**
+5. Click **Edit**
+6. Click **New**
+7. Paste the full path to your `target\release` folder, for example:
    ```
    C:\Users\YourName\rbxsync\target\release
    ```
-5. Click **OK** on all dialogs
-6. **Restart your terminal** (close and reopen PowerShell)
+8. Click **OK** on all three dialogs
+9. **Close and reopen PowerShell**
 
-**Option B: Copy to a folder already in PATH**
+### Step 5: Verify
+
 ```powershell
-# Run PowerShell as Administrator
-Copy-Item target\release\rbxsync.exe C:\Windows\System32\
-```
-
-### Verify Installation
-
-```bash
 rbxsync version
 ```
 
-You should see the version number and update check.
+You should see the version number and an update check.
+
+::: warning 'rbxsync' is not recognized?
+If you get this error, the PATH wasn't set correctly. Double-check Step 4, or use the full path:
+```powershell
+.\target\release\rbxsync.exe version
+```
+:::
+
+:::
 
 ---
 
-## Alternative Plugin Installation
+## 2. Install Studio Plugin
 
-If you can't use the Creator Store, here are other options:
+Choose one option:
 
-**Download from GitHub**
+**Option A: Roblox Creator Store (Recommended)**
+
+Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync) - one click, automatic updates.
+
+**Option B: Download from GitHub**
+
 1. Download `RbxSync.rbxm` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
 2. Copy to your plugins folder:
    - **macOS:** `~/Documents/Roblox/Plugins/`
    - **Windows:** `%LOCALAPPDATA%\Roblox\Plugins\`
 
-   ::: tip Finding the Windows plugins folder
-   Press `Win + R`, paste `%LOCALAPPDATA%\Roblox\Plugins\`, and press Enter.
-   :::
+::: tip Finding the Windows plugins folder
+Press `Win + R`, paste `%LOCALAPPDATA%\Roblox\Plugins\`, and press Enter.
+:::
 
-**Build from source** (requires CLI installed)
+**Option C: Build from source**
+
 ```bash
 rbxsync build-plugin --install
 ```
 
 ---
 
-## Alternative VS Code Extension Installation
+## 3. Install VS Code Extension (Optional)
 
-**Download from GitHub**
+**Option A: VS Code Marketplace (Recommended)**
+
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync) or search "RbxSync" in the Extensions panel.
+
+The extension will automatically run `rbxsync serve` when you connect.
+
+**Option B: Download from GitHub**
+
 1. Download `rbxsync-*.vsix` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
 2. In VS Code: `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac)
 3. Type "Extensions: Install from VSIX"
 4. Select the downloaded `.vsix` file
-
-**Build from source** (requires Node.js)
-```bash
-cd rbxsync-vscode
-npm install
-npm run package
-code --install-extension rbxsync-*.vsix
-```
 
 ---
 
@@ -157,19 +137,28 @@ code --install-extension rbxsync-*.vsix
 
 ### Windows: 'rbxsync' is not recognized
 
-This means the CLI isn't in your PATH. Either:
-- Follow the "Adding to PATH on Windows" steps above
-- Or use the full path: `.\target\release\rbxsync.exe version`
+The CLI isn't in your PATH. Either:
+- Follow the "Add to PATH" steps above carefully
+- Or use the full path: `.\target\release\rbxsync.exe`
 
 ### Windows: Build fails with linker errors
 
-Make sure you installed Visual Studio Build Tools with the "Desktop development with C++" workload. Restart your terminal after installation.
+Make sure you installed Visual Studio Build Tools with the **"Desktop development with C++"** workload. Restart your terminal after installation.
+
+### Windows: cargo not found
+
+Restart your terminal after installing Rust. If it still doesn't work, run the Rust installer again.
 
 ### Plugin not appearing in Studio
 
-1. Make sure you installed from Creator Store OR copied the `.rbxm` to the correct plugins folder
-2. Restart Roblox Studio completely
-3. Check the Plugins tab in the ribbon - you should see "RbxSync"
+1. Restart Roblox Studio completely (not just the place)
+2. Check the Plugins tab in the ribbon
+3. If using manual install, verify the `.rbxm` file is in the correct plugins folder
+
+### Server won't start
+
+- Check if port 44755 is already in use: `lsof -i :44755` (Mac) or `netstat -an | findstr 44755` (Windows)
+- Try stopping existing server: `rbxsync stop`
 
 ---
 
