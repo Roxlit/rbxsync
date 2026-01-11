@@ -4283,6 +4283,36 @@
     </div>
 
     <script>
+        // Fetch latest release from GitHub and update badge
+        (async function() {
+            try {
+                const res = await fetch('https://api.github.com/repos/devmarissa/rbxsync/releases/latest');
+                if (!res.ok) return;
+                const release = await res.json();
+
+                const badge = document.querySelector('.release-badge');
+                if (!badge) return;
+
+                // Update version/description text
+                const shinyText = badge.querySelector('.shiny-text');
+                if (shinyText) {
+                    const title = release.name || release.tag_name;
+                    shinyText.textContent = title;
+                    shinyText.setAttribute('data-text', title);
+                }
+
+                // Update date
+                const dateSpan = badge.querySelector('.release-date');
+                if (dateSpan) {
+                    const date = new Date(release.published_at);
+                    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    dateSpan.textContent = formatted;
+                }
+            } catch (e) {
+                // Keep static fallback on error
+            }
+        })();
+
         // Dynamic width for rotating text
         (function() {
             const wrapper = document.querySelector('.rotating-wrapper');
