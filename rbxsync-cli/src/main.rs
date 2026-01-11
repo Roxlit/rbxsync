@@ -1870,28 +1870,68 @@ fn cmd_doc() -> Result<()> {
 
 /// Update RbxSync - pull latest changes, rebuild CLI and plugin
 fn cmd_update(no_pull: bool, vscode: bool) -> Result<()> {
-    // Find the rbxsync repo directory (where this binary was built from)
-    let exe_path = std::env::current_exe().context("Failed to get executable path")?;
+    // Find repo in this order:
+    // 1. Current directory (if it's the repo)
+    // 2. ~/.rbxsync/repo (managed clone)
+    // 3. Walk up from executable (dev builds)
+    // 4. Auto-clone to ~/.rbxsync/repo
 
-    // Try to find the repo root by looking for Cargo.toml
-    let mut repo_dir = exe_path.parent().map(|p| p.to_path_buf());
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+    let home_dir = dirs::home_dir().context("Failed to get home directory")?;
+    let managed_repo = home_dir.join(".rbxsync").join("repo");
 
-    // Walk up from the executable to find the repo root
-    // Typical paths: target/release/rbxsync or target/debug/rbxsync
-    for _ in 0..5 {
-        if let Some(ref dir) = repo_dir {
-            if dir.join("Cargo.toml").exists() && dir.join("plugin").exists() {
-                break;
+    let repo_dir = if cwd.join("Cargo.toml").exists() && cwd.join("plugin").exists() {
+        // We're in the repo directory
+        cwd
+    } else if managed_repo.join("Cargo.toml").exists() && managed_repo.join("plugin").exists() {
+        // Use managed repo at ~/.rbxsync/repo
+        managed_repo
+    } else {
+        // Try to find repo from executable path (for dev builds)
+        let exe_path = std::env::current_exe().context("Failed to get executable path")?;
+        let mut found_dir = exe_path.parent().map(|p| p.to_path_buf());
+
+        for _ in 0..5 {
+            if let Some(ref dir) = found_dir {
+                if dir.join("Cargo.toml").exists() && dir.join("plugin").exists() {
+                    break;
+                }
+                found_dir = dir.parent().map(|p| p.to_path_buf());
             }
-            repo_dir = dir.parent().map(|p| p.to_path_buf());
         }
-    }
 
-    let repo_dir = repo_dir.context("Could not find RbxSync repository. Make sure you're running from a git clone.")?;
+        match found_dir {
+            Some(dir) if dir.join("Cargo.toml").exists() && dir.join("plugin").exists() => dir,
+            _ => {
+                // No repo found - clone to ~/.rbxsync/repo
+                println!("RbxSync repository not found. Cloning to ~/.rbxsync/repo...");
+                println!();
 
-    if !repo_dir.join("Cargo.toml").exists() {
-        bail!("Could not find RbxSync repository. Run this from within the cloned repo.");
-    }
+                // Create ~/.rbxsync directory
+                std::fs::create_dir_all(&home_dir.join(".rbxsync"))
+                    .context("Failed to create ~/.rbxsync directory")?;
+
+                // Clone the repo
+                let status = std::process::Command::new("git")
+                    .args([
+                        "clone",
+                        "https://github.com/devmarissa/rbxsync.git",
+                        managed_repo.to_str().unwrap(),
+                    ])
+                    .status()
+                    .context("Failed to clone repository. Is git installed?")?;
+
+                if !status.success() {
+                    bail!("Failed to clone repository");
+                }
+
+                println!("Repository cloned successfully!");
+                println!();
+
+                managed_repo
+            }
+        }
+    };
 
     println!("RbxSync Update");
     println!("==============");
@@ -1928,6 +1968,46 @@ fn cmd_update(no_pull: bool, vscode: bool) -> Result<()> {
         bail!("Failed to build CLI");
     }
     println!("   Done!");
+
+    // Install CLI to system PATH
+    let new_binary = repo_dir.join("target/release/rbxsync");
+    let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
+
+    // Only copy if current exe is in a system location (not in target/)
+    if !current_exe.to_string_lossy().contains("target") {
+        println!("   Installing to {}...", current_exe.display());
+
+        #[cfg(unix)]
+        {
+            // Try to copy directly, fall back to sudo
+            if std::fs::copy(&new_binary, &current_exe).is_err() {
+                // Need elevated permissions
+                let status = std::process::Command::new("sudo")
+                    .args(["cp", new_binary.to_str().unwrap(), current_exe.to_str().unwrap()])
+                    .status();
+
+                match status {
+                    Ok(s) if s.success() => println!("   Installed!"),
+                    _ => {
+                        println!("   Could not auto-install. Run manually:");
+                        println!("   sudo cp {} {}", new_binary.display(), current_exe.display());
+                    }
+                }
+            } else {
+                println!("   Installed!");
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            if std::fs::copy(&new_binary, &current_exe).is_err() {
+                println!("   Could not auto-install. Run manually as Administrator:");
+                println!("   copy {} {}", new_binary.display(), current_exe.display());
+            } else {
+                println!("   Installed!");
+            }
+        }
+    }
     println!();
 
     // Step 3: Rebuild and install plugin
