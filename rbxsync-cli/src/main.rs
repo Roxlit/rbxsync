@@ -1982,8 +1982,8 @@ fn cmd_update(no_pull: bool, vscode: bool) -> Result<()> {
             if !status.success() {
                 println!("   Warning: npm package failed");
             } else {
-                println!("   Built: rbxsync-vscode/rbxsync-1.0.0.vsix");
-                println!("   Install with: code --install-extension rbxsync-vscode/rbxsync-1.0.0.vsix");
+                println!("   Built: rbxsync-vscode/rbxsync-*.vsix");
+                println!("   Install with: code --install-extension rbxsync-vscode/rbxsync-*.vsix");
             }
         } else {
             println!("   Warning: VS Code extension directory not found");
@@ -1996,7 +1996,7 @@ fn cmd_update(no_pull: bool, vscode: bool) -> Result<()> {
     println!("Next steps:");
     println!("  1. Restart Roblox Studio to load the updated plugin");
     if vscode {
-        println!("  2. Install the VS Code extension: code --install-extension rbxsync-vscode/rbxsync-1.0.0.vsix");
+        println!("  2. Install the VS Code extension: code --install-extension rbxsync-vscode/rbxsync-*.vsix");
         println!("  3. Restart VS Code");
     }
 

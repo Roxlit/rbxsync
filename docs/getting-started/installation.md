@@ -101,7 +101,7 @@ cd rbxsync-vscode
 npm install
 npm run build
 npm run package
-code --install-extension rbxsync-1.0.0.vsix
+code --install-extension rbxsync-*.vsix
 ```
 
 ## Verify Installation

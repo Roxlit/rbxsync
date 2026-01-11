@@ -138,6 +138,14 @@ pub struct CommandResponse<T> {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct InsertModelResponse {
+    pub success: bool,
+    pub model_name: Option<String>,
+    pub asset_id: Option<u64>,
+    pub error: Option<String>,
+}
+
 impl RbxSyncClient {
     pub fn new(port: u16) -> Self {
         Self {

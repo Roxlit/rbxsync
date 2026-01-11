@@ -125,7 +125,7 @@ This pulls the latest code, rebuilds the CLI, and reinstalls the plugin. Remembe
 
 ```bash
 rbxsync update --vscode
-code --install-extension rbxsync-vscode/rbxsync-1.0.0.vsix
+code --install-extension rbxsync-vscode/rbxsync-*.vsix
 ```
 
 Then restart VS Code.

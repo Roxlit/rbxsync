@@ -124,7 +124,7 @@ cd rbxsync-vscode
 npm install
 npm run build
 npm run package
-code --install-extension rbxsync-1.0.0.vsix
+code --install-extension rbxsync-*.vsix
 ```
 
 ### 4. Initialize Project & Connect
@@ -202,7 +202,7 @@ Then restart Roblox Studio to load the updated plugin.
 **For VS Code extension updates:**
 ```bash
 rbxsync update --vscode
-code --install-extension rbxsync-vscode/rbxsync-1.0.0.vsix
+code --install-extension rbxsync-vscode/rbxsync-*.vsix
 ```
 Then restart VS Code.
 

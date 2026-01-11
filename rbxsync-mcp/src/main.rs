@@ -78,6 +78,14 @@ pub struct RunTestParams {
     pub mode: Option<String>,
 }
 
+/// Parameters for insert_model tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct InsertModelParams {
+    /// Search query for the model (e.g., "car", "sword", "zombie")
+    #[schemars(description = "Search query for the model to insert from the Roblox marketplace")]
+    pub query: String,
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
