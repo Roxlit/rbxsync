@@ -27,114 +27,66 @@ The sync tool that should have been: One-click extraction, two-way sync for all 
 
 ## Installation
 
-### Prerequisites
+### Quick Install (No CLI Required)
 
-<details open>
-<summary><strong>macOS / Linux</strong></summary>
+Most users only need the plugins - no command line installation required!
 
+1. **Studio Plugin:** Install from [Roblox Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync)
+2. **VS Code Extension:** Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync)
+
+That's it! The CLI is only needed for advanced features like `rbxsync init`, `rbxsync build`, or MCP integration.
+
+---
+
+<details>
+<summary><strong>Advanced: CLI Installation</strong></summary>
+
+#### Prerequisites
+
+**macOS / Linux:**
 ```bash
-# Install Rust (if not already installed)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# For VS Code extension: Install Node.js from https://nodejs.org
 ```
 
-</details>
+**Windows:**
+1. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) → select "Desktop development with C++"
+2. Install [Rust](https://rustup.rs) → run `rustup-init.exe`
+3. **Restart your terminal**, then verify: `rustc --version`
 
-<details>
-<summary><strong>Windows</strong></summary>
-
-**Step 1:** Install Visual Studio Build Tools (REQUIRED for Rust)
-- Download from [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-- Run installer and select **"Desktop development with C++"**
-
-**Step 2:** Install Rust
-- Download from [rustup.rs](https://rustup.rs)
-- Run `rustup-init.exe` and follow prompts
-
-**Step 3:** Restart your terminal, then verify:
-```powershell
-rustc --version
-cargo --version
-```
-
-For VS Code extension: Install Node.js from https://nodejs.org
-
-</details>
-
-### 1. Build from Source
-
-<details open>
-<summary><strong>macOS / Linux</strong></summary>
+#### Build from Source
 
 ```bash
 git clone https://github.com/devmarissa/rbxsync
 cd rbxsync
 cargo build --release
+```
 
-# Add to PATH (optional)
-cp target/release/rbxsync /usr/local/bin/
+#### Add to PATH
+
+**macOS / Linux:**
+```bash
+sudo cp target/release/rbxsync /usr/local/bin/
+```
+
+**Windows** (choose one):
+- **Recommended:** Add `target\release` folder to your PATH:
+  1. Press `Win + R`, type `sysdm.cpl`, press Enter
+  2. Advanced → Environment Variables → User variables → Path → Edit → New
+  3. Add full path, e.g. `C:\Users\YourName\rbxsync\target\release`
+  4. Restart your terminal
+
+- **Alternative:** Run as Admin: `Copy-Item target\release\rbxsync.exe C:\Windows\System32\`
+
+#### Verify
+```bash
+rbxsync version
 ```
 
 </details>
 
-<details>
-<summary><strong>Windows</strong></summary>
+---
 
-```powershell
-git clone https://github.com/devmarissa/rbxsync
-cd rbxsync
-cargo build --release
-
-# Add to PATH (PowerShell as Admin):
-Copy-Item target\release\rbxsync.exe C:\Windows\System32\
-
-# Or add the target\release folder to your PATH environment variable
-```
-
-</details>
-
-### 2. Install Studio Plugin
-
-**Option A: Roblox Creator Store (recommended)**
-
-Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/105132526235830/RbxSync) - updates automatically.
-
-**Option B: Download from GitHub**
-1. Download `RbxSync.rbxm` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
-2. Copy to your plugins folder:
-   - **macOS:** `~/Documents/Roblox/Plugins/`
-   - **Windows:** `%LOCALAPPDATA%\Roblox\Plugins\`
-
-**Option C: Build from source**
-```bash
-rbxsync build-plugin --install
-```
-
-### 3. Install VS Code Extension (Optional)
-
-**Option A: VS Code Marketplace (recommended)**
-
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync) or search "RbxSync" in VS Code Extensions.
-
-**Option B: Download from GitHub**
-1. Download `rbxsync-*.vsix` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
-2. In VS Code: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows)
-3. Type "Extensions: Install from VSIX"
-4. Select the downloaded `.vsix` file
-
-**Option C: Build from source**
-
-> Requires Node.js installed
-
-```bash
-cd rbxsync-vscode
-npm install
-npm run package
-code --install-extension rbxsync-*.vsix
-```
-
-### 4. Initialize Project & Connect
+### Initialize Project & Connect
 
 ```bash
 rbxsync init --name MyGame

@@ -3782,8 +3782,26 @@
             <div class="section-header">
                 <div class="section-tag">Get Started</div>
                 <h2 class="section-title">Installation Guide</h2>
-                <p class="section-desc">Up and running in minutes with a few simple commands.</p>
+                <p class="section-desc">Most users only need the plugins - no command line required!</p>
             </div>
+
+            <!-- Quick Install Banner -->
+            <div style="background: linear-gradient(135deg, var(--accent) 0%, #0099ff 100%); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 2rem; color: white;">
+                <h3 style="margin: 0 0 0.75rem; font-size: 1.25rem; font-weight: 700;">Quick Install (Recommended)</h3>
+                <p style="margin: 0 0 1rem; opacity: 0.9;">Just install the plugins and you're ready to sync. The CLI is only needed for advanced features.</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                    <a href="https://create.roblox.com/store/asset/105132526235830/RbxSync" target="_blank" rel="noopener noreferrer" style="background: white; color: var(--accent); padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Studio Plugin
+                    </a>
+                    <a href="https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync" target="_blank" rel="noopener noreferrer" style="background: rgba(255,255,255,0.15); color: white; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; border: 1px solid rgba(255,255,255,0.3);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>
+                        VS Code Extension
+                    </a>
+                </div>
+            </div>
+
+            <h3 style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; text-align: center;">Advanced: CLI Installation (Optional)</h3>
 
             <!-- OS Toggle -->
             <div class="os-toggle">
@@ -3874,9 +3892,10 @@
                                     <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
                                     <span class="cmd">cd</span> rbxsync<br>
                                     <span class="cmd">cargo build</span> --release<br><br>
-                                    <span class="comment"># Add to PATH (PowerShell as Admin):</span><br>
-                                    <span class="cmd">Copy-Item</span> target\release\rbxsync.exe C:\Windows\System32\<br><br>
-                                    <span class="comment"># Or add target\release to your PATH environment variable</span>
+                                    <span class="comment"># The executable is now at: target\release\rbxsync.exe</span><br>
+                                    <span class="comment"># Add to PATH: Win+R → sysdm.cpl → Advanced → Environment Variables</span><br>
+                                    <span class="comment"># → User variables → Path → Edit → New → add full path to target\release</span><br>
+                                    <span class="comment"># Then restart your terminal!</span>
                                 </div>
                                 <button class="copy-btn" aria-label="Copy to clipboard">
                                     <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
