@@ -2256,6 +2256,50 @@
             display: inline;
         }
 
+        /* Mode Toggle (Simple/Advanced) */
+        .mode-toggle {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            padding: 0.25rem;
+            border-radius: 8px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .mode-toggle-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-toggle-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .mode-toggle-btn.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
+        }
+
         .step-num {
             flex-shrink: 0;
             width: 32px;
@@ -3792,16 +3836,25 @@
                 </p>
             </div>
 
-            <!-- OS Toggle -->
-            <div class="os-toggle">
-                <button class="os-toggle-btn active" data-os="mac">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                    macOS
-                </button>
-                <button class="os-toggle-btn" data-os="windows">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.21L20 3zM3 13l6 .09v6.81l-6-1.15V13zm17 .25V22l-10-1.91V13.1l10 .15z"/></svg>
-                    Windows
-                </button>
+            <!-- Toggle Row: OS + Mode -->
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; align-items: center; margin-bottom: 1.5rem;">
+                <!-- OS Toggle -->
+                <div class="os-toggle" style="margin-bottom: 0;">
+                    <button class="os-toggle-btn active" data-os="mac">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                        macOS
+                    </button>
+                    <button class="os-toggle-btn" data-os="windows">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.21L20 3zM3 13l6 .09v6.81l-6-1.15V13zm17 .25V22l-10-1.91V13.1l10 .15z"/></svg>
+                        Windows
+                    </button>
+                </div>
+
+                <!-- Mode Toggle -->
+                <div class="mode-toggle" style="margin-bottom: 0;">
+                    <button class="mode-toggle-btn active" data-mode="simple">Quick Install</button>
+                    <button class="mode-toggle-btn" data-mode="advanced">Build from Source</button>
+                </div>
             </div>
 
             <div class="install-steps">
@@ -3809,44 +3862,101 @@
                     <div class="step-num">1</div>
                     <div class="step-content">
                         <h4>Install CLI</h4>
-                        <p>One command to install. No build tools required.</p>
 
-                        <!-- macOS Install -->
-                        <div class="os-content active" data-os="mac">
-                            <div class="code-block-wrapper">
-                                <div class="code-block" data-copy="curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh">
-                                    <span class="comment"># Install with one command</span><br>
-                                    <span class="cmd">curl</span> -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh<br><br>
-                                    <span class="comment"># Then verify:</span><br>
-                                    <span class="cmd">rbxsync</span> version
+                        <!-- Simple Mode -->
+                        <div class="mode-content active" data-mode="simple">
+                            <p>One command to install. No build tools required.</p>
+
+                            <!-- macOS Simple Install -->
+                            <div class="os-content active" data-os="mac">
+                                <div class="code-block-wrapper">
+                                    <div class="code-block" data-copy="curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh">
+                                        <span class="comment"># Install with one command</span><br>
+                                        <span class="cmd">curl</span> -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh<br><br>
+                                        <span class="comment"># Then verify:</span><br>
+                                        <span class="cmd">rbxsync</span> version
+                                    </div>
+                                    <button class="copy-btn" aria-label="Copy to clipboard">
+                                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
                                 </div>
-                                <button class="copy-btn" aria-label="Copy to clipboard">
-                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                </button>
+                                <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                    Or download manually from <a href="https://github.com/devmarissa/rbxsync/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
+                                </p>
                             </div>
-                            <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
-                                Or download manually from <a href="https://github.com/devmarissa/rbxsync/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
-                            </p>
+
+                            <!-- Windows Simple Install -->
+                            <div class="os-content" data-os="windows">
+                                <div class="code-block-wrapper">
+                                    <div class="code-block" data-copy="irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex">
+                                        <span class="comment"># Run in PowerShell (one command)</span><br>
+                                        <span class="cmd">irm</span> https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex<br><br>
+                                        <span class="comment"># Restart terminal, then verify:</span><br>
+                                        <span class="cmd">rbxsync</span> version
+                                    </div>
+                                    <button class="copy-btn" aria-label="Copy to clipboard">
+                                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                </div>
+                                <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                    Or download manually from <a href="https://github.com/devmarissa/rbxsync/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
+                                </p>
+                            </div>
                         </div>
 
-                        <!-- Windows Install -->
-                        <div class="os-content" data-os="windows">
-                            <div class="code-block-wrapper">
-                                <div class="code-block" data-copy="irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex">
-                                    <span class="comment"># Run in PowerShell (one command)</span><br>
-                                    <span class="cmd">irm</span> https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex<br><br>
-                                    <span class="comment"># Restart terminal, then verify:</span><br>
-                                    <span class="cmd">rbxsync</span> version
+                        <!-- Advanced Mode -->
+                        <div class="mode-content" data-mode="advanced">
+                            <p>Build from source with full control. Requires Rust toolchain.</p>
+
+                            <!-- macOS Advanced Install -->
+                            <div class="os-content active" data-os="mac">
+                                <div class="code-block-wrapper">
+                                    <div class="code-block" data-copy="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && git clone https://github.com/devmarissa/rbxsync && cd rbxsync && cargo build --release && sudo cp target/release/rbxsync /usr/local/bin/">
+                                        <span class="comment"># 1. Install Rust (if not installed)</span><br>
+                                        <span class="cmd">curl</span> --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh<br><br>
+                                        <span class="comment"># 2. Restart terminal, then clone and build</span><br>
+                                        <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
+                                        <span class="cmd">cd</span> rbxsync<br>
+                                        <span class="cmd">cargo build</span> --release<br><br>
+                                        <span class="comment"># 3. Add to PATH</span><br>
+                                        <span class="cmd">sudo cp</span> target/release/rbxsync /usr/local/bin/<br><br>
+                                        <span class="comment"># 4. Verify</span><br>
+                                        <span class="cmd">rbxsync</span> version
+                                    </div>
+                                    <button class="copy-btn" aria-label="Copy to clipboard">
+                                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
                                 </div>
-                                <button class="copy-btn" aria-label="Copy to clipboard">
-                                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                </button>
                             </div>
-                            <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
-                                Or download manually from <a href="https://github.com/devmarissa/rbxsync/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
-                            </p>
+
+                            <!-- Windows Advanced Install -->
+                            <div class="os-content" data-os="windows">
+                                <div class="code-block-wrapper">
+                                    <div class="code-block">
+                                        <span class="comment"># 1. Install Visual Studio Build Tools</span><br>
+                                        <span class="comment">#    Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/</span><br>
+                                        <span class="comment">#    Run installer, select "Desktop development with C++"</span><br><br>
+                                        <span class="comment"># 2. Install Rust</span><br>
+                                        <span class="comment">#    Download from: https://rustup.rs</span><br>
+                                        <span class="comment">#    Run rustup-init.exe, follow prompts</span><br><br>
+                                        <span class="comment"># 3. Restart terminal, then clone and build</span><br>
+                                        <span class="cmd">git clone</span> https://github.com/devmarissa/rbxsync<br>
+                                        <span class="cmd">cd</span> rbxsync<br>
+                                        <span class="cmd">cargo build</span> --release<br><br>
+                                        <span class="comment"># 4. Add to PATH (Win+R → sysdm.cpl → Advanced → Environment Variables</span><br>
+                                        <span class="comment">#    → User variables → Path → Edit → New → add full path to target\release)</span><br><br>
+                                        <span class="comment"># 5. Restart terminal and verify</span><br>
+                                        <span class="cmd">rbxsync</span> version
+                                    </div>
+                                    <button class="copy-btn" aria-label="Copy to clipboard">
+                                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4326,6 +4436,38 @@
             toggleBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     setOS(btn.dataset.os);
+                });
+            });
+        })();
+
+        // Mode Toggle functionality (Simple/Advanced)
+        (function() {
+            const modeToggleBtns = document.querySelectorAll('.mode-toggle-btn');
+            const modeContents = document.querySelectorAll('.mode-content');
+
+            function setMode(mode) {
+                // Update buttons
+                modeToggleBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+
+                // Update content blocks
+                modeContents.forEach(content => {
+                    content.classList.toggle('active', content.dataset.mode === mode);
+                });
+
+                // Save preference
+                localStorage.setItem('rbxsync-install-mode', mode);
+            }
+
+            // Set initial mode (from localStorage or default to simple)
+            const savedMode = localStorage.getItem('rbxsync-install-mode');
+            setMode(savedMode || 'simple');
+
+            // Handle toggle clicks
+            modeToggleBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setMode(btn.dataset.mode);
                 });
             });
         })();
