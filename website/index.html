@@ -3968,15 +3968,17 @@
                     <div class="step-num">2</div>
                     <div class="step-content">
                         <h4>Install Studio Plugin</h4>
-                        <p>Build and install the Roblox Studio plugin.</p>
+                        <p>Build and install the Roblox Studio plugin, or download directly.</p>
 
                         <!-- macOS Plugin -->
                         <div class="os-content active" data-os="mac">
                             <div class="code-block-wrapper">
                                 <div class="code-block" data-copy="rbxsync build-plugin --install">
+                                    <span class="comment"># Option 1: Build from source</span><br>
                                     <span class="cmd">rbxsync build-plugin</span> --install<br><br>
-                                    <span class="comment"># Plugin location:</span><br>
-                                    <span class="comment"># ~/Documents/Roblox/Plugins/RbxSync.rbxm</span>
+                                    <span class="comment"># Option 2: Download from GitHub releases</span><br>
+                                    <span class="comment"># https://github.com/devmarissa/rbxsync/releases</span><br>
+                                    <span class="comment"># Copy RbxSync.rbxm to ~/Documents/Roblox/Plugins/</span>
                                 </div>
                                 <button class="copy-btn" aria-label="Copy to clipboard">
                                     <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -3989,9 +3991,11 @@
                         <div class="os-content" data-os="windows">
                             <div class="code-block-wrapper">
                                 <div class="code-block" data-copy="rbxsync build-plugin --install">
+                                    <span class="comment"># Option 1: Build from source</span><br>
                                     <span class="cmd">rbxsync build-plugin</span> --install<br><br>
-                                    <span class="comment"># Plugin location:</span><br>
-                                    <span class="comment"># %LOCALAPPDATA%\Roblox\Plugins\RbxSync.rbxm</span>
+                                    <span class="comment"># Option 2: Download from GitHub releases (easiest!)</span><br>
+                                    <span class="comment"># https://github.com/devmarissa/rbxsync/releases</span><br>
+                                    <span class="comment"># Copy RbxSync.rbxm to %LOCALAPPDATA%\Roblox\Plugins\</span>
                                 </div>
                                 <button class="copy-btn" aria-label="Copy to clipboard">
                                     <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
