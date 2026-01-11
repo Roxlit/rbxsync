@@ -65,16 +65,16 @@ Run a playtest with console output capture.
 **Input:**
 ```json
 {
-  "mode": "play"  // "play", "run", or "server"
+  "duration": 10,  // seconds (default: 5)
+  "mode": "Play"   // "Play" or "Run" (default: "Play")
 }
 ```
 
-**Mode options:**
-| Mode | Description |
-|------|-------------|
-| `play` | Solo playtest (like F5) |
-| `run` | Live playtest with streaming |
-| `server` | Server simulation only |
+**Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `duration` | number | 5 | How long to run the test in seconds |
+| `mode` | string | "Play" | "Play" for solo playtest (F5), "Run" for server simulation |
 
 **Output:**
 ```json
