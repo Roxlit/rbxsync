@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'RbxSync Docs',
   description: 'Documentation for RbxSync – two-way sync between Roblox Studio and VS Code.',
+  cleanUrls: true,
 
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
