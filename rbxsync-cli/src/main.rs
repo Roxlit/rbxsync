@@ -40,6 +40,10 @@ enum Commands {
         /// Directory to initialize (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
+
+        /// Skip generating sourcemap.json
+        #[arg(long)]
+        no_sourcemap: bool,
     },
 
     /// Launch Roblox Studio
@@ -89,7 +93,11 @@ enum Commands {
     },
 
     /// Stop the running sync server
-    Stop,
+    Stop {
+        /// Port to stop (default: 44755, or "all" to stop all rbxsync servers)
+        #[arg(short, long, default_value = "44755")]
+        port: String,
+    },
 
     /// Show sync status
     Status,
@@ -286,8 +294,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { name, path } => {
-            cmd_init(name, path).await?;
+        Commands::Init { name, path, no_sourcemap } => {
+            cmd_init(name, path, no_sourcemap).await?;
         }
         Commands::Studio { place, serve } => {
             cmd_studio(place, serve).await?;
@@ -306,8 +314,8 @@ async fn main() -> Result<()> {
         Commands::Serve { port, background } => {
             cmd_serve(port, background).await?;
         }
-        Commands::Stop => {
-            cmd_stop().await?;
+        Commands::Stop { port } => {
+            cmd_stop(&port).await?;
         }
         Commands::Status => {
             cmd_status().await?;
@@ -379,7 +387,7 @@ async fn main() -> Result<()> {
 }
 
 /// Initialize a new project
-async fn cmd_init(name: Option<String>, path: Option<PathBuf>) -> Result<()> {
+async fn cmd_init(name: Option<String>, path: Option<PathBuf>, no_sourcemap: bool) -> Result<()> {
     let project_dir = path.unwrap_or_else(|| std::env::current_dir().unwrap());
     let project_name = name.unwrap_or_else(|| {
         project_dir
@@ -459,12 +467,23 @@ async fn cmd_init(name: Option<String>, path: Option<PathBuf>) -> Result<()> {
         std::fs::write(&gitignore_path, gitignore_content).context("Failed to write .gitignore")?;
     }
 
+    // Generate sourcemap for Luau LSP (unless --no-sourcemap)
+    if !no_sourcemap {
+        let sourcemap_path = project_dir.join("sourcemap.json");
+        let root = build_sourcemap_node("game", "DataModel", &src_dir, false)?;
+        let json = serde_json::to_string_pretty(&root)?;
+        std::fs::write(&sourcemap_path, json).context("Failed to write sourcemap.json")?;
+    }
+
     println!("Initialized RbxSync project '{}' at {:?}", project_name, project_dir);
     println!("\nProject structure:");
     println!("  rbxsync.json      - Project configuration");
     println!("  src/              - Instance tree");
     println!("  assets/           - Binary assets (meshes, images, sounds)");
     println!("  terrain/          - Terrain voxel data");
+    if !no_sourcemap {
+        println!("  sourcemap.json    - For Luau LSP");
+    }
     println!("\nNext steps:");
     println!("  1. Open your game in Roblox Studio");
     println!("  2. Install the RbxSync plugin");
@@ -782,6 +801,31 @@ async fn cmd_extract(
 
 /// Start the sync server
 async fn cmd_serve(port: u16, background: bool) -> Result<()> {
+    // Validate config file exists and is valid JSON
+    let config_path = std::env::current_dir()?.join("rbxsync.json");
+    if !config_path.exists() {
+        eprintln!("Error: rbxsync.json not found in current directory.");
+        eprintln!();
+        eprintln!("To create a new project, run:");
+        eprintln!("  rbxsync init --name MyProject");
+        eprintln!();
+        eprintln!("Or navigate to an existing RbxSync project directory.");
+        std::process::exit(1);
+    }
+
+    // Validate JSON is parseable
+    let config_content = std::fs::read_to_string(&config_path)
+        .context("Failed to read rbxsync.json")?;
+
+    if let Err(e) = serde_json::from_str::<serde_json::Value>(&config_content) {
+        eprintln!("Error: Invalid JSON in rbxsync.json");
+        eprintln!();
+        eprintln!("Parse error: {}", e);
+        eprintln!();
+        eprintln!("Please fix the JSON syntax and try again.");
+        std::process::exit(1);
+    }
+
     if background {
         // Spawn server as a detached background process
         let exe = std::env::current_exe()?;
@@ -827,12 +871,61 @@ async fn cmd_serve(port: u16, background: bool) -> Result<()> {
 }
 
 /// Stop the running sync server
-async fn cmd_stop() -> Result<()> {
+async fn cmd_stop(port: &str) -> Result<()> {
+    // Handle "all" to stop all rbxsync servers
+    if port == "all" {
+        return stop_all_servers().await;
+    }
+
+    let port_num: u16 = port.parse().context("Invalid port number")?;
+    stop_server_on_port(port_num).await
+}
+
+/// Stop all rbxsync servers
+#[cfg(unix)]
+async fn stop_all_servers() -> Result<()> {
+    let output = std::process::Command::new("pgrep")
+        .args(["-f", "rbxsync.*serve"])
+        .output();
+
+    if let Ok(output) = output {
+        let pids = String::from_utf8_lossy(&output.stdout);
+        let pids: Vec<&str> = pids.lines().filter(|p| !p.is_empty()).collect();
+
+        if pids.is_empty() {
+            println!("No rbxsync servers running.");
+            return Ok(());
+        }
+
+        println!("Stopping {} rbxsync server(s)...", pids.len());
+        for pid in pids {
+            if let Ok(pid) = pid.trim().parse::<i32>() {
+                unsafe {
+                    libc::kill(pid, libc::SIGTERM);
+                }
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        println!("All servers stopped.");
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+async fn stop_all_servers() -> Result<()> {
+    println!("Stopping all servers is only supported on Unix systems.");
+    println!("Please specify a port: rbxsync stop --port PORT");
+    Ok(())
+}
+
+/// Stop server on a specific port
+async fn stop_server_on_port(port: u16) -> Result<()> {
     // First, try to find any rbxsync server processes by port
     #[cfg(unix)]
     {
+        let port_arg = format!(":{}", port);
         let output = std::process::Command::new("lsof")
-            .args(["-ti", ":44755"])
+            .args(["-ti", &port_arg])
             .output();
 
         if let Ok(output) = output {
@@ -840,7 +933,7 @@ async fn cmd_stop() -> Result<()> {
             let pids: Vec<&str> = pids.lines().filter(|p| !p.is_empty()).collect();
 
             if pids.is_empty() {
-                println!("Server is not running.");
+                println!("No server running on port {}.", port);
                 return Ok(());
             }
 
@@ -849,7 +942,8 @@ async fn cmd_stop() -> Result<()> {
                 .timeout(std::time::Duration::from_secs(2))
                 .build()?;
 
-            let graceful = client.post("http://localhost:44755/shutdown").send().await;
+            let url = format!("http://localhost:{}/shutdown", port);
+            let graceful = client.post(&url).send().await;
 
             if graceful.is_ok() {
                 // Give it a moment to shut down
@@ -859,7 +953,7 @@ async fn cmd_stop() -> Result<()> {
             }
 
             // Graceful shutdown failed, force kill
-            println!("Force stopping server...");
+            println!("Force stopping server on port {}...", port);
             for pid in pids {
                 if let Ok(pid) = pid.trim().parse::<i32>() {
                     unsafe {
@@ -877,13 +971,14 @@ async fn cmd_stop() -> Result<()> {
         .timeout(std::time::Duration::from_secs(2))
         .build()?;
 
-    match client.post("http://localhost:44755/shutdown").send().await {
+    let url = format!("http://localhost:{}/shutdown", port);
+    match client.post(&url).send().await {
         Ok(_) => {
             println!("Server stopped.");
             Ok(())
         }
         Err(_) => {
-            println!("Server is not running.");
+            println!("No server running on port {}.", port);
             Ok(())
         }
     }
