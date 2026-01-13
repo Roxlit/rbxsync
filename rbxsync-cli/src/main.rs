@@ -184,6 +184,21 @@ enum Commands {
         vscode: bool,
     },
 
+    /// Uninstall RbxSync (remove CLI, plugin, and optionally VS Code extension)
+    Uninstall {
+        /// Also remove VS Code extension
+        #[arg(long)]
+        vscode: bool,
+
+        /// Keep the cloned repo at ~/.rbxsync/repo
+        #[arg(long)]
+        keep_repo: bool,
+
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        yes: bool,
+    },
+
     /// Show current version and check for updates
     Version,
 
@@ -328,6 +343,9 @@ async fn main() -> Result<()> {
             if let Some(key) = set_api_key {
                 println!("  API key would be set to: {}...", &key[..8.min(key.len())]);
             }
+        }
+        Commands::Uninstall { vscode, keep_repo, yes } => {
+            cmd_uninstall(vscode, keep_repo, yes)?;
         }
     }
 
@@ -2157,6 +2175,205 @@ async fn cmd_version() -> Result<()> {
 
     println!();
     println!("Documentation: https://rbxsync.dev");
+
+    Ok(())
+}
+
+/// Uninstall RbxSync completely
+fn cmd_uninstall(vscode: bool, keep_repo: bool, yes: bool) -> Result<()> {
+    println!("RbxSync Uninstaller");
+    println!("===================");
+    println!();
+
+    // Gather what will be removed
+    let mut items_to_remove: Vec<(String, PathBuf)> = Vec::new();
+
+    // 1. CLI binary
+    let current_exe = std::env::current_exe().ok();
+    if let Some(ref exe) = current_exe {
+        // Only list if it's in a system location (not in target/)
+        if !exe.to_string_lossy().contains("target") {
+            items_to_remove.push(("CLI binary".to_string(), exe.clone()));
+        }
+    }
+
+    // 2. Studio plugin
+    if let Some(plugins_folder) = get_studio_plugins_folder() {
+        let plugin_path = plugins_folder.join("RbxSync.rbxm");
+        if plugin_path.exists() {
+            items_to_remove.push(("Studio plugin".to_string(), plugin_path));
+        }
+    }
+
+    // 3. Managed repo at ~/.rbxsync
+    let home_dir = dirs::home_dir();
+    let rbxsync_dir = home_dir.as_ref().map(|h| h.join(".rbxsync"));
+    if !keep_repo {
+        if let Some(ref dir) = rbxsync_dir {
+            if dir.exists() {
+                items_to_remove.push(("Data directory (~/.rbxsync)".to_string(), dir.clone()));
+            }
+        }
+    }
+
+    // 4. VS Code extension (optional)
+    let vscode_extension_id = "rbxsync.rbxsync";
+
+    if items_to_remove.is_empty() && !vscode {
+        println!("Nothing to uninstall. RbxSync does not appear to be installed.");
+        return Ok(());
+    }
+
+    // Show what will be removed
+    println!("The following will be removed:");
+    println!();
+    for (name, path) in &items_to_remove {
+        println!("  - {} ({})", name, path.display());
+    }
+    if vscode {
+        println!("  - VS Code extension ({})", vscode_extension_id);
+    }
+    println!();
+
+    // Confirm unless --yes
+    if !yes {
+        print!("Are you sure you want to uninstall? [y/N] ");
+        std::io::Write::flush(&mut std::io::stdout())?;
+
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+
+        if !input.trim().eq_ignore_ascii_case("y") && !input.trim().eq_ignore_ascii_case("yes") {
+            println!("Uninstall cancelled.");
+            return Ok(());
+        }
+        println!();
+    }
+
+    // Perform uninstallation
+    let mut errors = Vec::new();
+
+    // Remove Studio plugin first (doesn't need elevated permissions)
+    if let Some(plugins_folder) = get_studio_plugins_folder() {
+        let plugin_path = plugins_folder.join("RbxSync.rbxm");
+        if plugin_path.exists() {
+            match std::fs::remove_file(&plugin_path) {
+                Ok(()) => println!("Removed Studio plugin: {}", plugin_path.display()),
+                Err(e) => errors.push(format!("Failed to remove plugin: {}", e)),
+            }
+        }
+    }
+
+    // Remove ~/.rbxsync directory
+    if !keep_repo {
+        if let Some(ref dir) = rbxsync_dir {
+            if dir.exists() {
+                match std::fs::remove_dir_all(dir) {
+                    Ok(()) => println!("Removed data directory: {}", dir.display()),
+                    Err(e) => errors.push(format!("Failed to remove ~/.rbxsync: {}", e)),
+                }
+            }
+        }
+    }
+
+    // Remove VS Code extension
+    if vscode {
+        println!("Uninstalling VS Code extension...");
+
+        #[cfg(target_os = "macos")]
+        let code_cmd = "code";
+        #[cfg(target_os = "windows")]
+        let code_cmd = "code.cmd";
+        #[cfg(target_os = "linux")]
+        let code_cmd = "code";
+
+        match std::process::Command::new(code_cmd)
+            .args(["--uninstall-extension", vscode_extension_id])
+            .status()
+        {
+            Ok(status) if status.success() => {
+                println!("Removed VS Code extension: {}", vscode_extension_id);
+            }
+            Ok(_) => {
+                errors.push("VS Code extension uninstall failed (may not be installed)".to_string());
+            }
+            Err(e) => {
+                errors.push(format!("Could not run 'code' command: {}. Uninstall manually from VS Code.", e));
+            }
+        }
+    }
+
+    // Remove CLI binary last (this is what we're running!)
+    if let Some(ref exe) = current_exe {
+        if !exe.to_string_lossy().contains("target") {
+            println!();
+            println!("Removing CLI binary...");
+
+            #[cfg(unix)]
+            {
+                // Try to remove directly first
+                if std::fs::remove_file(exe).is_err() {
+                    // Need elevated permissions
+                    match std::process::Command::new("sudo")
+                        .args(["rm", exe.to_str().unwrap()])
+                        .status()
+                    {
+                        Ok(status) if status.success() => {
+                            println!("Removed CLI: {}", exe.display());
+                        }
+                        _ => {
+                            errors.push(format!(
+                                "Could not remove CLI binary. Run manually:\n  sudo rm {}",
+                                exe.display()
+                            ));
+                        }
+                    }
+                } else {
+                    println!("Removed CLI: {}", exe.display());
+                }
+            }
+
+            #[cfg(windows)]
+            {
+                // On Windows, we can't delete ourselves while running
+                // Create a batch file to delete after exit
+                let batch_path = std::env::temp_dir().join("rbxsync_uninstall.bat");
+                let batch_content = format!(
+                    "@echo off\n\
+                    timeout /t 1 /nobreak > nul\n\
+                    del /f /q \"{}\"\n\
+                    del /f /q \"%~f0\"\n",
+                    exe.display()
+                );
+
+                if std::fs::write(&batch_path, batch_content).is_ok() {
+                    let _ = std::process::Command::new("cmd")
+                        .args(["/C", "start", "/min", batch_path.to_str().unwrap()])
+                        .spawn();
+                    println!("CLI will be removed after exit.");
+                } else {
+                    errors.push(format!(
+                        "Could not remove CLI binary. Delete manually:\n  del \"{}\"",
+                        exe.display()
+                    ));
+                }
+            }
+        }
+    }
+
+    println!();
+
+    if errors.is_empty() {
+        println!("RbxSync has been uninstalled successfully!");
+        println!();
+        println!("Thanks for using RbxSync! If you have feedback, please share at:");
+        println!("  https://github.com/devmarissa/rbxsync/issues");
+    } else {
+        println!("Uninstall completed with some issues:");
+        for err in &errors {
+            println!("  - {}", err);
+        }
+    }
 
     Ok(())
 }

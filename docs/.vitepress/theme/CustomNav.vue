@@ -1,15 +1,65 @@
 <script setup>
 import { useData } from 'vitepress'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const { isDark } = useData()
+const isMac = ref(true)
 
 function toggleTheme() {
   isDark.value = !isDark.value
 }
+
+function openSearch() {
+  // Try to click VitePress's hidden search button first
+  const vpSearchBtn = document.querySelector('.VPNavBarSearch button') ||
+                      document.querySelector('#local-search button') ||
+                      document.querySelector('[aria-label*="Search"]')
+
+  if (vpSearchBtn) {
+    vpSearchBtn.click()
+    return
+  }
+
+  // Fallback: trigger VitePress's local search by simulating Cmd/Ctrl+K
+  const event = new KeyboardEvent('keydown', {
+    key: 'k',
+    code: 'KeyK',
+    metaKey: isMac.value,
+    ctrlKey: !isMac.value,
+    bubbles: true
+  })
+  document.dispatchEvent(event)
+}
+
+function handleKeydown(e) {
+  // Also handle keyboard shortcut from our component
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    openSearch()
+  }
+}
+
+onMounted(() => {
+  isMac.value = /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
   <div class="custom-nav-buttons">
+    <!-- Custom Search Bar (matches website) -->
+    <button class="custom-search" @click="openSearch" aria-label="Search docs">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <span class="search-placeholder">Search docs...</span>
+      <span class="search-kbd">{{ isMac ? '⌘' : 'Ctrl' }}K</span>
+    </button>
+
     <!-- Theme Toggle -->
     <button class="theme-toggle" @click="toggleTheme" aria-label="Toggle theme">
       <svg v-if="isDark" class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -20,12 +70,11 @@ function toggleTheme() {
       </svg>
     </button>
 
-    <!-- Discord Rainbow Button -->
-    <a href="https://discord.gg/dURVrFVAEs" class="discord-btn" target="_blank">
+    <!-- Discord Button - Icon only -->
+    <a href="https://discord.gg/dURVrFVAEs" class="discord-btn" target="_blank" title="Join Discord">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
       </svg>
-      Discord
     </a>
 
     <!-- GitHub Button -->
@@ -49,6 +98,96 @@ function toggleTheme() {
   align-items: center;
   gap: 0.75rem;
   margin-left: 1rem;
+}
+
+/* Custom Search Bar - matches website exactly */
+.custom-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #0f0f12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  padding-left: 2.25rem;
+  padding-right: 3rem;
+  height: 34px;
+  min-width: 180px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.custom-search:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: #18181b;
+}
+
+.custom-search:focus {
+  outline: none;
+  border-color: #c23c40;
+  background: #09090b;
+}
+
+.custom-search .search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: #71717a;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.custom-search .search-placeholder {
+  color: #71717a;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.custom-search .search-kbd {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+  color: #71717a;
+}
+
+/* Light mode search */
+:root:not(.dark) .custom-search {
+  background: #f8f9fa;
+  border-color: #e2e8f0;
+}
+
+:root:not(.dark) .custom-search:hover {
+  background: #e9ecef;
+  border-color: #cbd5e0;
+}
+
+:root:not(.dark) .custom-search:focus {
+  border-color: #c23c40;
+  background: #ffffff;
+}
+
+:root:not(.dark) .custom-search .search-icon {
+  color: #718096;
+}
+
+:root:not(.dark) .custom-search .search-placeholder {
+  color: #718096;
+}
+
+:root:not(.dark) .custom-search .search-kbd {
+  background: #e2e8f0;
+  border-color: #cbd5e0;
+  color: #718096;
 }
 
 .theme-toggle {
@@ -82,7 +221,7 @@ function toggleTheme() {
 
 /* Dark mode specific styling */
 .dark .theme-toggle {
-  background: #1f1f23;
+  background: #0f0f12;
   border-color: rgba(255, 255, 255, 0.08);
   color: #a1a1aa;
 }
@@ -99,53 +238,27 @@ function toggleTheme() {
 }
 
 .discord-btn {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
+  justify-content: center;
+  width: 34px;
   height: 34px;
   border-radius: 8px;
-  overflow: hidden;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: white;
   text-decoration: none;
-  background: linear-gradient(
-    90deg,
-    #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #5f27cd, #ff6b6b
-  );
-  background-size: 200% auto;
-  animation: rainbow-shift 3s linear infinite;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.discord-btn::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  background: inherit;
-  background-size: inherit;
-  animation: inherit;
-  filter: blur(8px);
-  opacity: 0.5;
-  z-index: -1;
+  color: white;
+  background: #5865F2;
+  transition: all 0.2s;
 }
 
 .discord-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.3);
+  transform: translateY(-1px);
+  background: #4752c4;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.4);
 }
 
 .discord-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-@keyframes rainbow-shift {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
+  width: 18px;
+  height: 18px;
 }
 
 .github-btn {
@@ -180,7 +293,7 @@ function toggleTheme() {
 
 /* Dark mode GitHub button */
 .dark .github-btn {
-  background: #1f1f23;
+  background: #0f0f12;
   border-color: rgba(255, 255, 255, 0.08);
   color: #fafafa;
 }
@@ -209,5 +322,24 @@ function toggleTheme() {
   width: 14px;
   height: 14px;
   color: #f0c14b;
+}
+
+/* Responsive - hide search bar width, keep icon on mobile */
+@media (max-width: 768px) {
+  .custom-search {
+    min-width: auto;
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .custom-search .search-icon {
+    position: static;
+  }
+
+  .custom-search .search-placeholder,
+  .custom-search .search-kbd {
+    display: none;
+  }
 }
 </style>

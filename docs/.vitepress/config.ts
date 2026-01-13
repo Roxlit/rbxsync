@@ -22,13 +22,17 @@ export default defineConfig({
     siteTitle: 'RbxSync Docs',
 
     nav: [
-      { text: 'Home', link: 'https://rbxsync.dev' },
       { text: 'Guide', link: '/getting-started/' },
-      { text: 'CLI', link: '/cli/' },
-      { text: 'Plugin', link: '/plugin/' },
-      { text: 'VS Code', link: '/vscode/' },
-      { text: 'File Formats', link: '/file-formats/' },
-      { text: 'MCP', link: '/mcp/' },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'CLI', link: '/cli/' },
+          { text: 'Plugin', link: '/plugin/' },
+          { text: 'VS Code', link: '/vscode/' },
+          { text: 'File Formats', link: '/file-formats/' },
+          { text: 'MCP', link: '/mcp/' },
+        ]
+      },
       { text: 'FAQ', link: '/faq' },
     ],
 
@@ -119,7 +123,7 @@ export default defineConfig({
 
     footer: {
       message: '',
-      copyright: '© 2026 Smokestack Games',
+      copyright: '© 2026 <a href="https://smokestackgames.com/" target="_blank" rel="noopener noreferrer">Smokestack Games</a>',
     },
   },
 

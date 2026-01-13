@@ -6,6 +6,9 @@
 @import url('https://rsms.me/inter/inter.css');
 
 :root {
+  /* Nav height - match VitePress default */
+  --vp-nav-height: 64px;
+
   /* Brand colors - same for both themes */
   --vp-c-brand-1: #c23c40;
   --vp-c-brand-2: #dc4a4f;
@@ -58,34 +61,41 @@
 
 /* Nav bar styling to match main site */
 .VPNavBar {
-  border-bottom: 1px solid var(--vp-c-divider) !important;
-  backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
-/* Dark mode navbar */
+.VPNavBar .divider {
+  display: block !important;
+  background: var(--vp-c-divider) !important;
+}
+
+/* Hide extra divider lines */
+.VPNavBar .divider-line {
+  display: none !important;
+}
+
+.VPSidebar .curtain {
+  display: none !important;
+}
+
+/* Dark mode navbar - opaque */
 .dark .VPNavBar {
-  background: rgba(9, 9, 11, 0.85) !important;
+  background: #09090b !important;
 }
 
-.dark .VPNavBar .wrapper,
-.dark .VPNavBar .container {
-  background: transparent !important;
-}
-
-/* Light mode navbar */
+/* Light mode navbar - opaque */
 :root:not(.dark) .VPNavBar {
-  background: rgba(255, 255, 255, 0.95) !important;
-}
-
-:root:not(.dark) .VPNavBar .wrapper,
-:root:not(.dark) .VPNavBar .container,
-:root:not(.dark) .VPNavBar .content,
-:root:not(.dark) .VPNavBar .content-body {
-  background: transparent !important;
+  background: #ffffff !important;
 }
 
 /* Hide default VitePress appearance toggle - using custom one */
 .VPNavBarAppearance {
+  display: none !important;
+}
+
+/* Hide appearance toggle in mobile menu too */
+.VPNavScreenAppearance {
   display: none !important;
 }
 
@@ -241,7 +251,7 @@
 
 /* Sidebar styling */
 .VPSidebar {
-  border-right: 1px solid var(--vp-c-divider) !important;
+  border-right: none !important;
 }
 
 /* Table styling */
@@ -271,6 +281,16 @@
   border-top: 1px solid var(--vp-c-divider) !important;
 }
 
+.VPFooter a {
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.VPFooter a:hover {
+  color: var(--vp-c-text-1);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -290,42 +310,99 @@
   background: var(--vp-c-text-3);
 }
 
-/* Mobile responsive nav - match homepage */
-@media (max-width: 768px) {
-  /* Make custom nav buttons icon-only on mobile */
-  .custom-nav-buttons {
-    gap: 0.5rem;
-    margin-left: 0.5rem;
-  }
+/* Hide VitePress three dots/extra menu button */
+.VPNavBarExtra {
+  display: none !important;
+}
 
-  .custom-nav-buttons .discord-btn {
-    padding: 0;
-    width: 34px;
-    height: 34px;
-    justify-content: center;
-    font-size: 0;
-    gap: 0;
-  }
+/* Hide default VitePress search visually - using custom search in CustomNav */
+/* Use visibility/size trick instead of display:none so it can still receive clicks */
+.VPNavBarSearch {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 
-  .custom-nav-buttons .discord-btn svg {
-    width: 18px;
-    height: 18px;
+#local-search {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+
+/* Hide GitHub stars at medium width */
+@media (max-width: 1100px) {
+  .custom-nav-buttons .github-stars {
+    display: none !important;
   }
 
   .custom-nav-buttons .github-btn {
-    padding: 0;
-    width: 34px;
-    height: 34px;
-    justify-content: center;
+    padding: 0 !important;
+    width: 34px !important;
+    justify-content: center !important;
+  }
+}
+
+/* Switch to mobile nav earlier - hide desktop menu, show hamburger */
+@media (max-width: 960px) {
+  .VPNavBarMenu {
+    display: none !important;
   }
 
-  .custom-nav-buttons .github-btn > svg {
-    width: 18px;
-    height: 18px;
+  .VPNavBarHamburger {
+    display: flex !important;
+  }
+}
+
+/* Mobile view - clean uniform buttons */
+@media (max-width: 768px) {
+  /* Override VitePress nav container gap */
+  .VPNavBar .content-body,
+  .VPNavBar .content,
+  .VPNavBar .container {
+    gap: 0.5rem !important;
+  }
+
+  /* Normalize search bar spacing */
+  .VPNavBarSearch {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .VPNavBarSearch button {
+    margin: 0 !important;
+  }
+
+  .custom-nav-buttons {
+    gap: 0.5rem !important;
+    margin-left: 0 !important;
   }
 
   .custom-nav-buttons .github-stars {
-    display: none;
+    display: none !important;
+  }
+
+  .custom-nav-buttons .theme-toggle,
+  .custom-nav-buttons .discord-btn,
+  .custom-nav-buttons .github-btn {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
 
