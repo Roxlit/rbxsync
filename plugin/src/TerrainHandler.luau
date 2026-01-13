@@ -256,4 +256,171 @@ function TerrainHandler.extractTerrain(): TerrainData?
     }
 end
 
+-- RLE decompress an array
+local function rleDecompress(data: {number}): {number}
+    local result = {}
+    for i = 1, #data, 2 do
+        local count = data[i]
+        local value = data[i + 1]
+        for _ = 1, count do
+            table.insert(result, value)
+        end
+    end
+    return result
+end
+
+-- Unflatten 1D array to 3D (inverse of flattenMaterials)
+local function unflattenTo3D(flat: {number}, size: number): {{{number}}}
+    local result = {}
+    local idx = 1
+    for x = 1, size do
+        result[x] = {}
+        for y = 1, size do
+            result[x][y] = {}
+            for z = 1, size do
+                result[x][y][z] = flat[idx] or 0
+                idx += 1
+            end
+        end
+    end
+    return result
+end
+
+-- Convert material values to Enum.Material
+local function materialsToEnum(materials3D: {{{number}}}): {{{Enum.Material}}}
+    local result = {}
+    for x, plane in materials3D do
+        result[x] = {}
+        for y, row in plane do
+            result[x][y] = {}
+            for z, matValue in row do
+                -- Find the material enum with this value
+                local material = Enum.Material.Air
+                for _, mat in Enum.Material:GetEnumItems() do
+                    if mat.Value == matValue then
+                        material = mat
+                        break
+                    end
+                end
+                result[x][y][z] = material
+            end
+        end
+    end
+    return result
+end
+
+-- Convert quantized occupancies back to 0-1 range
+local function dequantizeOccupancies(occupancies3D: {{{number}}}): {{{number}}}
+    local result = {}
+    for x, plane in occupancies3D do
+        result[x] = {}
+        for y, row in plane do
+            result[x][y] = {}
+            for z, occ in row do
+                result[x][y][z] = occ / 255
+            end
+        end
+    end
+    return result
+end
+
+-- Apply a single terrain chunk
+local function applyChunk(chunk: TerrainChunk, chunkSize: number, resolution: number): boolean
+    if not Terrain then
+        return false
+    end
+
+    local worldSize = chunkSize * resolution
+
+    local minPos = Vector3.new(
+        chunk.x * worldSize,
+        chunk.y * worldSize,
+        chunk.z * worldSize
+    )
+
+    local maxPos = Vector3.new(
+        minPos.X + worldSize,
+        minPos.Y + worldSize,
+        minPos.Z + worldSize
+    )
+
+    local region = Region3.new(minPos, maxPos)
+
+    -- Decompress materials (RLE compressed)
+    local flatMaterials = rleDecompress(chunk.materials)
+    local materials3D = unflattenTo3D(flatMaterials, chunkSize)
+    local materialEnums = materialsToEnum(materials3D)
+
+    -- Unflatten occupancies (not RLE compressed)
+    local occupancies3D = unflattenTo3D(chunk.occupancies, chunkSize)
+    local occupancies = dequantizeOccupancies(occupancies3D)
+
+    -- Write voxels
+    local ok = pcall(function()
+        Terrain:WriteVoxels(region, resolution, materialEnums, occupancies)
+    end)
+
+    return ok
+end
+
+-- Apply terrain data from file
+function TerrainHandler.applyTerrain(data: TerrainData): (boolean, number)
+    if not Terrain then
+        return false, 0
+    end
+
+    if not data or not data.chunks or #data.chunks == 0 then
+        return true, 0 -- No terrain data, success with 0 chunks
+    end
+
+    print(string.format("[RbxSync] Applying terrain: %d chunks", #data.chunks))
+
+    local chunkSize = data.chunkSize or CHUNK_SIZE
+    local resolution = data.resolution or RESOLUTION
+
+    -- Apply properties first
+    if data.properties then
+        for propName, value in data.properties do
+            pcall(function()
+                if type(value) == "table" and value.r ~= nil then
+                    -- Convert Color3 from table
+                    (Terrain :: any)[propName] = Color3.new(value.r, value.g, value.b)
+                else
+                    (Terrain :: any)[propName] = value
+                end
+            end)
+        end
+    end
+
+    -- Apply chunks
+    local appliedChunks = 0
+    for i, chunk in data.chunks do
+        if applyChunk(chunk, chunkSize, resolution) then
+            appliedChunks += 1
+        end
+
+        -- Yield periodically
+        if i % 10 == 0 then
+            task.wait()
+        end
+    end
+
+    print(string.format("[RbxSync] Terrain applied: %d/%d chunks", appliedChunks, #data.chunks))
+
+    return true, appliedChunks
+end
+
+-- Clear all terrain
+function TerrainHandler.clearTerrain(): boolean
+    if not Terrain then
+        return false
+    end
+
+    local ok = pcall(function()
+        Terrain:Clear()
+    end)
+
+    return ok
+end
+
 return TerrainHandler

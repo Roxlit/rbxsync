@@ -46,6 +46,7 @@ local Sync = require(script.Sync)
 local Config = require(script.Config)
 local TestRunner = require(script.TestRunner)
 local ChangeTracker = require(script.ChangeTracker)
+local TerrainHandler = require(script.TerrainHandler)
 
 -- Initialize config with plugin reference
 Config.init(plugin)
@@ -632,6 +633,32 @@ local function extractGame(config: {any})
 
         -- Throttle to avoid Roblox rate limits
         task.wait(0.15)
+    end
+
+    -- Extract terrain if Workspace is included
+    local hasWorkspace = false
+    for _, serviceName in servicesToExtract do
+        if serviceName == "Workspace" then
+            hasWorkspace = true
+            break
+        end
+    end
+
+    if hasWorkspace then
+        local terrainData = TerrainHandler.extractTerrain()
+        if terrainData and #terrainData.chunks > 0 then
+            print(string.format("[RbxSync] Sending terrain data: %d chunks", #terrainData.chunks))
+            local terrainSuccess, terrainResult = httpPost("/extract/terrain", {
+                project_dir = projectDir,
+                session_id = sessionId,
+                terrain = terrainData,
+            })
+            if not terrainSuccess then
+                warn("[RbxSync] Failed to send terrain data:", terrainResult and terrainResult.error or "unknown error")
+            end
+        else
+            print("[RbxSync] No terrain data to extract")
+        end
     end
 
     -- Finalize
@@ -1272,6 +1299,28 @@ local function handleCommand(command: string, payload: any)
         else
             return { success = false, error = "Model loaded but was empty" }
         end
+    elseif command == "terrain:sync" then
+        -- Sync terrain from file data
+        local terrainData = payload and payload.terrain
+        if not terrainData then
+            return { success = false, error = "No terrain data provided" }
+        end
+
+        local clearFirst = payload.clear ~= false -- Default to clearing first
+        if clearFirst then
+            TerrainHandler.clearTerrain()
+        end
+
+        local ok, chunksApplied = TerrainHandler.applyTerrain(terrainData)
+        if ok then
+            return { success = true, chunksApplied = chunksApplied }
+        else
+            return { success = false, error = "Failed to apply terrain" }
+        end
+    elseif command == "terrain:clear" then
+        -- Clear all terrain
+        local ok = TerrainHandler.clearTerrain()
+        return { success = ok }
     elseif command == "studio:paths" then
         -- Get all instance paths in tracked services (for diff comparison)
         local paths = {}

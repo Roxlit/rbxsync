@@ -268,6 +268,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/extract/status", get(handle_extract_status))
         .route("/extract/export", post(handle_extract_export))
         .route("/extract/finalize", post(handle_extract_finalize))
+        .route("/extract/terrain", post(handle_extract_terrain))
         // Sync endpoints
         .route("/sync/command", post(handle_sync_command))
         .route("/sync/batch", post(handle_sync_batch))
@@ -1208,6 +1209,71 @@ async fn handle_extract_finalize(
             "filesWritten": files_written,
             "scriptsWritten": scripts_written,
             "totalInstances": all_instances.len()
+        })),
+    )
+}
+
+/// Terrain extraction request
+#[derive(Debug, Deserialize)]
+pub struct TerrainRequest {
+    pub project_dir: String,
+    pub session_id: Option<String>,
+    pub terrain: serde_json::Value,
+}
+
+/// Handle terrain data from extraction
+async fn handle_extract_terrain(Json(req): Json<TerrainRequest>) -> impl IntoResponse {
+    let terrain_dir = PathBuf::from(&req.project_dir).join("src").join("Workspace").join("Terrain");
+
+    // Create terrain directory
+    if let Err(e) = std::fs::create_dir_all(&terrain_dir) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to create terrain directory: {}", e)
+            })),
+        );
+    }
+
+    // Write terrain data to file
+    let terrain_file = terrain_dir.join("terrain.json");
+    let terrain_json = match serde_json::to_string_pretty(&req.terrain) {
+        Ok(json) => json,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to serialize terrain: {}", e)
+                })),
+            );
+        }
+    };
+
+    if let Err(e) = std::fs::write(&terrain_file, terrain_json) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to write terrain file: {}", e)
+            })),
+        );
+    }
+
+    let chunk_count = req.terrain.get("chunks")
+        .and_then(|c| c.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0);
+
+    tracing::info!("Terrain saved: {} chunks to {}", chunk_count, terrain_file.display());
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "chunksWritten": chunk_count,
+            "path": terrain_file.to_string_lossy()
         })),
     )
 }
