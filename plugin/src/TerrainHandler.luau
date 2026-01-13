@@ -53,11 +53,20 @@ local function getTerrainBounds()
 end
 
 -- Check if a chunk has any non-air voxels
-local function hasContent(materials: {{{Enum.Material}}}): boolean
+local function hasContent(materials): boolean
+    if type(materials) ~= "table" then
+        return false
+    end
     for x, plane in materials do
+        if type(plane) ~= "table" then
+            continue
+        end
         for y, row in plane do
+            if type(row) ~= "table" then
+                continue
+            end
             for z, material in row do
-                if material ~= Enum.Material.Air then
+                if typeof(material) == "EnumItem" and material ~= Enum.Material.Air then
                     return true
                 end
             end
@@ -67,12 +76,17 @@ local function hasContent(materials: {{{Enum.Material}}}): boolean
 end
 
 -- Flatten 3D array to 1D for serialization
-local function flattenMaterials(materials: {{{Enum.Material}}}): {number}
+local function flattenMaterials(materials): {number}
     local result = {}
+    if type(materials) ~= "table" then return result end
     for x, plane in materials do
+        if type(plane) ~= "table" then continue end
         for y, row in plane do
+            if type(row) ~= "table" then continue end
             for z, material in row do
-                table.insert(result, material.Value)
+                if typeof(material) == "EnumItem" then
+                    table.insert(result, material.Value)
+                end
             end
         end
     end
@@ -80,13 +94,18 @@ local function flattenMaterials(materials: {{{Enum.Material}}}): {number}
 end
 
 -- Flatten and quantize occupancies
-local function flattenOccupancies(occupancies: {{{number}}}): {number}
+local function flattenOccupancies(occupancies): {number}
     local result = {}
+    if type(occupancies) ~= "table" then return result end
     for x, plane in occupancies do
+        if type(plane) ~= "table" then continue end
         for y, row in plane do
+            if type(row) ~= "table" then continue end
             for z, occ in row do
-                -- Quantize to 0-255
-                table.insert(result, math.floor(occ * 255 + 0.5))
+                if type(occ) == "number" then
+                    -- Quantize to 0-255
+                    table.insert(result, math.floor(occ * 255 + 0.5))
+                end
             end
         end
     end
@@ -149,8 +168,13 @@ local function extractChunk(chunkX: number, chunkY: number, chunkZ: number)
     end)
 
     if not ok then
-        warn("[RbxSync] Failed to read terrain chunk at", chunkX, chunkY, chunkZ)
+        warn("[RbxSync] Failed to read terrain chunk at", chunkX, chunkY, chunkZ, "Error:", materials)
         return nil
+    end
+
+    -- Validate materials is a 3D array
+    if type(materials) ~= "table" or #materials == 0 then
+        return nil -- Empty or invalid data
     end
 
     -- Skip empty chunks
