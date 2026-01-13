@@ -108,15 +108,19 @@ function initializeProviders(apiDump: APIDumpHandler): void {
 connection.onCompletion((params) => {
   try {
     if (!completionProvider) {
+      connection.console.log('[Completion] No completion provider');
       return [];
     }
 
     const document = documents.get(params.textDocument.uri);
     if (!document) {
+      connection.console.log('[Completion] No document');
       return [];
     }
 
-    return completionProvider.getCompletions(document, params.position);
+    const completions = completionProvider.getCompletions(document, params.position);
+    connection.console.log(`[Completion] Returning ${completions.length} items`);
+    return completions;
   } catch (error) {
     connection.console.error(`Completion error: ${error}`);
     return [];

@@ -36,6 +36,15 @@ export class HoverProvider {
       case 'typeField':
         return this.getTypeHover(context.prefix);
 
+      case 'attributeKey':
+        return this.getAttributeKeyHover(context.prefix);
+
+      case 'attributeValue':
+        return this.getAttributeValueHover(context.propertyName, context.prefix);
+
+      case 'tag':
+        return this.getTagHover(context.prefix);
+
       default:
         return null;
     }
@@ -329,5 +338,106 @@ export class HoverProvider {
       default:
         return `{ "type": "${typeName}", "value": ... }`;
     }
+  }
+
+  /**
+   * Hover for attribute key
+   */
+  private getAttributeKeyHover(attrName: string | null): Hover | null {
+    if (!attrName) return null;
+
+    let content = `## Attribute: ${attrName}\n\n`;
+    content += `Instance attribute that can store custom data.\n\n`;
+    content += `---\n\n`;
+    content += `**Format:**\n`;
+    content += '```json\n';
+    content += `"attributes": {\n`;
+    content += `  "${attrName}": {\n`;
+    content += `    "type": "<type>",\n`;
+    content += `    "value": <value>\n`;
+    content += `  }\n`;
+    content += `}\n`;
+    content += '```\n\n';
+    content += `**Supported Types:** bool, int, float, double, string, Vector2, Vector3, `;
+    content += `Color3, CFrame, UDim, UDim2, NumberRange, NumberSequence, ColorSequence, `;
+    content += `Rect, BrickColor, Font\n`;
+
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value: content,
+      },
+    };
+  }
+
+  /**
+   * Hover for attribute value context
+   */
+  private getAttributeValueHover(attrName: string | null, prefix: string | null): Hover | null {
+    if (!attrName) return null;
+
+    let content = `## Attribute Value: ${attrName}\n\n`;
+    content += `Current value for attribute "${attrName}".\n\n`;
+    content += `---\n\n`;
+    content += `Attributes use the same type/value format as properties.\n\n`;
+    content += `**Example:**\n`;
+    content += '```json\n';
+    content += `"${attrName}": { "type": "string", "value": "custom data" }\n`;
+    content += '```\n';
+
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value: content,
+      },
+    };
+  }
+
+  /**
+   * Hover for tag
+   */
+  private getTagHover(tagName: string | null): Hover | null {
+    if (!tagName) return null;
+
+    // Common Roblox tags with descriptions
+    const tagDescriptions: Record<string, string> = {
+      'Workspace': 'Indicates this instance should be placed in Workspace',
+      'ServerStorage': 'Indicates this instance should be placed in ServerStorage',
+      'ReplicatedStorage': 'Indicates this instance should be placed in ReplicatedStorage',
+      'ReplicatedFirst': 'Indicates this instance should be placed in ReplicatedFirst',
+      'StarterGui': 'Indicates this instance should be placed in StarterGui',
+      'StarterPack': 'Indicates this instance should be placed in StarterPack',
+      'StarterPlayer': 'Indicates this instance should be placed in StarterPlayer',
+      'StarterCharacterScripts': 'Indicates this script runs in StarterCharacterScripts',
+      'StarterPlayerScripts': 'Indicates this script runs in StarterPlayerScripts',
+      'Untagged': 'Instance has no collection service tags',
+    };
+
+    let content = `## Tag: ${tagName}\n\n`;
+
+    const description = tagDescriptions[tagName];
+    if (description) {
+      content += `${description}\n\n`;
+    } else {
+      content += `CollectionService tag for grouping and identifying instances.\n\n`;
+    }
+
+    content += `---\n\n`;
+    content += `Tags can be used with **CollectionService** to:\n`;
+    content += `- Group related instances\n`;
+    content += `- Apply behaviors to tagged objects\n`;
+    content += `- Query instances by tag\n\n`;
+    content += `**Lua Example:**\n`;
+    content += '```lua\n';
+    content += `local CollectionService = game:GetService("CollectionService")\n`;
+    content += `local tagged = CollectionService:GetTagged("${tagName}")\n`;
+    content += '```\n';
+
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value: content,
+      },
+    };
   }
 }

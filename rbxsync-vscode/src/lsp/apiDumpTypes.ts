@@ -112,6 +112,8 @@ export const PROPERTY_TYPES = [
   'SecurityCapabilities',
   'BinaryString',
   'SharedString',
+  'TweenInfo',
+  'Path2DControlPoint',
 ] as const;
 
 export type PropertyType = typeof PROPERTY_TYPES[number];
@@ -155,5 +157,13 @@ export const VALUE_TYPE_TO_RBXJSON: Record<string, PropertyType> = {
   'BinaryString': 'BinaryString',
   'SharedString': 'SharedString',
   'Content': 'Content',
+  'ContentId': 'string',  // Legacy type - serializes as string with originalType: "ContentId"
   'ProtectedString': 'ProtectedString',
+
+  // Additional types
+  'DateTime': 'int64',           // Serializes as Unix timestamp
+  'QDir': 'string',              // Directory path
+  'QFont': 'Font',               // Qt font type
+  'TweenInfo': 'TweenInfo',      // Animation tween config
+  'Path2DControlPoint': 'Path2DControlPoint',  // Path control point
 };

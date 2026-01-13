@@ -61,15 +61,9 @@ export class DiagnosticsProvider {
           continue;
         }
 
-        // Check if property is serializable
-        if (!propInfo.serialization.CanSave) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Warning,
-            range,
-            message: `Property "${propName}" is not serializable`,
-            source: 'rbxjson',
-          });
-        }
+        // Note: We don't warn about CanSave=false properties because the API dump
+        // metadata is misleading. Properties like "Size" have CanSave=false but ARE
+        // saved to files - CanSave refers to replication, not file serialization.
 
         // Check if property has correct type wrapper
         if (propValue && typeof propValue === 'object') {
@@ -190,13 +184,24 @@ export class DiagnosticsProvider {
         break;
 
       case 'string':
-      case 'Content':
       case 'ProtectedString':
         if (typeof value !== 'string') {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range,
             message: `Property "${propName}" value must be a string`,
+            source: 'rbxjson',
+          });
+        }
+        break;
+
+      case 'Content':
+        // Content can be a string OR null (new *Content properties allow null)
+        if (value !== null && typeof value !== 'string') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" value must be a string or null`,
             source: 'rbxjson',
           });
         }
@@ -224,6 +229,137 @@ export class DiagnosticsProvider {
 
       case 'UDim2':
         this.validateUDim2Value(propName, value, range, diagnostics);
+        break;
+
+      // Additional numeric types
+      case 'BrickColor':
+      case 'SecurityCapabilities':
+        if (typeof value !== 'number') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" value must be a number`,
+            source: 'rbxjson',
+          });
+        }
+        break;
+
+      // Additional string types
+      case 'BinaryString':
+      case 'UniqueId':
+        if (typeof value !== 'string') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" value must be a string`,
+            source: 'rbxjson',
+          });
+        }
+        break;
+
+      // Ref type - can be string or null
+      case 'Ref':
+        if (value !== null && typeof value !== 'string') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" value must be a string or null`,
+            source: 'rbxjson',
+          });
+        }
+        break;
+
+      // Additional vector types
+      case 'Vector2int16':
+        this.validateVectorValue(propName, value, ['x', 'y'], range, diagnostics);
+        break;
+
+      case 'Vector3int16':
+        this.validateVectorValue(propName, value, ['x', 'y', 'z'], range, diagnostics);
+        break;
+
+      case 'Color3uint8':
+        this.validateVectorValue(propName, value, ['r', 'g', 'b'], range, diagnostics);
+        break;
+
+      // UDim type
+      case 'UDim':
+        this.validateVectorValue(propName, value, ['scale', 'offset'], range, diagnostics);
+        break;
+
+      // Rect type
+      case 'Rect':
+        this.validateRectValue(propName, value, range, diagnostics);
+        break;
+
+      // NumberRange type
+      case 'NumberRange':
+        this.validateVectorValue(propName, value, ['min', 'max'], range, diagnostics);
+        break;
+
+      // Faces and Axes types
+      case 'Faces':
+        this.validateFacesValue(propName, value, range, diagnostics);
+        break;
+
+      case 'Axes':
+        this.validateVectorValue(propName, value, ['x', 'y', 'z'], range, diagnostics);
+        break;
+
+      // Sequence types
+      case 'NumberSequence':
+      case 'ColorSequence':
+        this.validateSequenceValue(propName, value, range, diagnostics);
+        break;
+
+      // Font type
+      case 'Font':
+        this.validateFontValue(propName, value, range, diagnostics);
+        break;
+
+      // Region types
+      case 'Region3':
+      case 'Region3int16':
+        this.validateRegionValue(propName, value, range, diagnostics);
+        break;
+
+      // Ray type
+      case 'Ray':
+        this.validateRayValue(propName, value, range, diagnostics);
+        break;
+
+      // PhysicalProperties type
+      case 'PhysicalProperties':
+        this.validatePhysicalPropertiesValue(propName, value, range, diagnostics);
+        break;
+
+      // OptionalCFrame - can be CFrame or null
+      case 'OptionalCFrame':
+        if (value !== null) {
+          this.validateCFrameValue(propName, value, range, diagnostics);
+        }
+        break;
+
+      // SharedString - string type
+      case 'SharedString':
+        if (typeof value !== 'string') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" value must be a string`,
+            source: 'rbxjson',
+          });
+        }
+        break;
+
+      // TweenInfo type
+      case 'TweenInfo':
+        this.validateTweenInfoValue(propName, value, range, diagnostics);
+        break;
+
+      // Path2DControlPoint type
+      case 'Path2DControlPoint':
+        this.validatePath2DControlPointValue(propName, value, range, diagnostics);
         break;
     }
   }
@@ -434,6 +570,342 @@ export class DiagnosticsProvider {
           message: `Property "${propName}" UDim2 value.${axis}.offset must be a number`,
           source: 'rbxjson',
         });
+      }
+    }
+  }
+
+  /**
+   * Validate Rect value
+   */
+  private validateRectValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Rect value must be an object with min and max Vector2 values`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    for (const field of ['min', 'max']) {
+      if (!(field in obj) || !obj[field] || typeof obj[field] !== 'object') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" Rect value.${field} must be a Vector2 object`,
+          source: 'rbxjson',
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate Faces value
+   */
+  private validateFacesValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Faces value must be an object with face boolean fields`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    const faces = ['top', 'bottom', 'left', 'right', 'front', 'back'];
+    for (const face of faces) {
+      if (face in obj && typeof obj[face] !== 'boolean') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" Faces value.${face} must be a boolean`,
+          source: 'rbxjson',
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate Sequence value (NumberSequence/ColorSequence)
+   */
+  private validateSequenceValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Sequence value must be an object with keypoints array`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    if (!('keypoints' in obj) || !Array.isArray(obj.keypoints)) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Sequence value must have a keypoints array`,
+        source: 'rbxjson',
+      });
+    }
+  }
+
+  /**
+   * Validate Font value
+   */
+  private validateFontValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Font value must be an object with family, weight, style`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    if (!('family' in obj) || typeof obj.family !== 'string') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Font value.family must be a string`,
+        source: 'rbxjson',
+      });
+    }
+  }
+
+  /**
+   * Validate Region3/Region3int16 value
+   */
+  private validateRegionValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Region value must be an object with min and max Vector3 values`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    for (const field of ['min', 'max']) {
+      if (!(field in obj) || !obj[field] || typeof obj[field] !== 'object') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" Region value.${field} must be a Vector3 object`,
+          source: 'rbxjson',
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate Ray value
+   */
+  private validateRayValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Ray value must be an object with origin and direction`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    for (const field of ['origin', 'direction']) {
+      if (!(field in obj) || !obj[field] || typeof obj[field] !== 'object') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" Ray value.${field} must be a Vector3 object`,
+          source: 'rbxjson',
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate PhysicalProperties value
+   */
+  private validatePhysicalPropertiesValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" PhysicalProperties value must be an object`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+    const fields = ['density', 'friction', 'elasticity'];
+    for (const field of fields) {
+      if (field in obj && typeof obj[field] !== 'number') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" PhysicalProperties value.${field} must be a number`,
+          source: 'rbxjson',
+        });
+      }
+    }
+  }
+
+  /**
+   * Validate TweenInfo value
+   */
+  private validateTweenInfoValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" TweenInfo value must be an object`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+
+    // Required number fields
+    const numberFields = ['time', 'delayTime', 'repeatCount'];
+    for (const field of numberFields) {
+      if (field in obj && typeof obj[field] !== 'number') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" TweenInfo value.${field} must be a number`,
+          source: 'rbxjson',
+        });
+      }
+    }
+
+    // Boolean fields
+    if ('reverses' in obj && typeof obj.reverses !== 'boolean') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" TweenInfo value.reverses must be a boolean`,
+        source: 'rbxjson',
+      });
+    }
+
+    // String enum fields
+    if ('easingStyle' in obj && typeof obj.easingStyle !== 'string') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" TweenInfo value.easingStyle must be a string`,
+        source: 'rbxjson',
+      });
+    }
+
+    if ('easingDirection' in obj && typeof obj.easingDirection !== 'string') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" TweenInfo value.easingDirection must be a string`,
+        source: 'rbxjson',
+      });
+    }
+  }
+
+  /**
+   * Validate Path2DControlPoint value
+   */
+  private validatePath2DControlPointValue(
+    propName: string,
+    value: unknown,
+    range: Range,
+    diagnostics: Diagnostic[]
+  ): void {
+    if (!value || typeof value !== 'object') {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Property "${propName}" Path2DControlPoint value must be an object`,
+        source: 'rbxjson',
+      });
+      return;
+    }
+
+    const obj = value as Record<string, unknown>;
+
+    // position field should be a UDim2
+    if ('position' in obj) {
+      const pos = obj.position;
+      if (!pos || typeof pos !== 'object') {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range,
+          message: `Property "${propName}" Path2DControlPoint value.position must be a UDim2 object`,
+          source: 'rbxjson',
+        });
+      }
+    }
+
+    // leftTangent and rightTangent should be UDim2
+    for (const field of ['leftTangent', 'rightTangent']) {
+      if (field in obj) {
+        const tangent = obj[field];
+        if (!tangent || typeof tangent !== 'object') {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range,
+            message: `Property "${propName}" Path2DControlPoint value.${field} must be a UDim2 object`,
+            source: 'rbxjson',
+          });
+        }
       }
     }
   }
