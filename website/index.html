@@ -2324,8 +2324,21 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 3rem;
-            align-items: start;
             overflow: visible;
+            position: relative;
+        }
+
+        .format-section > .format-info {
+            /* Left column determines the row height */
+        }
+
+        .format-section > .code-example {
+            /* Right column fills the height set by left column */
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: calc(50% - 1.5rem);
         }
 
         .format-info {
@@ -2703,7 +2716,6 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            max-height: 400px;
         }
 
         .code-header {
@@ -3825,8 +3837,9 @@
 
         /* Install Final Step - Two Equal Paths */
         .install-final-step {
-            margin-top: 3rem;
+            margin-top: 2.5rem;
             padding-top: 2.5rem;
+            border-top: 1px solid var(--border);
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.8s ease, transform 0.8s ease;
@@ -4561,7 +4574,11 @@
             .value-grid { grid-template-columns: 1fr; }
             .feature-grid { grid-template-columns: 1fr; }
             .format-section { grid-template-columns: 1fr; }
-            .code-example { max-height: 300px; }
+            .format-section > .code-example {
+                position: relative;
+                width: 100%;
+                max-height: 350px;
+            }
             .extract-section { grid-template-columns: 1fr; }
             .e2e-section { grid-template-columns: 1fr; }
             .cli-grid { grid-template-columns: 1fr 1fr; }
