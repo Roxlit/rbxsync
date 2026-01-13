@@ -92,6 +92,7 @@
 
         html {
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
         body {
@@ -99,6 +100,7 @@
             color: var(--text-primary);
             line-height: 1.6;
             font-size: 16px;
+            overflow-x: hidden;
         }
 
         a { color: var(--rbx-red); }
@@ -1775,13 +1777,11 @@
             cursor: default;
         }
 
-        @media (hover: hover) {
-            .extract-file:hover {
-                border-color: var(--rbx-red);
-                color: var(--text-primary);
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(194, 60, 64, 0.15);
-            }
+        .extract-file:hover {
+            border-color: var(--rbx-red);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(194, 60, 64, 0.15);
         }
 
         .extract-file.extract-rainbow {
@@ -1914,12 +1914,10 @@
             overflow: hidden;
         }
 
-        @media (hover: hover) {
-            .comparison-card:hover {
-                border-color: var(--border-hover);
-                transform: translateY(-4px);
-                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-            }
+        .comparison-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
         }
 
         .comparison-card.featured {
@@ -1928,11 +1926,9 @@
             animation: primary-hue-shift 9s ease-in-out infinite;
         }
 
-        @media (hover: hover) {
-            .comparison-card.featured:hover {
-                border-color: var(--rbx-red);
-                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--rbx-red);
-            }
+        .comparison-card.featured:hover {
+            border-color: var(--rbx-red);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--rbx-red);
         }
 
         .comparison-card-badge {
@@ -3826,11 +3822,30 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .install-card-wrapper {
+                width: 100%;
+                max-width: 400px;
+            }
         }
 
         @media (max-width: 600px) {
             .install-oneliner code {
                 font-size: 0.625rem;
+            }
+
+            .install-card-wrapper {
+                width: fit-content;
+                max-width: 100%;
+            }
+
+            .install-card {
+                width: fit-content;
+                min-width: 0;
+            }
+
+            .install-cards-grid {
+                width: 100%;
             }
         }
 
@@ -4291,14 +4306,12 @@
             transform: translateZ(20px);
         }
 
-        @media (hover: hover) {
-            .testimonial-card:hover {
-                border-color: rgba(194, 60, 64, 0.3);
-                box-shadow:
-                    0 25px 50px rgba(0, 0, 0, 0.25),
-                    0 0 0 1px rgba(194, 60, 64, 0.15);
-                z-index: 10;
-            }
+        .testimonial-card:hover {
+            border-color: rgba(194, 60, 64, 0.3);
+            box-shadow:
+                0 25px 50px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(194, 60, 64, 0.15);
+            z-index: 10;
         }
 
         /* Inner content gets slight 3D lift */
@@ -4641,6 +4654,15 @@
 
             .testimonial-name {
                 font-size: 0.8125rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 100%;
+            }
+
+            .testimonial-info {
+                min-width: 0;
+                overflow: hidden;
             }
 
             .testimonial-role {
@@ -4663,6 +4685,167 @@
 
             .value-card p {
                 font-size: 0.875rem;
+            }
+
+            /* Footer - tighter spacing on mobile */
+            .footer-links {
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+
+            /* Install controls - tighter on mobile */
+            .install-controls {
+                gap: 1rem;
+            }
+
+            .install-control-label {
+                display: none;
+            }
+
+            /* Install card - constrain width to prevent overflow */
+            .install-card {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .install-oneliner {
+                max-width: 100%;
+            }
+
+            .install-oneliner code {
+                font-size: 0.6rem;
+                word-break: break-all;
+            }
+
+            /* Ensure sections don't cause overflow */
+            .section-inner {
+                max-width: 100%;
+            }
+
+            /* Comparison legend - wrap and tighter gap on mobile */
+            .comparison-legend {
+                gap: 0.75rem 1rem;
+                flex-wrap: wrap;
+            }
+
+            .comparison-legend-item {
+                font-size: 0.65rem;
+            }
+
+            /* Prevent iOS zoom on input focus - must be 16px+ */
+            .class-search-input,
+            input[type="text"],
+            input[type="search"],
+            textarea,
+            select {
+                font-size: 16px;
+            }
+
+            /* Class search dropdown - prevent horizontal scroll */
+            .class-search-dropdown {
+                overflow-x: hidden;
+            }
+
+            .class-search-item {
+                flex-wrap: wrap;
+                gap: 0.25rem;
+            }
+
+            .class-search-item-name {
+                font-size: 0.8rem;
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .class-search-item-meta {
+                font-size: 0.65rem;
+                gap: 0.5rem;
+                flex-basis: 100%;
+            }
+
+            /* Rotating text - slightly smaller on mobile */
+            .rotating-text span {
+                font-size: 0.9em;
+            }
+
+            /* Code example - constrain on mobile */
+            .code-example {
+                max-width: calc(100vw - 2.5rem);
+            }
+
+            .code-example pre {
+                font-size: 0.7rem;
+            }
+
+            /* Format cards - constrain overflow */
+            .format-card {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .format-card pre {
+                font-size: 0.7rem !important;
+                max-width: 100%;
+            }
+
+            /* Format comparison grid list items */
+            .format-card ul {
+                font-size: 0.75rem !important;
+            }
+
+            .format-card li {
+                font-size: 0.75rem !important;
+            }
+
+            /* Code blocks in Build from Source - constrain on mobile */
+            .code-block {
+                font-size: 0.7rem;
+                padding: 0.75rem;
+                overflow-x: auto;
+                max-width: 100%;
+            }
+
+            .code-block-wrapper {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            /* Install steps in advanced mode */
+            .install-step {
+                gap: 0.75rem;
+            }
+
+            .step-content h4 {
+                font-size: 0.875rem;
+            }
+
+            .step-content p {
+                font-size: 0.8rem;
+            }
+
+            /* Interactive CLI - keep compact on mobile */
+            .shell-output,
+            .shell-prompt,
+            .shell-prefix,
+            .shell-welcome-text,
+            .shell-history-cmd,
+            .shell-history-cmd .prompt,
+            .shell-history-cmd .cmd {
+                font-size: 11px;
+            }
+
+            .shell-body {
+                min-height: 160px;
+            }
+
+            /* Shell input needs 16px to prevent iOS zoom, but scale it down visually */
+            .shell-input {
+                font-size: 16px;
+                transform: scale(0.6875);
+                transform-origin: left center;
+                width: 145%;
             }
         }
 
@@ -4689,6 +4872,22 @@
             .beta-tag {
                 font-size: 0.6rem;
                 padding: 0.15rem 0.4rem;
+            }
+
+            /* Testimonials - stack to single column on extra small screens */
+            .testimonials-grid .testimonial-card {
+                flex: 1 1 100%;
+                min-width: unset;
+            }
+
+            /* Footer - even tighter on extra small */
+            .footer-links {
+                gap: 0.75rem;
+            }
+
+            /* Sync visual - scale down more */
+            .sync-visual {
+                transform: scale(0.75);
             }
         }
     </style>
@@ -4775,7 +4974,7 @@
 
         <h1>
             Sync <span class="code-box"><span class="rotating-wrapper"><span class="rotating-text" id="rotating-classnames">
-                <span class="active">ModuleScripts</span>
+                <span class="active">Scripts</span>
             </span></span><span class="code-cursor"></span></span> to Git.<br>
             <span class="accent">The sync tool that should have been.</span>
         </h1>
@@ -4905,29 +5104,6 @@
                     </div>
                     <h4>E2E Testing</h4>
                     <p>Run live playtests from CLI. Capture console output for verification.</p>
-                </div>
-
-                <!-- Third bottom row - Rojo migration -->
-                <div class="feature-card bento-small">
-                    <div class="bento-icon gold">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4a438" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-                    </div>
-                    <h4>Rojo Migration</h4>
-                    <p>One command to convert Rojo projects. Preserves directory structure.</p>
-                </div>
-                <div class="feature-card bento-small">
-                    <div class="bento-icon cyan">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-                    </div>
-                    <h4>Background Server</h4>
-                    <p>Run sync server as a daemon. No terminal window needed.</p>
-                </div>
-                <div class="feature-card bento-small">
-                    <div class="bento-icon purple">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                    </div>
-                    <h4>Optimization Stats</h4>
-                    <p>View lighting, mesh, animation counts. Find optimization opportunities.</p>
                 </div>
             </div>
         </div>
@@ -5145,10 +5321,6 @@
                                 <span class="comparison-feature-name">E2E testing from CLI</span>
                                 <span class="status-icon yes">✓</span>
                             </div>
-                            <div class="comparison-feature">
-                                <span class="comparison-feature-name">Rojo project migration</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -5189,10 +5361,6 @@
                             <span class="comparison-feature-name">E2E testing from CLI</span>
                             <span class="status-icon no">✗</span>
                         </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Rojo project migration</span>
-                            <span class="status-icon no" title="Is Rojo">—</span>
-                        </div>
                     </div>
                 </div>
 
@@ -5230,10 +5398,6 @@
                         </div>
                         <div class="comparison-feature">
                             <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Rojo project migration</span>
                             <span class="status-icon no">✗</span>
                         </div>
                     </div>
@@ -5275,10 +5439,6 @@
                             <span class="comparison-feature-name">E2E testing from CLI</span>
                             <span class="status-icon no">✗</span>
                         </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Rojo project migration</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
                     </div>
                 </div>
 
@@ -5318,10 +5478,6 @@
                             <span class="comparison-feature-name">E2E testing from CLI</span>
                             <span class="status-icon no">✗</span>
                         </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Rojo project migration</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
                     </div>
                 </div>
 
@@ -5359,10 +5515,6 @@
                         </div>
                         <div class="comparison-feature">
                             <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Rojo project migration</span>
                             <span class="status-icon no">✗</span>
                         </div>
                     </div>
@@ -5455,10 +5607,14 @@
                     border: 1px solid var(--border);
                     border-radius: 12px;
                     padding: 1.5rem;
+                    overflow: hidden;
+                    min-width: 0;
                 }
                 .format-card pre {
                     background: #0c0c0e !important;
                     border: 1px solid var(--border);
+                    max-width: 100%;
+                    overflow-x: auto;
                 }
                 [data-theme="light"] .format-card pre {
                     background: #f1f5f9 !important;
@@ -5467,6 +5623,21 @@
                 @media (max-width: 768px) {
                     .format-comparison-grid {
                         grid-template-columns: 1fr;
+                    }
+                }
+                @media (max-width: 600px) {
+                    .format-card {
+                        padding: 1rem;
+                    }
+                    .format-card pre {
+                        font-size: 0.7rem !important;
+                        padding: 0.75rem !important;
+                    }
+                    .format-card h4 {
+                        font-size: 0.875rem !important;
+                    }
+                    .format-card ul {
+                        font-size: 0.75rem !important;
                     }
                 }
             </style>
@@ -6318,9 +6489,10 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             // Get max character length based on viewport width
             function getMaxLength() {
                 const vw = window.innerWidth;
-                if (vw < 400) return 10;      // Very small mobile
-                if (vw < 600) return 12;      // Mobile
-                if (vw < 900) return 14;      // Tablet
+                if (vw < 400) return 6;       // Very small mobile - short words only
+                if (vw < 500) return 8;       // Small mobile
+                if (vw < 600) return 9;       // Mobile
+                if (vw < 900) return 12;      // Tablet
                 return 16;                    // Desktop - keeps "to Git." on same line
             }
 
@@ -6578,15 +6750,18 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                     colors: ['#c23c40', '#ffffff', '#a1a1aa', '#dc4a4f', '#71717a']
                 };
 
+                // Reduce confetti on mobile
+                const confettiCount = window.innerWidth < 600 ? 20 : 50;
+
                 installConfetti({
                     ...defaults,
-                    particleCount: 50,
+                    particleCount: confettiCount,
                     origin: { x: 0, y: originY },
                     angle: 45
                 });
                 installConfetti({
                     ...defaults,
-                    particleCount: 50,
+                    particleCount: confettiCount,
                     origin: { x: 1, y: originY },
                     angle: 135
                 });
@@ -7777,11 +7952,15 @@ For more info, try '<span class="info">help</span>'`}</div>
             // ALL particles are DOM elements so they can ALL flutter
             const allStars = [];
 
+            // Reduce star count on mobile for performance and less visual clutter
+            const isMobile = window.innerWidth < 600;
+            const starMultiplier = isMobile ? 0.3 : (window.innerWidth < 900 ? 0.6 : 1);
+
             // Create stars in 3 size categories with different parallax depths
             const starLayers = [
-                { count: 250, sizeMin: 1, sizeMax: 1.5, parallaxMin: 0.01, parallaxMax: 0.03 },   // small
-                { count: 150, sizeMin: 1.5, sizeMax: 2.5, parallaxMin: 0.03, parallaxMax: 0.05 }, // medium
-                { count: 80, sizeMin: 2.5, sizeMax: 3.5, parallaxMin: 0.05, parallaxMax: 0.08 }   // large
+                { count: Math.round(250 * starMultiplier), sizeMin: 1, sizeMax: 1.5, parallaxMin: 0.01, parallaxMax: 0.03 },   // small
+                { count: Math.round(150 * starMultiplier), sizeMin: 1.5, sizeMax: 2.5, parallaxMin: 0.03, parallaxMax: 0.05 }, // medium
+                { count: Math.round(80 * starMultiplier), sizeMin: 2.5, sizeMax: 3.5, parallaxMin: 0.05, parallaxMax: 0.08 }   // large
             ];
 
             for (const layer of starLayers) {
