@@ -2676,6 +2676,61 @@
             font-size: 0.875rem;
         }
 
+        .class-search-badges {
+            display: flex;
+            gap: 0.35rem;
+            margin-left: auto;
+        }
+
+        .class-badge {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .class-badge.blue {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .class-badge.purple {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+        }
+
+        .class-badge.orange {
+            background: rgba(251, 146, 60, 0.15);
+            color: #fb923c;
+        }
+
+        .class-badge.gray {
+            background: rgba(107, 114, 128, 0.15);
+            color: #9ca3af;
+        }
+
+        [data-theme="light"] .class-badge.blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+
+        [data-theme="light"] .class-badge.purple {
+            background: rgba(139, 92, 246, 0.1);
+            color: #7c3aed;
+        }
+
+        [data-theme="light"] .class-badge.orange {
+            background: rgba(251, 146, 60, 0.1);
+            color: #ea580c;
+        }
+
+        [data-theme="light"] .class-badge.gray {
+            background: rgba(107, 114, 128, 0.1);
+            color: #4b5563;
+        }
+
         /* Quick picks */
         .format-types-quick {
             display: flex;
@@ -6314,6 +6369,31 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                 });
             }
 
+            function getAllClasses() {
+                if (!dump) return [];
+                return dump.Classes.filter(cls => {
+                    // Only filter out truly internal/hidden classes
+                    if (cls.Name.startsWith('_')) return false;
+                    if (cls.Name.includes('Internal')) return false;
+                    const tags = cls.Tags || [];
+                    if (tags.includes('NotBrowsable')) return false;
+                    return true;
+                });
+            }
+
+            function getClassTags(cls) {
+                const badges = [];
+                const tags = cls.Tags || [];
+
+                if (tags.includes('Service')) badges.push({ label: 'Service', color: 'blue' });
+                if (tags.includes('NotCreatable')) badges.push({ label: 'Abstract', color: 'purple' });
+                if (tags.includes('Deprecated')) badges.push({ label: 'Deprecated', color: 'orange' });
+                if (tags.includes('Settings')) badges.push({ label: 'Settings', color: 'gray' });
+                if (cls.Name.startsWith('RBX')) badges.push({ label: 'Internal', color: 'gray' });
+
+                return badges;
+            }
+
             function getClassInfo(className) { return classMap.get(className); }
             function getEnumInfo(enumName) { return enumMap.get(enumName); }
             function getEnumValues(enumName) { return enumMap.get(enumName)?.Items || []; }
@@ -6374,7 +6454,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             }
 
             return {
-                load, getCreatableClasses, getClassInfo, getEnumInfo, getEnumValues,
+                load, getCreatableClasses, getAllClasses, getClassTags, getClassInfo, getEnumInfo, getEnumValues,
                 getInheritanceChain, getSerializableProperties, getRbxJsonType, VALUE_TYPE_TO_RBXJSON,
             };
         })();
@@ -7211,7 +7291,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
 
             if (!input || !dropdown || !codeEl) return;
 
-            let creatableClasses = [];
+            let allClasses = [];
             let selectedIndex = -1;
             let results = [];
 
@@ -7220,11 +7300,11 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
 
             // Fuzzy search with scoring
             function search(query) {
-                if (!query.trim()) return creatableClasses;
+                if (!query.trim()) return allClasses;
                 const q = query.toLowerCase();
                 const scored = [];
 
-                for (const cls of creatableClasses) {
+                for (const cls of allClasses) {
                     const name = cls.Name.toLowerCase();
                     let score = 0;
 
@@ -7262,12 +7342,17 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
 
                 dropdown.innerHTML = results.map((cls, i) => {
                     const propCount = APIDumpManager.getSerializableProperties(cls.Name).length;
+                    const badges = APIDumpManager.getClassTags(cls);
+                    const badgesHtml = badges.length > 0
+                        ? `<span class="class-search-badges">${badges.map(b => `<span class="class-badge ${b.color}">${b.label}</span>`).join('')}</span>`
+                        : '';
                     return `
                         <div class="class-search-item" data-index="${i}" data-class="${cls.Name}">
                             <span class="class-search-item-name">${highlightMatch(cls.Name, query)}</span>
                             <span class="class-search-item-meta">
                                 ${cls.Superclass ? '<span>extends ' + cls.Superclass + '</span>' : ''}
                                 <span>${propCount} props</span>
+                                ${badgesHtml}
                             </span>
                         </div>
                     `;
@@ -7362,9 +7447,9 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
 
             // Initialize
             APIDumpManager.load().then(() => {
-                creatableClasses = APIDumpManager.getCreatableClasses();
-                if (countEl) countEl.textContent = creatableClasses.length + ' classes';
-                console.log(`[RbxSync] Class search ready: ${creatableClasses.length} creatable classes`);
+                allClasses = APIDumpManager.getAllClasses();
+                if (countEl) countEl.textContent = allClasses.length + ' classes';
+                console.log(`[RbxSync] Class search ready: ${allClasses.length} classes`);
 
                 // Auto-select Part on load
                 selectClass('Part');
