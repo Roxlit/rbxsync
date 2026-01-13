@@ -1,0 +1,187 @@
+name: Plugin Sync Functionality
+doc_ref: docs/plugin/usage.md
+doc_ref_alt: docs/getting-started/quick-start.md
+
+description: |
+  Tests for the RbxSync plugin sync functionality.
+  These tests require Roblox Studio to be open with the plugin installed.
+  Uses the Roblox MCP for automation.
+
+requirements:
+  - Roblox Studio running
+  - RbxSync plugin installed
+  - MCP server connected
+
+claims:
+  - id: plugin-auto-extract-script
+    doc_quote: "Creating a new script"
+    description: Creating a script in Studio should auto-extract to files
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      -- Create test script in ServerScriptService
+      local sss = game:GetService("ServerScriptService")
+      local script = Instance.new("Script")
+      script.Name = "AutoExtractTest"
+      script.Source = "print('Hello from auto-extract test')"
+      script.Parent = sss
+    wait: 3000
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ServerScriptService/AutoExtractTest.server.luau
+    cleanup_studio: |
+      local sss = game:GetService("ServerScriptService")
+      local script = sss:FindFirstChild("AutoExtractTest")
+      if script then script:Destroy() end
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: plugin-auto-extract-modulescript
+    doc_quote: "Editing script source"
+    description: ModuleScripts should extract with .luau extension (no server/client suffix)
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      local rs = game:GetService("ReplicatedStorage")
+      local module = Instance.new("ModuleScript")
+      module.Name = "TestModule"
+      module.Source = "return {}"
+      module.Parent = rs
+    wait: 3000
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ReplicatedStorage/TestModule.luau
+    cleanup_studio: |
+      local rs = game:GetService("ReplicatedStorage")
+      local module = rs:FindFirstChild("TestModule")
+      if module then module:Destroy() end
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: plugin-auto-extract-localscript
+    doc_quote: "Creating a new script"
+    description: LocalScripts should extract with .client.luau extension
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      local sp = game:GetService("StarterPlayer")
+      local sps = sp:FindFirstChild("StarterPlayerScripts")
+      local script = Instance.new("LocalScript")
+      script.Name = "ClientTest"
+      script.Source = "print('Client script')"
+      script.Parent = sps
+    wait: 3000
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/StarterPlayer/StarterPlayerScripts/ClientTest.client.luau
+    cleanup_studio: |
+      local sp = game:GetService("StarterPlayer")
+      local sps = sp:FindFirstChild("StarterPlayerScripts")
+      local script = sps:FindFirstChild("ClientTest")
+      if script then script:Destroy() end
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: plugin-delete-sync
+    doc_quote: "Deleting instances"
+    description: Deleting a script in Studio should remove the file
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      mkdir -p src/ServerScriptService
+      echo "-- Will be deleted" > src/ServerScriptService/ToDelete.server.luau
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      -- First create the script so it exists in Studio
+      local sss = game:GetService("ServerScriptService")
+      local script = Instance.new("Script")
+      script.Name = "ToDelete"
+      script.Source = "-- Will be deleted"
+      script.Parent = sss
+      wait(1)
+      -- Now delete it
+      script:Destroy()
+    wait: 3000
+    assertions:
+      - type: file_not_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ServerScriptService/ToDelete.server.luau
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: plugin-debounce
+    doc_quote: "Changes are debounced (300ms) to batch rapid edits."
+    description: Rapid changes should be batched, not cause duplicate extractions
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      local sss = game:GetService("ServerScriptService")
+      -- Rapidly create and modify
+      local script = Instance.new("Script")
+      script.Name = "RapidTest"
+      script.Parent = sss
+      script.Source = "v1"
+      script.Source = "v2"
+      script.Source = "v3"
+      script.Source = "final version"
+    wait: 3000
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ServerScriptService/RapidTest.server.luau
+      - type: file_contains
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ServerScriptService/RapidTest.server.luau
+        text: "final version"
+    cleanup_studio: |
+      local sss = game:GetService("ServerScriptService")
+      local script = sss:FindFirstChild("RapidTest")
+      if script then script:Destroy() end
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: plugin-tracked-services
+    doc_quote: |
+      Auto-extract monitors these services:
+      - Workspace
+      - ReplicatedStorage
+      - ServerScriptService
+    description: Scripts in tracked services should sync
+    test_type: mcp
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      cd /Users/marissacheves/rbxsync/testing/projects/simple-game
+      rbxsync serve --background
+      sleep 2
+    setup_studio: |
+      -- Create scripts in multiple services
+      local workspace = game:GetService("Workspace")
+      local rs = game:GetService("ReplicatedStorage")
+      local sss = game:GetService("ServerScriptService")
+
+      Instance.new("Script", sss).Name = "SSSTest"
+      Instance.new("ModuleScript", rs).Name = "RSTest"
+    wait: 3000
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ServerScriptService/SSSTest.server.luau
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/simple-game/src/ReplicatedStorage/RSTest.luau
+    cleanup_studio: |
+      local sss = game:GetService("ServerScriptService")
+      local rs = game:GetService("ReplicatedStorage")
+      local s1 = sss:FindFirstChild("SSSTest")
+      local s2 = rs:FindFirstChild("RSTest")
+      if s1 then s1:Destroy() end
+      if s2 then s2:Destroy() end
+    cleanup: rbxsync stop 2>/dev/null || true

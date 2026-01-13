@@ -1,0 +1,124 @@
+name: Project Configuration
+doc_ref: docs/getting-started/configuration.md
+
+description: |
+  Tests for rbxsync.json configuration parsing and tree mapping.
+
+claims:
+  - id: config-tree-mapping-basic
+    doc_quote: |
+      Use `treeMapping` to customize how DataModel paths map to filesystem paths.
+    description: Server should read treeMapping from config
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-config-mapping && mkdir -p /tmp/test-config-mapping/src/server
+      cat > /tmp/test-config-mapping/rbxsync.json << 'EOF'
+      {
+        "name": "TreeMappingTest",
+        "tree": "./src",
+        "treeMapping": {
+          "ServerScriptService": "src/server",
+          "ReplicatedStorage": "src/shared"
+        }
+      }
+      EOF
+      echo '-- Test script' > /tmp/test-config-mapping/src/server/Test.server.luau
+      mkdir -p /tmp/test-config-mapping/src/shared
+      echo 'return {}' > /tmp/test-config-mapping/src/shared/Utils.luau
+    working_dir: /tmp/test-config-mapping
+    command: |
+      rbxsync stop 2>/dev/null || true
+      rbxsync serve --background
+      sleep 2
+      curl -s http://localhost:44755/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+    cleanup: |
+      rbxsync stop 2>/dev/null || true
+      rm -rf /tmp/test-config-mapping
+
+  - id: config-nested-mapping
+    doc_quote: |
+      "StarterPlayer/StarterPlayerScripts": "src/client"
+    description: Nested DataModel paths should work in treeMapping
+    test_type: bash
+    test_project: testing/projects/complex-game
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/complex-game
+    command: cat rbxsync.json
+    assertions:
+      - type: output_contains
+        text: '"StarterPlayer/StarterPlayerScripts": "src/client"'
+    cleanup: ""
+
+  - id: config-basic-fields
+    doc_quote: |
+      | `name` | Project folder name | Display name for the project |
+      | `tree` | `./src` | Path to the instance tree |
+      | `assets` | `./assets` | Path for binary assets |
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-config-basic && mkdir -p /tmp/test-config-basic
+    working_dir: /tmp/test-config-basic
+    command: |
+      rbxsync init --name "BasicConfigTest"
+      cat rbxsync.json
+    assertions:
+      - type: output_contains
+        text: '"name"'
+      - type: output_contains
+        text: '"tree"'
+    cleanup: rm -rf /tmp/test-config-basic
+
+  - id: config-extraction-options
+    doc_quote: |
+      | `extractBinaryAssets` | `true` | Extract meshes, images, sounds |
+      | `scriptSourceMode` | `external` | `external` (files) or `inline` (in .rbxjson) |
+    description: Config should support extraction options
+    test_type: bash
+    test_project: testing/projects/rojo-game
+    command: cat /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    assertions:
+      - type: output_contains
+        text: '"config"'
+    cleanup: ""
+
+  - id: config-sync-options
+    doc_quote: |
+      | `mode` | `bidirectional` | `push`, `pull`, or `bidirectional` |
+      | `autoSync` | `false` | Auto-sync on file changes |
+    description: Config should support sync options
+    test_type: bash
+    test_project: testing/projects/rojo-game
+    command: cat /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    assertions:
+      - type: output_contains
+        text: '"sync"'
+    cleanup: ""
+
+  - id: config-invalid-json-error
+    doc_quote: "The `rbxsync.json` file configures your project settings."
+    description: Invalid JSON should produce clear error
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-invalid-config && mkdir -p /tmp/test-invalid-config
+      echo '{invalid json' > /tmp/test-invalid-config/rbxsync.json
+    working_dir: /tmp/test-invalid-config
+    command: rbxsync serve 2>&1 || true
+    assertions:
+      - type: output_matches
+        pattern: "[Ee]rror|[Ii]nvalid|[Ff]ailed"
+    cleanup: rm -rf /tmp/test-invalid-config
+
+  - id: config-missing-config-error
+    doc_quote: "The `rbxsync.json` file configures your project settings."
+    description: Missing config should produce helpful error
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-no-config && mkdir -p /tmp/test-no-config
+    working_dir: /tmp/test-no-config
+    command: rbxsync serve 2>&1 || true
+    assertions:
+      - type: output_matches
+        pattern: "rbxsync.json|[Nn]ot found|[Mm]issing"
+    cleanup: rm -rf /tmp/test-no-config

@@ -4,6 +4,7 @@ This guide ensures all RbxSync features work correctly before release. Each test
 
 ## Quick Start
 
+### Automated Bash Tests
 ```bash
 # Run all automated tests
 cd /Users/marissacheves/rbxsync/testing
@@ -12,8 +13,57 @@ cd /Users/marissacheves/rbxsync/testing
 # Or run individual test suites
 ./scripts/test-cli.sh
 ./scripts/test-migration.sh
-./scripts/test-sync.sh
+./scripts/test-docs.sh
 ```
+
+### AI-Powered Testing
+Ask Claude Code to run tests using documentation as the source of truth:
+
+```
+"test the CLI"        # Run all CLI command tests
+"test migration"      # Run migration tests specifically
+"verify docs accuracy" # Check docs match actual behavior
+"test all"            # Run complete test suite
+```
+
+See [AI_TESTING.md](./AI_TESTING.md) for the full AI testing protocol.
+
+---
+
+## AI-Powered Testing Framework
+
+This project includes an AI-powered testing approach where Claude Code reads documentation and validates that the software behaves accordingly.
+
+### How It Works
+
+1. **Test specs** in `ai-specs/` reference documentation and define testable claims
+2. **Claude reads** the docs to understand expected behavior
+3. **Claude executes** tests and validates assertions
+4. **Claude reports** pass/fail with doc references and fix suggestions
+
+### Test Spec Files
+
+| File | Tests |
+|------|-------|
+| `cli-init.yaml` | Init command |
+| `cli-serve.yaml` | Serve/stop commands |
+| `cli-migrate.yaml` | Rojo migration |
+| `cli-build.yaml` | Build commands |
+| `plugin-sync.yaml` | Plugin sync (requires Studio + MCP) |
+| `config.yaml` | Configuration parsing |
+
+### Running AI Tests
+
+Just ask Claude:
+- **"run tests from cli-init.yaml"** - Run specific spec
+- **"test the CLI"** - All CLI tests
+- **"verify docs"** - Check docs accuracy
+
+### Benefits
+
+- **Single source of truth**: Documentation drives tests
+- **Self-healing**: When behavior changes, Claude identifies whether to fix docs or code
+- **Comprehensive**: Tests both behavior AND documentation accuracy
 
 ---
 

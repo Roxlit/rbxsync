@@ -18,8 +18,13 @@ MyGame/
 │   ├── ReplicatedStorage/
 │   ├── ServerScriptService/
 │   └── ...
-└── sourcemap.json        # For Luau LSP
+├── assets/               # Binary assets (meshes, images, sounds)
+└── terrain/              # Terrain voxel data
 ```
+
+::: tip Luau LSP
+Run `rbxsync sourcemap` to generate sourcemap.json for Luau language server support.
+:::
 
 ## Start the Server
 

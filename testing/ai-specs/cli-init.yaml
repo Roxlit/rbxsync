@@ -1,0 +1,102 @@
+name: CLI Init Command
+doc_ref: docs/cli/commands.md#init
+doc_ref_alt: docs/getting-started/quick-start.md
+
+description: |
+  Tests for the `rbxsync init` command that creates new projects.
+
+claims:
+  - id: init-creates-config
+    doc_quote: "Creates `rbxsync.json` and the `src/` directory structure."
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init && mkdir -p /tmp/test-init
+    working_dir: /tmp/test-init
+    command: rbxsync init --name "TestGame"
+    assertions:
+      - type: file_exists
+        path: /tmp/test-init/rbxsync.json
+      - type: dir_exists
+        path: /tmp/test-init/src
+    cleanup: rm -rf /tmp/test-init
+
+  - id: init-name-flag
+    doc_quote: "rbxsync init [--name NAME]"
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init-name && mkdir -p /tmp/test-init-name
+    working_dir: /tmp/test-init-name
+    command: rbxsync init --name "CustomProjectName"
+    assertions:
+      - type: json_field
+        path: /tmp/test-init-name/rbxsync.json
+        field: name
+        expected: CustomProjectName
+    cleanup: rm -rf /tmp/test-init-name
+
+  - id: init-creates-sourcemap
+    doc_quote: "└── sourcemap.json        # For Luau LSP"
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init-sourcemap && mkdir -p /tmp/test-init-sourcemap
+    working_dir: /tmp/test-init-sourcemap
+    command: rbxsync init --name "SourcemapTest"
+    assertions:
+      - type: file_exists
+        path: /tmp/test-init-sourcemap/sourcemap.json
+    cleanup: rm -rf /tmp/test-init-sourcemap
+
+  - id: init-creates-service-dirs
+    doc_quote: |
+      src/                  # Instance tree
+      ├── Workspace/
+      ├── ReplicatedStorage/
+      ├── ServerScriptService/
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init-services && mkdir -p /tmp/test-init-services
+    working_dir: /tmp/test-init-services
+    command: rbxsync init --name "ServiceDirsTest"
+    assertions:
+      - type: dir_exists
+        path: /tmp/test-init-services/src/Workspace
+      - type: dir_exists
+        path: /tmp/test-init-services/src/ReplicatedStorage
+      - type: dir_exists
+        path: /tmp/test-init-services/src/ServerScriptService
+    cleanup: rm -rf /tmp/test-init-services
+
+  - id: init-default-name
+    doc_quote: "Display name for the project"
+    description: When --name is not provided, should use folder name or default
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init-default && mkdir -p /tmp/test-init-default
+    working_dir: /tmp/test-init-default
+    command: rbxsync init
+    assertions:
+      - type: file_exists
+        path: /tmp/test-init-default/rbxsync.json
+      - type: json_field_exists
+        path: /tmp/test-init-default/rbxsync.json
+        field: name
+    cleanup: rm -rf /tmp/test-init-default
+
+  - id: init-gitignore-appends
+    doc_quote: "Appends RbxSync entries to existing .gitignore"
+    description: Should not overwrite existing .gitignore content
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-init-gitignore && mkdir -p /tmp/test-init-gitignore
+      echo "# My existing rules" > /tmp/test-init-gitignore/.gitignore
+      echo "node_modules/" >> /tmp/test-init-gitignore/.gitignore
+    working_dir: /tmp/test-init-gitignore
+    command: rbxsync init --name "GitignoreTest"
+    assertions:
+      - type: file_contains
+        path: /tmp/test-init-gitignore/.gitignore
+        text: "node_modules/"
+      - type: file_contains
+        path: /tmp/test-init-gitignore/.gitignore
+        text: ".rbxsync/"
+    cleanup: rm -rf /tmp/test-init-gitignore

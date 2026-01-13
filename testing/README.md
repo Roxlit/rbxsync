@@ -4,10 +4,22 @@ This directory contains everything needed to test RbxSync before releases.
 
 ## Quick Start
 
+### Bash Tests
 ```bash
 # Run all automated tests
 ./scripts/run-all-tests.sh
 ```
+
+### AI-Powered Tests
+Ask Claude Code:
+```
+"test the CLI"         # Run all CLI tests
+"test migration"       # Test migration command
+"verify docs accuracy" # Check docs match behavior
+"test all"             # Full test suite
+```
+
+See [AI_TESTING.md](./AI_TESTING.md) for details.
 
 ## Test Projects
 
@@ -26,6 +38,19 @@ This directory contains everything needed to test RbxSync before releases.
 | `test-migration.sh` | Rojo migration | No |
 | `test-docs.sh` | Documentation accuracy | No |
 | `run-all-tests.sh` | Runs all above | No |
+
+## AI Test Specs
+
+YAML files in `ai-specs/` that Claude uses for documentation-driven testing:
+
+| Spec | Tests |
+|------|-------|
+| `cli-init.yaml` | Init command behavior |
+| `cli-serve.yaml` | Server start/stop |
+| `cli-migrate.yaml` | Rojo migration |
+| `cli-build.yaml` | Build commands |
+| `plugin-sync.yaml` | Plugin sync (Studio + MCP) |
+| `config.yaml` | Config parsing |
 
 ## Manual Tests Required
 

@@ -1,0 +1,126 @@
+name: CLI Migrate Command
+doc_ref: docs/cli/commands.md#migrate
+doc_ref_alt: docs/getting-started/configuration.md#migrating-from-rojo
+
+description: |
+  Tests for the `rbxsync migrate` command that converts Rojo projects.
+
+test_project: testing/projects/rojo-game
+
+claims:
+  - id: migrate-creates-config
+    doc_quote: "This reads your `default.project.json` (or `*.project.json`) and creates an equivalent `rbxsync.json`"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    cleanup: ""
+
+  - id: migrate-preserves-name
+    doc_quote: "Project name"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: json_field
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+        field: name
+        expected: RojoTestGame
+    cleanup: ""
+
+  - id: migrate-creates-tree-mapping
+    doc_quote: "Tree mappings (DataModel path → filesystem path)"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: json_field_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+        field: treeMapping
+    cleanup: ""
+
+  - id: migrate-maps-serverscriptservice
+    doc_quote: "ServerScriptService: { \"$path\": \"src/server\" }"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: file_contains
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+        text: '"ServerScriptService": "src/server"'
+    cleanup: ""
+
+  - id: migrate-maps-nested-path
+    doc_quote: "StarterPlayer/StarterPlayerScripts: src/client"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: file_contains
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+        text: '"StarterPlayer/StarterPlayerScripts": "src/client"'
+    cleanup: ""
+
+  - id: migrate-force-flag
+    doc_quote: "`--force` | false | Overwrite existing rbxsync.json"
+    test_type: bash
+    setup: |
+      echo '{"name":"WillBeOverwritten"}' > /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate --force
+    assertions:
+      - type: json_field
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+        field: name
+        expected: RojoTestGame
+    cleanup: ""
+
+  - id: migrate-refuses-without-force
+    doc_quote: "Use --force to overwrite existing rbxsync.json"
+    test_type: bash
+    setup: |
+      echo '{"name":"ExistingConfig"}' > /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate 2>&1 || true
+    assertions:
+      - type: output_contains
+        text: "already exists"
+    cleanup: rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+
+  - id: migrate-path-flag
+    doc_quote: "`--path` | Current dir | Project directory"
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /tmp
+    command: rbxsync migrate --path /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+      - type: file_not_exists
+        path: /tmp/rbxsync.json
+    cleanup: ""
+
+  - id: migrate-preserves-rojo-files
+    doc_quote: "Your Rojo files are preserved—you can use both tools side-by-side during migration."
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/testing/projects/rojo-game/rbxsync.json
+    working_dir: /Users/marissacheves/rbxsync/testing/projects/rojo-game
+    command: rbxsync migrate
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/testing/projects/rojo-game/default.project.json
+    cleanup: ""

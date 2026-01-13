@@ -1,0 +1,52 @@
+name: CLI Build Commands
+doc_ref: docs/cli/commands.md#build-commands
+
+description: |
+  Tests for the `rbxsync build` and `rbxsync build-plugin` commands.
+
+claims:
+  - id: build-plugin-creates-rbxm
+    doc_quote: "Build the RbxSync Studio plugin."
+    test_type: bash
+    setup: |
+      rm -f /Users/marissacheves/rbxsync/build/RbxSync.rbxm
+    working_dir: /Users/marissacheves/rbxsync
+    command: ./target/release/rbxsync build-plugin
+    assertions:
+      - type: file_exists
+        path: /Users/marissacheves/rbxsync/build/RbxSync.rbxm
+    cleanup: ""
+
+  - id: build-plugin-install-flag
+    doc_quote: "`--install` | Copy to Studio plugins folder"
+    test_type: bash
+    working_dir: /Users/marissacheves/rbxsync
+    command: ./target/release/rbxsync build-plugin --install
+    assertions:
+      - type: file_exists
+        path: ~/Documents/Roblox/Plugins/RbxSync.rbxm
+    cleanup: ""
+
+  - id: version-command
+    doc_quote: "Show version and git commit."
+    test_type: bash
+    command: rbxsync version
+    assertions:
+      - type: output_matches
+        pattern: "[Rr]bx[Ss]ync.*[0-9]+\\.[0-9]+\\.[0-9]+"
+    cleanup: ""
+
+  - id: sourcemap-command
+    doc_quote: "Generate sourcemap.json for Luau LSP."
+    test_type: bash
+    setup: |
+      rm -rf /tmp/test-sourcemap && mkdir -p /tmp/test-sourcemap
+      cd /tmp/test-sourcemap && rbxsync init --name "SourcemapTest"
+    working_dir: /tmp/test-sourcemap
+    command: |
+      rm -f sourcemap.json
+      rbxsync sourcemap
+    assertions:
+      - type: file_exists
+        path: /tmp/test-sourcemap/sourcemap.json
+    cleanup: rm -rf /tmp/test-sourcemap

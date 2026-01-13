@@ -1,0 +1,118 @@
+name: CLI Serve Command
+doc_ref: docs/cli/commands.md#serve
+doc_ref_alt: docs/getting-started/quick-start.md
+
+description: |
+  Tests for the `rbxsync serve` command that starts the sync server.
+
+claims:
+  - id: serve-default-port
+    doc_quote: "The server runs on port 44755 by default."
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+    command: |
+      rbxsync serve --background
+      sleep 2
+      curl -s http://localhost:44755/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: serve-custom-port
+    doc_quote: "`--port` | 44755 | Server port"
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+    command: |
+      rbxsync serve --background --port 44799
+      sleep 2
+      curl -s http://localhost:44799/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+    cleanup: |
+      pkill -f "rbxsync.*44799" 2>/dev/null || true
+
+  - id: serve-background-flag
+    doc_quote: "`--background, -b` | false | Run server as a background daemon"
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+    command: |
+      rbxsync serve --background
+      sleep 2
+      curl -s http://localhost:44755/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: serve-background-short-flag
+    doc_quote: "`--background, -b`"
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+    command: |
+      rbxsync serve -b
+      sleep 2
+      curl -s http://localhost:44755/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: serve-health-endpoint
+    doc_quote: "Health endpoint responds with status ok"
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+      rbxsync serve --background
+      sleep 2
+    command: curl -s http://localhost:44755/health
+    assertions:
+      - type: output_contains
+        text: '"status":"ok"'
+      - type: output_contains
+        text: '"version"'
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: serve-server-info-endpoint
+    doc_quote: "The project path auto-populates from the server's working directory"
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+      cd /tmp
+      rbxsync serve --background
+      sleep 2
+    command: curl -s http://localhost:44755/rbxsync/server-info
+    assertions:
+      - type: output_contains
+        text: '"cwd"'
+      - type: output_contains
+        text: '"version"'
+    cleanup: rbxsync stop 2>/dev/null || true
+
+  - id: stop-command
+    doc_quote: "Stop the running server."
+    test_type: bash
+    setup: |
+      rbxsync stop 2>/dev/null || true
+      sleep 1
+      rbxsync serve --background
+      sleep 2
+    command: |
+      rbxsync stop
+      sleep 1
+      curl -s --connect-timeout 2 http://localhost:44755/health 2>&1 || echo "Connection refused"
+    assertions:
+      - type: output_matches
+        pattern: "refused|failed|error|Connection"
+    cleanup: ""
