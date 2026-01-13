@@ -1,0 +1,24 @@
+{
+  "name": "ComplexTestGame",
+  "tree": "./src",
+  "assets": "./assets",
+  "treeMapping": {
+    "ServerScriptService": "src/server",
+    "ReplicatedStorage": "src/shared",
+    "StarterPlayer/StarterPlayerScripts": "src/client",
+    "StarterGui": "src/ui",
+    "Workspace/Maps": "src/maps",
+    "Lighting": "src/lighting"
+  },
+  "config": {
+    "extractBinaryAssets": true,
+    "binaryAssetTypes": ["Mesh", "Image", "Sound", "Animation"],
+    "scriptSourceMode": "external",
+    "terrainMode": "voxelData"
+  },
+  "sync": {
+    "mode": "bidirectional",
+    "conflictResolution": "prompt",
+    "autoSync": false
+  }
+}

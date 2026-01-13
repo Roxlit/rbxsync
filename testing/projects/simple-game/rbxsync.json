@@ -1,0 +1,13 @@
+{
+  "name": "SimpleTestGame",
+  "tree": "./src",
+  "assets": "./assets",
+  "config": {
+    "extractBinaryAssets": true,
+    "scriptSourceMode": "external"
+  },
+  "sync": {
+    "mode": "bidirectional",
+    "autoSync": false
+  }
+}

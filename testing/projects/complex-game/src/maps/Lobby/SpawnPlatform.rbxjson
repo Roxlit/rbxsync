@@ -1,0 +1,1 @@
+{"className":"Part","properties":{"Name":{"type":"string","value":"SpawnPlatform"},"Anchored":{"type":"bool","value":true},"Size":{"type":"Vector3","value":{"x":20,"y":1,"z":20}},"Position":{"type":"Vector3","value":{"x":0,"y":0,"z":0}}}}

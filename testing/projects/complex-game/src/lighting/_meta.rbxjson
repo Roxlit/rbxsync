@@ -1,0 +1,1 @@
+{"className":"Lighting","properties":{"Ambient":{"type":"Color3","value":{"r":0.5,"g":0.5,"b":0.5}},"Brightness":{"type":"float","value":2}}}

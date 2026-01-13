@@ -1,0 +1,40 @@
+{
+  "name": "RojoTestGame",
+  "tree": "./src",
+  "assets": "./assets",
+  "config": {
+    "extractBinaryAssets": true,
+    "binaryAssetTypes": [
+      "Image",
+      "Animation",
+      "Mesh",
+      "Sound"
+    ],
+    "excludeServices": [
+      "CoreGui",
+      "CorePackages",
+      "RobloxPluginGuiService"
+    ],
+    "excludeClasses": [],
+    "scriptSourceMode": "external",
+    "terrainMode": "voxelData",
+    "csgMode": "assetReference",
+    "chunkSize": 1000
+  },
+  "sync": {
+    "mode": "bidirectional",
+    "conflictResolution": "prompt",
+    "autoSync": false,
+    "watchPaths": [
+      "./src"
+    ]
+  },
+  "treeMapping": {
+    "StarterPlayer/StarterPlayerScripts": "src/client",
+    "StarterGui": "src/ui",
+    "ServerScriptService": "src/server",
+    "Workspace/Maps": "src/maps",
+    "ReplicatedStorage/Packages": "Packages",
+    "ReplicatedStorage/Shared": "src/shared"
+  }
+}

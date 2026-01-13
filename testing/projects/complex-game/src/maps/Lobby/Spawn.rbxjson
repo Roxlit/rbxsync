@@ -1,0 +1,1 @@
+{"className":"SpawnLocation","properties":{"Name":{"type":"string","value":"Spawn"},"Anchored":{"type":"bool","value":true}}}

@@ -1,0 +1,2 @@
+-- Deeply nested module
+return {}

@@ -23,7 +23,6 @@ output_new/
 output_v2/
 game_project/
 game_project_new/
-testing/
 
 # Plugin build artifacts in wrong locations
 plugin/*.rbxm

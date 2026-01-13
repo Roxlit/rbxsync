@@ -1,0 +1,2 @@
+-- Module with dashes
+return {}

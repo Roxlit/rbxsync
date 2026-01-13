@@ -1,0 +1,12 @@
+{
+  "name": "EdgeCaseTestGame",
+  "tree": "./src",
+  "assets": "./assets",
+  "config": {
+    "extractBinaryAssets": true,
+    "scriptSourceMode": "external"
+  },
+  "sync": {
+    "mode": "bidirectional"
+  }
+}

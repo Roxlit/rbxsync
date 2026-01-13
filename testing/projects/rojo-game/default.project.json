@@ -1,0 +1,35 @@
+{
+  "name": "RojoTestGame",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$path": "src/server"
+    },
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Packages": {
+        "$path": "Packages"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "src/client"
+      }
+    },
+    "StarterGui": {
+      "$path": "src/ui"
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "Maps": {
+        "$path": "src/maps"
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "**/node_modules"
+  ]
+}
