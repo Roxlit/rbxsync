@@ -45,6 +45,7 @@ export default defineConfig({
             { text: 'Introduction', link: '/getting-started/' },
             { text: 'Installation', link: '/getting-started/installation' },
             { text: 'Quick Start', link: '/getting-started/quick-start' },
+            { text: 'Configuration', link: '/getting-started/configuration' },
           ]
         }
       ],

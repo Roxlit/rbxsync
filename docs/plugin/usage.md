@@ -5,8 +5,12 @@
 1. Start the RbxSync server: `rbxsync serve`
 2. Open Roblox Studio
 3. Click the RbxSync button in the toolbar
-4. Enter your project path (e.g., `/Users/you/MyGame`)
+4. The project path auto-populates from the server's working directory
 5. Click **Connect**
+
+::: tip Auto-Connect
+Enable "Auto-connect on startup" in settings to automatically connect when Studio opens.
+:::
 
 ## Extracting Your Game
 
@@ -59,6 +63,26 @@ This enables:
 - Real-time debugging
 - AI agents seeing test output
 - Remote error monitoring
+
+## Plugin Settings
+
+Access settings by clicking the gear icon in the plugin window.
+
+### Auto-Connect
+When enabled, the plugin automatically connects to the server when Studio opens.
+
+### Optimization Stats
+Click "Show Optimization Stats" to see a breakdown of your game's content:
+
+- **Lights** - PointLight, SpotLight, SurfaceLight, etc.
+- **Animations** - Animation instances and AnimationTracks
+- **Skinned Meshes** - MeshParts with WrapTarget/WrapLayer
+- **Sounds** - Sound instances
+- **Particles** - ParticleEmitter, Beam, Trail
+- **MeshParts** - All MeshPart instances
+- **Unions** - UnionOperation instances
+
+This helps identify areas for optimization.
 
 ## Button States
 

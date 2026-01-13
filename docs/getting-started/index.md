@@ -21,4 +21,5 @@ RbxSync consists of three components:
 
 - [Installation](/getting-started/installation) - Install all components
 - [Quick Start](/getting-started/quick-start) - Create your first project
+- [Configuration](/getting-started/configuration) - Project settings and Rojo migration
 - [CLI Reference](/cli/) - Full command documentation
