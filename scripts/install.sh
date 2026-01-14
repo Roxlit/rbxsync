@@ -63,6 +63,40 @@ echo ""
 # Download URL
 DOWNLOAD_URL="https://github.com/devmarissa/rbxsync/releases/download/$VERSION/$BINARY"
 
+# Install location
+INSTALL_DIR="/usr/local/bin"
+
+# Check for existing installations and clean them up
+echo -e "${BLUE}Checking for existing installations...${NC}"
+EXISTING_PATHS=$(which -a rbxsync 2>/dev/null || true)
+
+if [ -n "$EXISTING_PATHS" ]; then
+    echo ""
+    echo -e "${BOLD}Found existing RbxSync installation(s):${NC}"
+    echo "$EXISTING_PATHS" | while read -r path; do
+        if [ -n "$path" ]; then
+            echo -e "  ${BOLD}$path${NC}"
+            # Show version if possible
+            VERSION_INFO=$("$path" version 2>/dev/null | head -1 || echo "unknown version")
+            echo -e "    $VERSION_INFO"
+        fi
+    done
+    echo ""
+
+    # Remove old versions that aren't in our target location
+    echo "$EXISTING_PATHS" | while read -r old_path; do
+        if [ -n "$old_path" ] && [ "$old_path" != "$INSTALL_DIR/rbxsync" ]; then
+            echo -e "${BLUE}Removing old version: $old_path${NC}"
+            if [ -w "$(dirname "$old_path")" ]; then
+                rm -f "$old_path" && echo -e "  ${GREEN}Removed!${NC}" || echo -e "  ${RED}Could not remove${NC}"
+            else
+                sudo rm -f "$old_path" && echo -e "  ${GREEN}Removed!${NC}" || echo -e "  ${RED}Could not remove. Delete manually: $old_path${NC}"
+            fi
+        fi
+    done
+    echo ""
+fi
+
 # Create temp directory
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
@@ -78,8 +112,7 @@ fi
 # Make executable
 chmod +x "$TEMP_DIR/rbxsync"
 
-# Install to /usr/local/bin
-INSTALL_DIR="/usr/local/bin"
+# Install to target directory
 echo -e "${BLUE}Installing to $INSTALL_DIR...${NC}"
 
 if [ -w "$INSTALL_DIR" ]; then
