@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { RbxSyncClient } from './server/client';
 import { StatusBarManager } from './views/statusBar';
-import { ActivityViewProvider } from './views/activityView';
+import { SidebarWebviewProvider } from './views/sidebarWebview';
 import { connectCommand, disconnectCommand } from './commands/connect';
 import { extractCommand } from './commands/extract';
 import { syncCommand } from './commands/sync';
@@ -19,7 +19,7 @@ import {
 let client: RbxSyncClient;
 let languageClient: LanguageClient | undefined;
 let statusBar: StatusBarManager;
-let activityView: ActivityViewProvider;
+let sidebarView: SidebarWebviewProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Get configuration
@@ -40,12 +40,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   statusBar = new StatusBarManager(client);
-  activityView = new ActivityViewProvider();
+  sidebarView = new SidebarWebviewProvider(context.extensionUri);
 
-  // Register activity view
-  const activityTreeView = vscode.window.createTreeView('rbxsync.activityView', {
-    treeDataProvider: activityView
-  });
+  // Register webview sidebar view
+  const sidebarViewDisposable = vscode.window.registerWebviewViewProvider(
+    SidebarWebviewProvider.viewType,
+    sidebarView
+  );
 
   // Listen for connection changes and fetch all places
   client.onConnectionChange(async (state) => {
@@ -56,17 +57,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       // Update both status bar and activity view with all places
       statusBar.updatePlaces(places, projectDir);
-      activityView.setConnectionStatus('connected', places, projectDir);
+      sidebarView.setConnectionStatus('connected', places, projectDir);
     } else {
       statusBar.updatePlaces([], '');
-      activityView.setConnectionStatus('disconnected', [], '');
+      sidebarView.setConnectionStatus('disconnected', [], '');
     }
   });
 
   // Register commands
   const commands = [
     vscode.commands.registerCommand('rbxsync.connect', async () => {
-      activityView.setConnectionStatus('connecting');
+      sidebarView.setConnectionStatus('connecting');
       await connectCommand(client, statusBar);
     }),
 
@@ -76,55 +77,55 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     vscode.commands.registerCommand('rbxsync.extract', async () => {
       statusBar.setBusy('Extracting');
-      activityView.setCurrentOperation('Extracting');
-      await extractCommand(client, statusBar, activityView);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation('Extracting');
+      await extractCommand(client, statusBar, sidebarView);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     vscode.commands.registerCommand('rbxsync.sync', async () => {
       statusBar.setBusy('Syncing');
-      activityView.setCurrentOperation('Syncing');
+      sidebarView.setCurrentOperation('Syncing');
       await syncCommand(client, statusBar);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     vscode.commands.registerCommand('rbxsync.runTest', async () => {
       statusBar.setBusy('Testing');
-      activityView.setCurrentOperation('Testing');
+      sidebarView.setCurrentOperation('Testing');
       await runPlayTest(client);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     // Per-studio commands (take projectDir as argument)
     vscode.commands.registerCommand('rbxsync.syncTo', async (projectDir: string) => {
       statusBar.setBusy('Syncing');
-      activityView.setCurrentOperation(`Syncing to ${projectDir}`);
+      sidebarView.setCurrentOperation(`Syncing to ${projectDir}`);
       await syncCommand(client, statusBar, projectDir);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     vscode.commands.registerCommand('rbxsync.extractFrom', async (projectDir: string) => {
       statusBar.setBusy('Extracting');
-      activityView.setCurrentOperation(`Extracting from ${projectDir}`);
-      await extractCommand(client, statusBar, activityView, projectDir);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation(`Extracting from ${projectDir}`);
+      await extractCommand(client, statusBar, sidebarView, projectDir);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     vscode.commands.registerCommand('rbxsync.runTestOn', async (projectDir: string) => {
       statusBar.setBusy('Testing');
-      activityView.setCurrentOperation(`Testing ${projectDir}`);
+      sidebarView.setCurrentOperation(`Testing ${projectDir}`);
       await runPlayTest(client, projectDir);
-      activityView.setCurrentOperation(null);
+      sidebarView.setCurrentOperation(null);
       statusBar.clearBusy();
     }),
 
     vscode.commands.registerCommand('rbxsync.refresh', () => {
-      activityView.refresh();
+      sidebarView.refresh();
     }),
 
     vscode.commands.registerCommand('rbxsync.openMetadata', async () => {
@@ -173,7 +174,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     vscode.commands.registerCommand('rbxsync.toggleE2EMode', () => {
       const enabled = toggleE2EMode(context);
-      activityView.setE2EMode(enabled);
+      sidebarView.setE2EMode(enabled);
     })
   ];
 
@@ -181,8 +182,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     client,
     statusBar,
-    activityView,
-    activityTreeView,
+    sidebarViewDisposable,
     ...commands
   );
 
@@ -192,7 +192,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Auto-connect if enabled
   if (autoConnect) {
     setTimeout(async () => {
-      activityView.setConnectionStatus('connecting');
+      sidebarView.setConnectionStatus('connecting');
       const connected = await client.connect();
       if (connected) {
         // Register workspace with server immediately

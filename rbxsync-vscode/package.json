@@ -1,8 +1,8 @@
 {
   "name": "rbxsync",
   "displayName": "RbxSync",
-  "description": "Sync Roblox games between Studio and VS Code",
-  "version": "1.0.7",
+  "description": "Two-way sync between Roblox Studio and VS Code. One-click extraction, real-time bidirectional sync, console streaming, and MCP integration for AI workflows.",
+  "version": "1.0.8",
   "license": "SEE LICENSE IN LICENSE.txt",
   "publisher": "rbxsync",
   "icon": "media/icons/rbxsync.png",
@@ -10,6 +10,7 @@
     "type": "git",
     "url": "https://github.com/devmarissa/rbxsync"
   },
+  "homepage": "https://rbxsync.dev",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -26,7 +27,7 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onView:rbxsync.activityView",
+    "onView:rbxsync.sidebarView",
     "workspaceContains:rbxsync.json",
     "onLanguage:rbxjson"
   ],
@@ -35,9 +36,21 @@
     "languages": [
       {
         "id": "rbxjson",
-        "aliases": ["Roblox JSON", "rbxjson"],
-        "extensions": [".rbxjson"],
+        "aliases": [
+          "Roblox JSON",
+          "rbxjson"
+        ],
+        "extensions": [
+          ".rbxjson"
+        ],
         "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rbxjson",
+        "scopeName": "source.rbxjson",
+        "path": "./syntaxes/rbxjson.tmLanguage.json"
       }
     ],
     "commands": [
@@ -92,27 +105,24 @@
     "keybindings": [
       {
         "command": "rbxsync.runTest",
-        "key": "ctrl+shift+t",
-        "mac": "cmd+shift+t",
-        "when": "editorTextFocus"
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t"
       },
       {
         "command": "rbxsync.sync",
-        "key": "ctrl+shift+s",
-        "mac": "cmd+shift+s",
-        "when": "editorTextFocus"
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s"
       },
       {
         "command": "rbxsync.extract",
-        "key": "ctrl+shift+e",
-        "mac": "cmd+shift+e",
-        "when": "editorTextFocus"
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e"
       },
       {
         "command": "rbxsync.openMetadata",
-        "key": "ctrl+shift+m",
-        "mac": "cmd+shift+m",
-        "when": "editorTextFocus && resourceExtname =~ /\\.luau?$/"
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "resourceExtname =~ /\\.luau?$/"
       }
     ],
     "viewsContainers": {
@@ -127,17 +137,12 @@
     "views": {
       "rbxsync": [
         {
-          "id": "rbxsync.activityView",
+          "type": "webview",
+          "id": "rbxsync.sidebarView",
           "name": ""
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "rbxsync.activityView",
-        "contents": "Not connected to Studio.\n\n[Connect](command:rbxsync.connect)\n[Extract Game](command:rbxsync.extract)"
-      }
-    ],
     "menus": {
       "view/title": []
     },
@@ -164,17 +169,33 @@
     "configurationDefaults": {
       "files.exclude": {
         "**/*.rbxjson": true
+      },
+      "files.associations": {
+        "*.rbxjson": "rbxjson"
+      },
+      "[rbxjson]": {
+        "editor.wordBasedSuggestions": "off",
+        "editor.suggest.showWords": false,
+        "editor.suggest.localityBonus": false,
+        "editor.suggest.shareSuggestSelections": false,
+        "editor.quickSuggestions": {
+          "strings": true,
+          "comments": false,
+          "other": true
+        }
       }
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "npm run generate-schema && npm run build",
     "build": "node esbuild.js --production",
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "lint": "eslint src --ext ts",
     "package": "vsce package",
-    "publish": "vsce publish"
+    "publish": "vsce publish",
+    "generate-schema": "npx ts-node schemas/generate-schema.ts",
+    "update-schema": "npm run generate-schema"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -182,12 +203,16 @@
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "@vscode/vsce": "^2.22.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "esbuild": "^0.27.2",
     "eslint": "^8.55.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "axios": "^1.6.0",
+    "jsonc-parser": "^3.3.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11"

@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { RbxSyncClient } from '../server/client';
 import { StatusBarManager } from '../views/statusBar';
-import { ActivityViewProvider } from '../views/activityView';
+import { SidebarWebviewProvider } from '../views/sidebarWebview';
 
 export async function extractCommand(
   client: RbxSyncClient,
   statusBar: StatusBarManager,
-  activityView: ActivityViewProvider,
+  sidebarView: SidebarWebviewProvider,
   targetProjectDir?: string
 ): Promise<void> {
   if (!client.connectionState.connected) {
@@ -53,7 +53,7 @@ export async function extractCommand(
     async (progress, token) => {
       const startResult = await client.startExtraction(projectDir, serviceList);
       if (!startResult) {
-        activityView.logError('Extraction failed to start');
+        sidebarView.logError('Extraction failed to start');
         return;
       }
 
@@ -70,7 +70,7 @@ export async function extractCommand(
         } else if (status.status === 'complete') {
           complete = true;
         } else if (status.status === 'error') {
-          activityView.logError(status.error || 'Extraction failed');
+          sidebarView.logError(status.error || 'Extraction failed');
           return;
         }
       }
@@ -81,11 +81,11 @@ export async function extractCommand(
       const result = await client.finalizeExtraction(sessionId, projectDir);
 
       if (!result?.success) {
-        activityView.logError('Failed to write files');
+        sidebarView.logError('Failed to write files');
         return;
       }
 
-      activityView.logExtract(result.files_written || 0);
+      sidebarView.logExtract(result.files_written || 0);
 
       const config = vscode.workspace.getConfiguration('rbxsync');
       if (config.get('showNotifications')) {
