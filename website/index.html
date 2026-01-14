@@ -1956,173 +1956,234 @@
             border-color: #c23c40;
         }
 
-        /* Comparison Section - Premium Redesign */
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        /* Comparison Section - Compact Table Design */
+        .comparison-table-wrapper {
+            overflow-x: auto;
+            overflow-y: visible;
+            margin: 0 -1rem;
+            padding: 0 1rem 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
         }
 
-        .comparison-card {
-            position: relative;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem 1.5rem;
-            text-align: center;
-            transition: all 0.3s ease;
-            overflow: hidden;
+        .comparison-table-wrapper::-webkit-scrollbar {
+            height: 6px;
         }
 
-        .comparison-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+        .comparison-table-wrapper::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        .comparison-card.featured {
-            border: 2px solid var(--rbx-red);
-            background: linear-gradient(180deg, rgba(194, 60, 64, 0.05) 0%, var(--bg-primary) 100%);
-            animation: primary-hue-shift 9s ease-in-out infinite;
+        .comparison-table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
         }
 
-        .comparison-card.featured:hover {
-            border-color: var(--rbx-red);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--rbx-red);
-        }
-
-        .comparison-card-badge {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: var(--rbx-red);
-            color: white;
-            font-size: 0.625rem;
-            font-weight: 700;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            letter-spacing: 0.05em;
-            animation: primary-hue-shift 5s ease-in-out infinite;
-        }
-
-        .comparison-card-logo {
+        .comparison-table {
             width: 100%;
-            height: 48px;
-            margin: 0 auto 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 700;
-            position: relative;
-        }
-
-        .comparison-card-logo img {
-            width: auto;
-            height: 40px;
-            max-width: 120px;
-            object-fit: contain;
-        }
-
-        .comparison-card.featured .comparison-card-logo img {
-            height: 56px;
-            max-width: 140px;
-        }
-
-        .comparison-card-name {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-            position: relative;
-        }
-
-        .comparison-card.featured .comparison-card-name {
-            color: var(--rbx-red);
-        }
-
-        .comparison-card-tagline {
+            min-width: 900px;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.8125rem;
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-            position: relative;
         }
 
-        .comparison-features {
-            display: flex;
-            flex-direction: column;
-            gap: 0.625rem;
-            position: relative;
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
         }
 
-        .comparison-feature {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.75rem;
-            padding: 0.5rem 0.625rem;
+        .comparison-table th:first-child,
+        .comparison-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--bg-secondary);
+            z-index: 2;
+            min-width: 180px;
+        }
+
+        .comparison-table thead th {
             background: var(--bg-tertiary);
-            border-radius: 8px;
-            transition: background 0.2s;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            padding: 1rem;
+            border-bottom: 2px solid var(--border);
         }
 
-        .comparison-feature .status-icon {
-            margin-left: auto;
+        .comparison-table thead th:first-child {
+            background: var(--bg-tertiary);
+            border-top-left-radius: 12px;
         }
 
-        .comparison-feature:hover {
+        .comparison-table thead th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        .comparison-table tbody tr:last-child td:first-child {
+            border-bottom-left-radius: 12px;
+        }
+
+        .comparison-table tbody tr:last-child td:last-child {
+            border-bottom-right-radius: 12px;
+        }
+
+        .comparison-table tbody tr {
+            transition: background 0.15s ease;
+        }
+
+        .comparison-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .comparison-table tbody tr:hover td:first-child {
             background: var(--bg-elevated);
         }
 
-        /* Exclusive feature highlight - RbxSync only */
-        .comparison-feature.exclusive {
+        /* Tool header cells */
+        .tool-header {
             position: relative;
+            padding: 1rem 0.75rem !important;
+            vertical-align: bottom;
         }
 
-        .comparison-feature.exclusive .comparison-feature-name::after {
-            content: 'ONLY';
+        .tool-header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tool-header-logo-wrap {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 32px;
+        }
+
+        .tool-header-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .tool-header-name {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: none;
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+
+        /* RbxSync Aurora Column Header */
+        .tool-header-aurora {
+            position: relative;
+            overflow: visible;
+        }
+
+        .tool-header-aurora::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 10px;
+            background: conic-gradient(
+                from var(--aurora-rotate, 0deg),
+                rgba(45, 212, 191, 0.8) 0deg,
+                rgba(34, 211, 238, 0.6) 60deg,
+                rgba(99, 102, 241, 0.7) 120deg,
+                rgba(244, 114, 182, 0.5) 180deg,
+                rgba(251, 146, 60, 0.6) 240deg,
+                rgba(74, 222, 128, 0.7) 300deg,
+                rgba(45, 212, 191, 0.8) 360deg
+            );
+            opacity: 0.6;
+            z-index: -1;
+            animation: aurora-hue-shift 8s ease-in-out infinite;
+            filter: blur(8px);
+        }
+
+        .tool-header-aurora::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            z-index: -1;
+        }
+
+        .tool-header-aurora .tool-header-name {
+            background: linear-gradient(135deg, #2dd4bf, #22d3ee, #6366f1, #f472b6, #fb923c, #4ade80);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient-shift 6s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* RbxSync column highlight */
+        .col-rbxsync {
+            background: rgba(45, 212, 191, 0.03);
+        }
+
+        .comparison-table tbody tr:hover .col-rbxsync {
+            background: rgba(45, 212, 191, 0.06);
+        }
+
+        /* Feature name styling */
+        .feature-name {
             display: inline-flex;
             align-items: center;
-            margin-left: 6px;
-            padding: 1px 5px;
-            font-size: 0.5rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            color: var(--gold);
-            background: rgba(212, 164, 56, 0.12);
-            border-radius: 3px;
-            vertical-align: middle;
-            position: relative;
-            top: -1px;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
 
-        [data-theme="light"] .comparison-feature.exclusive .comparison-feature-name::after {
-            background: rgba(212, 164, 56, 0.15);
+        .feature-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 5px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--gold);
+            background: rgba(212, 164, 56, 0.1);
+            border: 1px solid rgba(212, 164, 56, 0.2);
+            border-radius: 3px;
+            line-height: 1;
+        }
+
+        [data-theme="light"] .feature-tag {
+            background: rgba(212, 164, 56, 0.12);
+            border-color: rgba(212, 164, 56, 0.25);
             color: var(--gold-dark);
         }
 
-        .comparison-feature-name {
-            color: var(--text-secondary);
-            flex: 1;
-            min-width: 0;
-            text-align: left;
-        }
-
-        .comparison-feature-status {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-
+        /* Status icons - SVG based */
         .status-icon {
-            width: 18px;
-            height: 18px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.625rem;
-            font-weight: 700;
+        }
+
+        .status-icon svg {
+            width: 14px;
+            height: 14px;
         }
 
         .status-icon.yes {
@@ -2131,50 +2192,13 @@
         }
 
         .status-icon.no {
-            background: rgba(113, 113, 122, 0.15);
+            background: rgba(113, 113, 122, 0.1);
             color: var(--text-muted);
         }
 
         .status-icon.partial {
-            background: rgba(234, 179, 8, 0.15);
+            background: rgba(234, 179, 8, 0.12);
             color: var(--warning);
-        }
-
-        .comparison-score {
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-            position: relative;
-        }
-
-        .comparison-score-label {
-            font-size: 0.6875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-
-        .comparison-score-bar {
-            height: 6px;
-            background: var(--bg-tertiary);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .comparison-score-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.8s ease;
-        }
-
-        .comparison-card.featured .comparison-score-fill {
-            background: linear-gradient(90deg, var(--rbx-red), #e85d61);
-            width: 100%;
-        }
-
-        .comparison-card:not(.featured) .comparison-score-fill {
-            background: var(--text-muted);
         }
 
         /* Comparison legend */
@@ -2196,116 +2220,6 @@
         .check { color: var(--success); font-weight: 600; }
         .cross { color: var(--text-muted); }
         .partial { color: var(--warning); }
-
-        /* Aurora wrapper for RbxSync comparison card */
-        .comparison-card-aurora-wrapper {
-            position: relative;
-            display: flex;
-            overflow: visible;
-            z-index: 1;
-            isolation: isolate;
-            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-            --aurora-brightness: 0;
-        }
-
-        .comparison-card-aurora-wrapper::before {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border-radius: 16px;
-            background: conic-gradient(
-                from var(--aurora-rotate, 0deg),
-                rgba(45, 212, 191, 0.9) 0deg,
-                rgba(45, 212, 191, 0.35) 15deg,
-                transparent 25deg,
-                transparent 40deg,
-                rgba(34, 211, 238, 0.75) 50deg,
-                rgba(34, 211, 238, 0.25) 65deg,
-                transparent 78deg,
-                transparent 95deg,
-                rgba(99, 102, 241, 0.85) 105deg,
-                transparent 125deg,
-                transparent 150deg,
-                rgba(244, 114, 182, 0.65) 162deg,
-                rgba(244, 114, 182, 0.2) 180deg,
-                transparent 195deg,
-                transparent 215deg,
-                rgba(251, 146, 60, 0.7) 228deg,
-                transparent 248deg,
-                transparent 270deg,
-                rgba(74, 222, 128, 0.8) 285deg,
-                rgba(74, 222, 128, 0.3) 305deg,
-                transparent 320deg,
-                transparent 340deg,
-                rgba(45, 212, 191, 0.5) 350deg,
-                rgba(45, 212, 191, 0.9) 360deg
-            );
-            opacity: calc(0.4 + var(--aurora-brightness) * 0.5);
-            --aurora-blur: calc(8px - var(--aurora-brightness) * 5px);
-            z-index: -1;
-            pointer-events: none;
-            animation: aurora-hue-shift 9s ease-in-out infinite;
-        }
-
-        .comparison-card-aurora-wrapper .aurora-layer {
-            position: absolute;
-            inset: -6px;
-            border-radius: 18px;
-            background: conic-gradient(
-                from var(--aurora-rotate-2, 180deg),
-                transparent 0deg,
-                transparent 30deg,
-                rgba(217, 70, 239, 0.65) 45deg,
-                rgba(217, 70, 239, 0.25) 65deg,
-                transparent 85deg,
-                transparent 130deg,
-                rgba(56, 189, 248, 0.7) 150deg,
-                rgba(56, 189, 248, 0.2) 175deg,
-                transparent 200deg,
-                transparent 245deg,
-                rgba(168, 85, 247, 0.6) 265deg,
-                transparent 295deg,
-                transparent 320deg,
-                rgba(251, 191, 36, 0.45) 340deg,
-                transparent 360deg
-            );
-            opacity: calc(0.3 + var(--aurora-brightness) * 0.5);
-            --aurora-blur: calc(10px - var(--aurora-brightness) * 5px);
-            z-index: -2;
-            pointer-events: none;
-            animation: aurora-hue-shift-reverse 13s ease-in-out infinite;
-        }
-
-        .comparison-card-aurora-wrapper .aurora-layer::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: 20px;
-            background: conic-gradient(
-                from var(--aurora-rotate-3, 90deg),
-                transparent 0deg,
-                rgba(34, 197, 94, 0.45) 70deg,
-                transparent 120deg,
-                transparent 190deg,
-                rgba(139, 92, 246, 0.4) 240deg,
-                transparent 290deg,
-                transparent 360deg
-            );
-            --aurora-blur: calc(12px - var(--aurora-brightness) * 5px);
-            opacity: calc(0.35 + var(--aurora-brightness) * 0.5);
-            animation: aurora-hue-shift 16s ease-in-out infinite;
-        }
-
-        .comparison-card-aurora-wrapper:hover {
-            transform: translateY(-4px);
-        }
-
-        /* Inner card styles - wrapper handles the transform */
-        .comparison-card-aurora-wrapper .comparison-card {
-            width: 100%;
-            transform: none !important;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
 
         /* Animated check marks */
         .check {
@@ -4681,7 +4595,6 @@
             .e2e-section { grid-template-columns: 1fr; }
             .cli-grid { grid-template-columns: 1fr 1fr; }
             .cli-categories { grid-template-columns: 1fr; gap: 1.5rem; }
-            .comparison-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
         }
 
         @media (max-width: 768px) {
@@ -4699,7 +4612,9 @@
                 --text-2xs: 0.625rem;  /* 10px */
             }
 
-            .comparison-grid { grid-template-columns: 1fr; }
+            .comparison-table { min-width: 700px; }
+            .comparison-table th:first-child,
+            .comparison-table td:first-child { min-width: 140px; }
             /* Hide full search, show mobile search button */
             .nav-search { display: none; }
             .nav-search-mobile { display: flex; }
@@ -5586,263 +5501,153 @@
             <div class="section-header">
                 <div class="section-tag">Comparison</div>
                 <h2 class="section-title">How RbxSync Compares</h2>
-                <p class="section-desc">How the tools compare.</p>
+                <p class="section-desc">Feature comparison across Roblox sync tools.</p>
             </div>
 
-            <div class="comparison-grid">
-                <!-- RbxSync -->
-                <div class="comparison-card-aurora-wrapper">
-                    <div class="aurora-layer"></div>
-                    <div class="comparison-card comparison-card-rbxsync">
-                        <div class="comparison-card-logo">
-                            <img src="logo.png" alt="RbxSync">
-                        </div>
-                        <h3 class="comparison-card-name">RbxSync</h3>
-                        <p class="comparison-card-tagline">Complete workflow. Zero friction.</p>
-                        <div class="comparison-features">
-                            <div class="comparison-feature">
-                                <span class="comparison-feature-name">Real-time two-way sync</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature">
-                                <span class="comparison-feature-name">Zero config setup</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature">
-                                <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature exclusive">
-                                <span class="comparison-feature-name">Full property preservation</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature exclusive">
-                                <span class="comparison-feature-name">One-click game extraction</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature exclusive">
-                                <span class="comparison-feature-name">AI integration (MCP)</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                            <div class="comparison-feature exclusive">
-                                <span class="comparison-feature-name">E2E testing from CLI</span>
-                                <span class="status-icon yes">✓</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Rojo -->
-                <div class="comparison-card">
-                    <div class="comparison-card-logo" style="background: transparent;">
-                        <img src="https://rojo.space/img/logo.png" alt="Rojo">
-                    </div>
-                    <h3 class="comparison-card-name">Rojo</h3>
-                    <p class="comparison-card-tagline">Industry standard</p>
-                    <div class="comparison-features">
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Real-time two-way sync</span>
-                            <span class="status-icon partial" title="Via syncback">⚙️</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Zero config setup</span>
-                            <span class="status-icon no" title="Requires project.json">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Full property preservation</span>
-                            <span class="status-icon partial" title="Via XML/Binary">◐</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">One-click game extraction</span>
-                            <span class="status-icon partial" title="Requires manual setup">⚙️</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">AI integration (MCP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Argon -->
-                <div class="comparison-card">
-                    <div class="comparison-card-logo" style="background: transparent;">
-                        <img src="https://argon.wiki/img/banner.svg" alt="Argon">
-                    </div>
-                    <h3 class="comparison-card-name">Argon</h3>
-                    <p class="comparison-card-tagline">Two-way sync pioneer</p>
-                    <div class="comparison-features">
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Real-time two-way sync</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Zero config setup</span>
-                            <span class="status-icon partial" title="Needs project file">◐</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Full property preservation</span>
-                            <span class="status-icon partial">◐</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">One-click game extraction</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">AI integration (MCP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Studio Script Sync -->
-                <div class="comparison-card">
-                    <div class="comparison-card-logo" style="background: transparent;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/58/Roblox_Studio_logo_2021_present.svg" alt="Studio Script Sync" style="width: 40px; height: 40px;">
-                    </div>
-                    <h3 class="comparison-card-name">Script Sync</h3>
-                    <p class="comparison-card-tagline">Built into Studio (Beta)</p>
-                    <div class="comparison-features">
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Real-time two-way sync</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Zero config setup</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Full property preservation</span>
-                            <span class="status-icon no" title="Scripts only">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">One-click game extraction</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">AI integration (MCP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Azul -->
-                <div class="comparison-card">
-                    <div class="comparison-card-logo" style="background: transparent;">
-                        <img src="images/azullogo.png" alt="Azul" style="width: 40px; height: 40px;">
-                    </div>
-                    <h3 class="comparison-card-name">Azul</h3>
-                    <p class="comparison-card-tagline">Studio-first, zero config</p>
-                    <div class="comparison-features">
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Real-time two-way sync</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Zero config setup</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Full property preservation</span>
-                            <span class="status-icon no" title="Scripts only">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">One-click game extraction</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">AI integration (MCP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RoExplorer -->
-                <div class="comparison-card">
-                    <div class="comparison-card-logo" style="background: transparent;">
-                        <img src="images/RoExplorerLogo.png" alt="RoExplorer" style="width: 40px; height: 40px;">
-                    </div>
-                    <h3 class="comparison-card-name">RoExplorer</h3>
-                    <p class="comparison-card-tagline">Studio Explorer in VS Code</p>
-                    <div class="comparison-features">
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Real-time two-way sync</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Zero config setup</span>
-                            <span class="status-icon yes">✓</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Sourcemap generation (LSP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">Full property preservation</span>
-                            <span class="status-icon no" title="Scripts only">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">One-click game extraction</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">AI integration (MCP)</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                        <div class="comparison-feature">
-                            <span class="comparison-feature-name">E2E testing from CLI</span>
-                            <span class="status-icon no">✗</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="comparison-table-wrapper">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="tool-header tool-header-aurora">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="logo.png" alt="RbxSync" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">RbxSync</span>
+                                </div>
+                            </th>
+                            <th class="tool-header">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="https://rojo.space/img/logo.png" alt="Rojo" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">Rojo</span>
+                                </div>
+                            </th>
+                            <th class="tool-header">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="images/argon.svg" alt="Argon" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">Argon</span>
+                                </div>
+                            </th>
+                            <th class="tool-header">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="https://tr.rbxcdn.com/180DAY-f955c288b7f0f28cd1c8f5e2b56b0d12/420/420/Image/Webp/noFilter" alt="Pesto" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">Pesto</span>
+                                </div>
+                            </th>
+                            <th class="tool-header">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="images/scriptsync.svg" alt="Script Sync" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">Script Sync</span>
+                                </div>
+                            </th>
+                            <th class="tool-header">
+                                <div class="tool-header-content">
+                                    <div class="tool-header-logo-wrap"><img src="images/azullogo.png" alt="Azul" class="tool-header-logo"></div>
+                                    <span class="tool-header-name">Azul</span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="feature-name">Two-way sync</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon partial" title="Via syncback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon partial" title="Pro $6.99"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">Zero config</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">Sourcemap (LSP)</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">Full properties</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span></td>
+                            <td><span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">One-click extract</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon partial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">AI integration (MCP) <span class="feature-tag">Exclusive</span></span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon partial" title="Sourcemaps only"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">E2E testing <span class="feature-tag">Exclusive</span></span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">Console streaming <span class="feature-tag">Exclusive</span></span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="feature-name">Build .rbxl/.rbxm</span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <div class="comparison-legend">
                 <div class="comparison-legend-item">
-                    <span class="status-icon yes">✓</span>
+                    <span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
                     <span>Native support</span>
                 </div>
                 <div class="comparison-legend-item">
-                    <span class="status-icon partial">⚙️</span>
+                    <span class="status-icon partial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg></span>
                     <span>Requires setup</span>
                 </div>
                 <div class="comparison-legend-item">
-                    <span class="status-icon partial">◐</span>
+                    <span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span>
                     <span>Partial</span>
                 </div>
                 <div class="comparison-legend-item">
-                    <span class="status-icon no">✗</span>
+                    <span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
                     <span>Not available</span>
                 </div>
             </div>
@@ -7121,7 +6926,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             const auroraElements = [
                 document.querySelector('.class-search-input-wrapper'),
                 document.querySelector('.btn-secondary-wrapper'),
-                document.querySelector('.comparison-card-aurora-wrapper')
+                document.querySelector('.tool-header-aurora')
             ].filter(Boolean);
 
             if (auroraElements.length === 0) {
@@ -7180,7 +6985,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             }
 
             addHoverBoost(document.querySelector('.btn-secondary-wrapper'));
-            addHoverBoost(document.querySelector('.comparison-card-aurora-wrapper'));
+            addHoverBoost(document.querySelector('.tool-header-aurora'));
 
             // Proximity-based brightness for all aurora elements
             const proximityRadius = 100; // pixels

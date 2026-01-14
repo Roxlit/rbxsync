@@ -12,16 +12,17 @@ The sync tool that should have been: One-click extraction, two-way sync for all 
 
 ## Feature Comparison
 
-| Feature | RbxSync | Rojo | Argon |
-|---------|---------|------|-------|
-| Automatic two-way sync | ✅ | ⚙️ Syncback | ✅ |
-| One-click game extraction | ✅ | ⚙️ Manual setup | ❌ |
-| Full property serialization | ✅ JSON | ◐ XML/Binary | ◐ XML |
-| Native MCP/AI integration | ✅ | ❌ | ❌ |
-| E2E testing from CLI | ✅ | ❌ | ❌ |
-| Console streaming | ✅ | ❌ | ❌ |
-| Build to .rbxl/.rbxm | ✅ | ✅ | ✅ |
-| Build --watch mode | ✅ | ✅ | ✅ |
+| Feature | RbxSync | Rojo | Argon | Pesto |
+|---------|---------|------|-------|-------|
+| Automatic two-way sync | ✅ | ⚙️ Syncback | ✅ | ⚙️ Pro ($6.99) |
+| One-click game extraction | ✅ | ⚙️ Manual setup | ❌ | ✅ |
+| Full property serialization | ✅ JSON | ◐ XML/Binary | ◐ XML | ✅ |
+| Native MCP/AI integration | ✅ | ❌ | ❌ | ◐ Sourcemaps |
+| E2E testing from CLI | ✅ | ❌ | ❌ | ❌ |
+| Console streaming | ✅ | ❌ | ❌ | ❌ |
+| Build to .rbxl/.rbxm | ✅ | ✅ | ✅ | ❌ |
+| Build --watch mode | ✅ | ✅ | ✅ | ❌ |
+| Multi-IDE (OpenVSX) | ✅ | ✅ | ✅ | ✅ |
 
 **Legend:** ✅ Native support | ⚙️ Requires setup/plugins | ◐ Partial | ❌ Not available
 
