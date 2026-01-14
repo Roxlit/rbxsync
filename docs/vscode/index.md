@@ -32,6 +32,29 @@ Extract and sync Roblox games to git-friendly files, directly from VS Code.
 | `rbxsync.autoConnect` | `true` | Auto-connect on startup |
 | `rbxsync.showNotifications` | `true` | Show operation notifications |
 
+## Updating the Extension
+
+**Updates are NOT automatic.** You must manually update the extension.
+
+### If installed from VS Code Marketplace:
+
+1. Open VS Code
+2. Go to **Extensions** (Ctrl/Cmd+Shift+X)
+3. Find RbxSync in your installed extensions
+4. Click the **Update** button if available
+5. Restart VS Code
+
+### If installed manually:
+
+```bash
+rbxsync update --vscode
+code --install-extension rbxsync-vscode/rbxsync-*.vsix
+```
+
+Then restart VS Code.
+
+> **Note:** The extension will NOT auto-update. Check for updates periodically.
+
 ## Next Steps
 
 - [Commands](/vscode/commands) - All available commands

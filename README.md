@@ -166,25 +166,46 @@ rbxsync update --no-pull             # Just rebuild (skip git pull)
 
 ## Updating
 
-When new fixes are released, update with a single command:
+RbxSync has three components that update independently. **Updates are NOT automatic** - you must manually update each one.
+
+### 1. Update CLI
 
 ```bash
 rbxsync update
 ```
 
-This will:
-1. Pull the latest changes from GitHub
-2. Rebuild the CLI
-3. Rebuild and install the Studio plugin
+This pulls the latest code and rebuilds the CLI binary.
 
-Then restart Roblox Studio to load the updated plugin.
+### 2. Update Studio Plugin
 
-**For VS Code extension updates:**
+**If installed from Creator Store:**
+1. Open Roblox Studio
+2. Go to **Toolbox** → **Inventory** → **My Plugins**
+3. Find RbxSync and click **Update** if available
+4. Restart Studio
+
+**If installed manually:**
+```bash
+rbxsync build-plugin --install
+```
+Then restart Studio.
+
+### 3. Update VS Code Extension
+
+**If installed from Marketplace:**
+1. Open VS Code
+2. Go to **Extensions** (Ctrl/Cmd+Shift+X)
+3. Find RbxSync and click **Update** if available
+4. Restart VS Code
+
+**If installed manually:**
 ```bash
 rbxsync update --vscode
 code --install-extension rbxsync-vscode/rbxsync-*.vsix
 ```
 Then restart VS Code.
+
+> **Important:** After updating, restart both Roblox Studio and VS Code to load the new versions.
 
 ## File Format
 

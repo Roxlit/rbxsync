@@ -78,7 +78,7 @@ Choose one option:
 
 **Option A: Roblox Creator Store (Recommended)**
 
-Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/89280418878393/RbxSync) - one click, automatic updates.
+Install from the [Roblox Creator Store](https://create.roblox.com/store/asset/89280418878393/RbxSync).
 
 **Option B: Download from GitHub**
 
@@ -113,6 +113,49 @@ The extension will automatically run `rbxsync serve` when you connect.
 2. In VS Code: `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac)
 3. Type "Extensions: Install from VSIX"
 4. Select the downloaded `.vsix` file
+
+---
+
+## Updating
+
+::: warning Updates are NOT automatic
+Both the Studio plugin and VS Code extension require manual updates. They will NOT auto-update.
+:::
+
+### Update CLI
+
+```bash
+rbxsync update
+```
+
+### Update Studio Plugin
+
+**If installed from Creator Store:**
+1. Open Roblox Studio
+2. Go to **Toolbox** → **Inventory** → **My Plugins**
+3. Find RbxSync and click **Update** if available
+4. Restart Studio
+
+**If installed manually:**
+```bash
+rbxsync build-plugin --install
+```
+Then restart Studio.
+
+### Update VS Code Extension
+
+**If installed from Marketplace:**
+1. Open VS Code
+2. Go to **Extensions** (Ctrl/Cmd+Shift+X)
+3. Find RbxSync and click **Update** if available
+4. Restart VS Code
+
+**If installed manually:**
+```bash
+rbxsync update --vscode
+code --install-extension rbxsync-vscode/rbxsync-*.vsix
+```
+Then restart VS Code.
 
 ---
 

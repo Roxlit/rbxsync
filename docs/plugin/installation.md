@@ -32,13 +32,24 @@ Coming soon - will be available on the Roblox Creator Store.
 
 ## Updating the Plugin
 
-When new versions are released:
+**Updates are NOT automatic.** You must manually update the plugin.
+
+### If installed from Creator Store:
+
+1. Open Roblox Studio
+2. Go to **Toolbox** → **Inventory** → **My Plugins**
+3. Find RbxSync and click the **Update** button if available
+4. Restart Studio to load the update
+
+### If installed manually:
 
 ```bash
-rbxsync update
+rbxsync build-plugin --install
 ```
 
-This pulls the latest code and rebuilds the plugin. Restart Studio to load the update.
+This rebuilds and copies the plugin to your Plugins folder. Restart Studio to load the update.
+
+> **Note:** The plugin will NOT auto-update. Check for updates periodically, especially if you encounter sync issues.
 
 ## Troubleshooting
 
