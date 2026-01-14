@@ -36,6 +36,43 @@ Copy-Item target\release\rbxsync.exe C:\Windows\System32\
 ```
 Or add `C:\path\to\rbxsync\target\release` to your PATH environment variable.
 
+### Windows: How do I remove an old RbxSync from PATH?
+
+If you installed a new version but the old one is still being used:
+
+1. **Find where the old version is:**
+   ```powershell
+   where.exe rbxsync
+   ```
+   This shows all locations where `rbxsync.exe` exists.
+
+2. **Remove the old installation:**
+   - Delete the old `rbxsync.exe` file from the path shown above
+   - Or remove that folder from your PATH environment variable
+
+3. **Edit PATH (if needed):**
+   - Press `Win + R`, type `sysdm.cpl`, press Enter
+   - Go to **Advanced** → **Environment Variables**
+   - Under "User variables", find **Path** and click **Edit**
+   - Remove any old RbxSync directories
+   - Click **OK** to save
+
+4. **Restart your terminal** and verify:
+   ```powershell
+   rbxsync version
+   ```
+
+::: tip Quick fix
+If the new install went to `%USERPROFILE%\.rbxsync\bin`, you can just delete the old exe:
+```powershell
+# Find and show all rbxsync locations
+where.exe rbxsync
+
+# Delete the OLD one (not the new one in .rbxsync\bin!)
+Remove-Item "C:\path\to\old\rbxsync.exe"
+```
+:::
+
 ## Sync Issues
 
 ### Changes not syncing to Studio
