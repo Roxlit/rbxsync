@@ -6080,7 +6080,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             <div class="section-header">
                 <div class="section-tag">Stay Current</div>
                 <h2 class="section-title">Updating RbxSync</h2>
-                <p class="section-desc">Each component updates through its native platform.</p>
+                <p class="section-desc">Updates are <strong>not automatic</strong>. You must manually update each component.</p>
             </div>
 
             <div class="update-cards">
@@ -6116,28 +6116,37 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                             Plugin
                         </span>
+                        <span class="auto-badge" style="background: var(--warning-bg); color: var(--warning);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            Manual
+                        </span>
                     </div>
                     <h4>Studio Plugin</h4>
-                    <p>Open the <a href="https://create.roblox.com/store/asset/89280418878393/RbxSync" target="_blank">Creator Store</a> page and click <strong>Update</strong>, or go to Plugins &rarr; Manage Plugins in Studio.</p>
+                    <p>In Studio: <strong>Toolbox</strong> &rarr; <strong>Inventory</strong> &rarr; <strong>My Plugins</strong> &rarr; click <strong>Update</strong>. Then restart Studio.</p>
                 </div>
 
                 <!-- VS Code Card -->
-                <div class="update-card auto" data-glow>
+                <div class="update-card" data-glow>
                     <div class="update-card-header">
                         <span class="update-label">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.583 2.603L8.431 11.25l-3.52-2.877L2 9.691v4.618l2.912 1.318 3.52-2.877 9.152 8.646L22 19.59V4.41l-4.417-1.807zM5 11.847v.306l-.762-.344.762-.344v.382zm12.33 5.644l-5.441-5.141 5.441-5.14v10.281z"/></svg>
                             VS Code
                         </span>
-                        <span class="auto-badge">
+                        <span class="auto-badge" style="background: var(--warning-bg); color: var(--warning);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="23 4 23 10 17 10"></polyline>
-                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
                             </svg>
-                            Auto
+                            Manual
                         </span>
                     </div>
                     <h4>VS Code Extension</h4>
-                    <p>Updates automatically by default. Install from the <a href="https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync" target="_blank">Marketplace</a> and VS Code handles the rest.</p>
+                    <p>In VS Code: <strong>Extensions</strong> (Ctrl/Cmd+Shift+X) &rarr; find RbxSync &rarr; click <strong>Update</strong>. Then restart VS Code.</p>
                 </div>
             </div>
         </div>
