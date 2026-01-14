@@ -134,7 +134,7 @@ if command -v rbxsync &> /dev/null; then
     echo -e "  ${BOLD}rbxsync serve${NC}     - Start the sync server"
     echo -e "  ${BOLD}rbxsync --help${NC}    - Show all commands"
     echo ""
-    echo -e "Documentation: ${BLUE}https://rbxsync.dev${NC}"
+    echo -e "Documentation: ${BLUE}https://docs.rbxsync.dev${NC}"
 else
     echo -e "${RED}Error: Installation may have failed.${NC}"
     echo "Please ensure /usr/local/bin is in your PATH."

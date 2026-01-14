@@ -137,6 +137,6 @@ Write-Host "  rbxsync init      - Initialize a new project" -ForegroundColor Gra
 Write-Host "  rbxsync serve     - Start the sync server" -ForegroundColor Gray
 Write-Host "  rbxsync --help    - Show all commands" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Documentation: https://rbxsync.dev" -ForegroundColor Blue
+Write-Host "Documentation: https://docs.rbxsync.dev" -ForegroundColor Blue
 Write-Host ""
 Write-Host "NOTE: Restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
