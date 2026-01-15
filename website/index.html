@@ -6494,6 +6494,7 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
 
             let isCompact = false;
             let activeColumn = 3; // Default to Rojo
+            let naturalTableWidth = null; // Cached width of full table
 
             function setActiveCompetitor(columnIndex) {
                 activeColumn = columnIndex;
@@ -6514,17 +6515,15 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                 });
             }
 
-            function checkCompactMode() {
-                // Temporarily remove compact mode to measure true table width
-                const wasCompact = section.classList.contains('comparison-compact');
-                if (wasCompact) {
-                    section.classList.remove('comparison-compact');
-                }
+            function measureNaturalWidth() {
+                // Measure full table width without compact mode
+                section.classList.remove('comparison-compact');
+                naturalTableWidth = table.scrollWidth;
+            }
 
-                // Check if table overflows its container
+            function checkCompactMode() {
                 const containerWidth = wrapper.clientWidth;
-                const tableWidth = table.scrollWidth;
-                const needsCompact = tableWidth > containerWidth + 10; // 10px threshold
+                const needsCompact = naturalTableWidth > containerWidth;
 
                 if (needsCompact !== isCompact) {
                     isCompact = needsCompact;
@@ -6532,20 +6531,19 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                     if (isCompact) {
                         setActiveCompetitor(activeColumn);
                     }
-                } else if (wasCompact) {
-                    section.classList.add('comparison-compact');
                 }
             }
 
-            // Initialize
+            // Initialize - measure natural width first
             setActiveCompetitor(3);
+            measureNaturalWidth();
             checkCompactMode();
 
             // Check on resize
             let resizeTimeout;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(checkCompactMode, 100);
+                resizeTimeout = setTimeout(checkCompactMode, 50);
             });
 
             // Handle pill clicks
