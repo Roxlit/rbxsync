@@ -366,37 +366,57 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       font-size: 12px;
       color: var(--text-primary);
       background: var(--bg-base);
-      padding: 12px;
+      padding: 4px 12px 12px 12px;
       line-height: 1.5;
       /* Override VS Code theme for consistent look */
       --vscode-sideBar-background: var(--bg-base);
     }
     body.cat-hidden {
-      padding-top: 4px;
+      padding-bottom: 12px;
     }
 
-    /* Result Toast */
-    .toast {
+    /* Notification Feed - pills stacking from bottom */
+    .notification-feed {
+      position: fixed;
+      bottom: 68px; /* Above cat footer */
+      left: 12px;
+      right: 12px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .notification-pill {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      margin-bottom: 12px;
-      animation: slideIn 0.2s ease;
-      font-size: 11px;
-      font-weight: 500;
+      gap: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 10px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: pill-in 0.3s ease forwards;
+      pointer-events: auto;
     }
-    .toast.success { background: var(--success-soft); border: 1px solid var(--success); color: var(--success); }
-    .toast.error { background: var(--error-soft); border: 1px solid var(--error); color: var(--error); }
-    .toast .icon { width: 14px; height: 14px; flex-shrink: 0; }
-    .toast-text { flex: 1; }
-    .toast-time { opacity: 0.7; font-size: 10px; }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-8px); }
+    .notification-pill.removing {
+      animation: pill-out 0.3s ease forwards;
+    }
+    @keyframes pill-in {
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes pill-out {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+    .notification-pill .icon { width: 12px; height: 12px; flex-shrink: 0; }
+    .notification-pill.success { border-color: var(--accent); }
+    .notification-pill.success .icon { color: var(--accent); }
+    .notification-pill.error { border-color: var(--error); }
+    .notification-pill.error .icon { color: var(--error); }
+    .notification-pill .pill-text { flex: 1; color: var(--text-primary); }
+    .notification-pill .pill-time { color: var(--text-muted); margin-left: auto; }
 
     .spinner {
       width: 14px; height: 14px;
@@ -736,26 +756,26 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
     .hidden { display: none !important; }
 
-    /* Zen Cat Mascot - Fixed at top */
+    /* Zen Cat Mascot - Fixed at bottom */
     .zen-cat-container {
       display: flex;
       align-items: flex-start;
       gap: 6px;
-      padding: 2px 12px 10px 12px;
+      padding: 8px 12px;
       cursor: pointer;
       user-select: none;
       position: fixed;
-      top: 0;
+      bottom: 0;
       left: 0;
       right: 0;
       background: var(--bg-base);
       z-index: 100;
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
     }
-    /* Spacer to push content below fixed cat */
+    /* Spacer to push content above fixed cat */
     .cat-spacer {
-      height: 56px;
+      height: 60px;
     }
     .zen-cat-container:active .zen-cat {
       transform: scale(0.95);
@@ -771,8 +791,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       50% { transform: rotate(3deg); }
     }
     @keyframes pulse-glow {
-      0%, 100% { opacity: 1; filter: drop-shadow(0 0 2px currentColor); }
-      50% { opacity: 0.7; filter: drop-shadow(0 0 6px currentColor); }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     .zen-cat {
       font-family: var(--vscode-editor-font-family, monospace);
@@ -945,22 +965,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     <button class="dismiss" id="dismissUpdate">×</button>
   </div>
 
-  <!-- Zen Cat Mascot -->
-  <div class="zen-cat-container" id="zenCat">
-    <div class="zen-cat idle" id="zenCatArt"></div>
-    <div class="zen-quote-feed">
-      <div class="zen-quote" id="zenQuote"></div>
-    </div>
-  </div>
-  <div class="cat-spacer" id="catSpacer"></div>
-
-  <!-- Toast -->
-  <div class="toast hidden" id="toast">
-    <svg class="icon success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-    <svg class="icon error-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-    <span class="toast-text" id="toastText"></span>
-    <span class="toast-time" id="toastTime"></span>
-  </div>
+  <!-- Notification Feed -->
+  <div class="notification-feed" id="notificationFeed"></div>
 
   <!-- Studios Section -->
   <div class="section">
@@ -1024,6 +1030,17 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         <span class="label">Show .rbxjson</span>
         <div class="toggle" id="rbxjsonToggle"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Cat Spacer (pushes content above fixed cat footer) -->
+  <div class="cat-spacer" id="catSpacer"></div>
+
+  <!-- Zen Cat Mascot (Footer) -->
+  <div class="zen-cat-container" id="zenCat">
+    <div class="zen-cat idle" id="zenCatArt"></div>
+    <div class="zen-quote-feed">
+      <div class="zen-quote" id="zenQuote"></div>
     </div>
   </div>
 
@@ -1361,6 +1378,38 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     let priorityMessageUntil = 0; // timestamp when priority message expires
     let lastPlaceCount = 0;
     let lastLinkedPlaceIds = new Set();
+    let lastNotificationTime = null;
+
+    // Notification feed - add pills that stack from bottom
+    function addNotification(text, success, time) {
+      const feed = document.getElementById('notificationFeed');
+      if (!feed) return;
+
+      const pill = document.createElement('div');
+      pill.className = 'notification-pill ' + (success ? 'success' : 'error');
+      pill.innerHTML = \`
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          \${success
+            ? '<path d="M20 6L9 17l-5-5"/>'
+            : '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>'}
+        </svg>
+        <span class="pill-text">\${text}</span>
+        <span class="pill-time">\${time}</span>
+      \`;
+
+      feed.appendChild(pill);
+
+      // Remove after 5 seconds
+      setTimeout(() => {
+        pill.classList.add('removing');
+        setTimeout(() => pill.remove(), 300);
+      }, 5000);
+
+      // Keep max 3 notifications
+      while (feed.children.length > 3) {
+        feed.firstChild.remove();
+      }
+    }
 
     // Typewriter effect - types text character by character
     let talkInterval = null;
@@ -1808,17 +1857,10 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         }
       }
 
-      // Toast
-      const toast = document.getElementById('toast');
-      if (s.lastResult) {
-        toast.classList.remove('hidden');
-        toast.className = 'toast ' + (s.lastResult.success ? 'success' : 'error');
-        document.getElementById('toastText').textContent = s.lastResult.label;
-        document.getElementById('toastTime').textContent = relTime(s.lastResult.time);
-        document.querySelector('.success-icon').classList.toggle('hidden', !s.lastResult.success);
-        document.querySelector('.error-icon').classList.toggle('hidden', s.lastResult.success);
-      } else {
-        toast.classList.add('hidden');
+      // Notification Feed
+      if (s.lastResult && s.lastResult.time !== lastNotificationTime) {
+        lastNotificationTime = s.lastResult.time;
+        addNotification(s.lastResult.label, s.lastResult.success, relTime(s.lastResult.time));
       }
 
       // Server
