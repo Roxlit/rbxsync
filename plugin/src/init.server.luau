@@ -16,6 +16,7 @@ local Selection = game:GetService("Selection")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local LogService = game:GetService("LogService")
+local CoreGui = game:GetService("CoreGui")
 
 -- Configuration defaults
 local POLL_INTERVAL = 1 -- seconds
@@ -3594,7 +3595,33 @@ syncOptionsSection.Size = UDim2.new(0, 0, 0, 0)
 syncOptionsSection.Visible = false
 syncOptionsSection.Parent = mainFrame
 
--- Path mismatch check and dialog
+-- Path mismatch check and dialog (viewport popup)
+local pathMismatchPopup: ScreenGui? = nil
+
+local function dismissPathMismatchPopup()
+    if pathMismatchPopup then
+        local frame = pathMismatchPopup:FindFirstChild("MismatchFrame")
+        if frame then
+            local tween = game:GetService("TweenService"):Create(
+                frame,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+                {Position = UDim2.new(1, 20, 1, -20)}
+            )
+            tween:Play()
+            tween.Completed:Connect(function()
+                if pathMismatchPopup then
+                    pathMismatchPopup:Destroy()
+                    pathMismatchPopup = nil
+                end
+            end)
+        else
+            pathMismatchPopup:Destroy()
+            pathMismatchPopup = nil
+        end
+    end
+end
+
+-- Legacy overlay reference (kept for compatibility)
 local pathMismatchOverlay: Frame? = nil
 
 checkPathMismatch = function(): (boolean, string?)
@@ -3631,161 +3658,289 @@ checkPathMismatch = function(): (boolean, string?)
 end
 
 showPathMismatchDialog = function(vscodePath: string, onContinue: () -> (), onFixPath: () -> (), onCancel: () -> ())
-    -- Remove existing overlay if present
-    if pathMismatchOverlay then
-        pathMismatchOverlay:Destroy()
+    -- Remove existing popup if present
+    if pathMismatchPopup then
+        pathMismatchPopup:Destroy()
+        pathMismatchPopup = nil
     end
 
     local studioPath = Config.getProjectDir()
 
-    -- Create overlay
-    local overlay = Instance.new("Frame")
-    overlay.Name = "PathMismatchOverlay"
-    overlay.Size = UDim2.new(1, 0, 1, 0)
-    overlay.Position = UDim2.new(0, 0, 0, 0)
-    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.4
-    overlay.ZIndex = 100
-    overlay.Parent = widget
-    pathMismatchOverlay = overlay
+    -- Create ScreenGui in CoreGui (viewport popup like notification)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "RbxSyncPathMismatch"
+    screenGui.DisplayOrder = 1001  -- Above notification
+    screenGui.IgnoreGuiInset = true
+    screenGui.ResetOnSpawn = false
 
-    -- Dialog box (taller for more content)
-    local dialog = Instance.new("Frame")
-    dialog.Name = "Dialog"
-    dialog.Size = UDim2.new(1, -16, 0, 180)
-    dialog.Position = UDim2.new(0.5, 0, 0.5, 0)
-    dialog.AnchorPoint = Vector2.new(0.5, 0.5)
-    dialog.BackgroundColor3 = Colors.surface
-    dialog.BorderSizePixel = 0
-    dialog.ZIndex = 101
-    dialog.Parent = overlay
+    local success = pcall(function()
+        screenGui.Parent = CoreGui
+    end)
+    if not success then
+        screenGui:Destroy()
+        return
+    end
+    pathMismatchPopup = screenGui
 
-    local dialogCorner = Instance.new("UICorner")
-    dialogCorner.CornerRadius = UDim.new(0, 8)
-    dialogCorner.Parent = dialog
+    -- Main popup frame (bottom-right, matches notification style)
+    local frame = Instance.new("Frame")
+    frame.Name = "MismatchFrame"
+    frame.Size = UDim2.new(0, 380, 0, 195)
+    frame.Position = UDim2.new(1, 20, 1, -24)  -- Start off-screen for animation
+    frame.AnchorPoint = Vector2.new(1, 1)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
 
-    local dialogStroke = Instance.new("UIStroke")
-    dialogStroke.Color = Colors.warning
-    dialogStroke.Thickness = 2
-    dialogStroke.Parent = dialog
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 12)
+    frameCorner.Parent = frame
 
-    -- Warning icon and title
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -16, 0, 20)
-    titleLabel.Position = UDim2.new(0, 8, 0, 8)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "⚠️ Path Mismatch"
-    titleLabel.TextColor3 = Colors.warning
-    titleLabel.TextSize = 14
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.ZIndex = 102
-    titleLabel.Parent = dialog
+    local frameStroke = Instance.new("UIStroke")
+    frameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    frameStroke.Color = Color3.fromRGB(60, 60, 70)
+    frameStroke.Thickness = 1
+    frameStroke.Parent = frame
 
-    -- Message
-    local messageLabel = Instance.new("TextLabel")
-    messageLabel.Size = UDim2.new(1, -16, 0, 70)
-    messageLabel.Position = UDim2.new(0, 8, 0, 32)
-    messageLabel.BackgroundTransparency = 1
-    messageLabel.Text = string.format(
-        "Studio path: %s\n\nVS Code path: %s\n\nFiles will extract to the Studio path, not VS Code!",
-        studioPath,
-        vscodePath
-    )
-    messageLabel.TextColor3 = Colors.textSecondary
-    messageLabel.TextSize = 10
-    messageLabel.Font = Enum.Font.Gotham
-    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
-    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
-    messageLabel.TextWrapped = true
-    messageLabel.ZIndex = 102
-    messageLabel.Parent = dialog
+    -- Drop shadow
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 40, 1, 40)
+    shadow.Position = UDim2.new(0.5, 0, 0.5, 8)
+    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://5554236805"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.4
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(23, 23, 277, 277)
+    shadow.ZIndex = -1
+    shadow.Parent = frame
+
+    -- Warning accent bar on left (yellow for warning)
+    local accentBar = Instance.new("Frame")
+    accentBar.Size = UDim2.new(0, 4, 1, -24)
+    accentBar.Position = UDim2.new(0, 12, 0, 12)
+    accentBar.BackgroundColor3 = Colors.warning
+    accentBar.BorderSizePixel = 0
+    accentBar.Parent = frame
+
+    local accentCorner = Instance.new("UICorner")
+    accentCorner.CornerRadius = UDim.new(0, 2)
+    accentCorner.Parent = accentBar
+
+    -- Warning icon (simple circle with !)
+    local iconBg = Instance.new("Frame")
+    iconBg.Size = UDim2.new(0, 40, 0, 40)
+    iconBg.Position = UDim2.new(0, 28, 0, 16)
+    iconBg.BackgroundColor3 = Color3.fromRGB(250, 204, 21)
+    iconBg.BackgroundTransparency = 0.85
+    iconBg.BorderSizePixel = 0
+    iconBg.Parent = frame
+
+    local iconBgCorner = Instance.new("UICorner")
+    iconBgCorner.CornerRadius = UDim.new(0, 8)
+    iconBgCorner.Parent = iconBg
+
+    local warningIcon = Instance.new("TextLabel")
+    warningIcon.Size = UDim2.new(1, 0, 1, 0)
+    warningIcon.BackgroundTransparency = 1
+    warningIcon.Text = "!"
+    warningIcon.TextColor3 = Colors.warning
+    warningIcon.TextSize = 24
+    warningIcon.Font = Enum.Font.GothamBold
+    warningIcon.Parent = iconBg
+
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -100, 0, 22)
+    title.Position = UDim2.new(0, 80, 0, 16)
+    title.BackgroundTransparency = 1
+    title.Text = "Path Mismatch"
+    title.TextColor3 = Colors.warning
+    title.TextSize = 15
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    -- Path info container
+    local pathContainer = Instance.new("Frame")
+    pathContainer.Size = UDim2.new(1, -40, 0, 70)
+    pathContainer.Position = UDim2.new(0, 80, 0, 42)
+    pathContainer.BackgroundTransparency = 1
+    pathContainer.Parent = frame
+
+    -- Studio path
+    local studioLabel = Instance.new("TextLabel")
+    studioLabel.Size = UDim2.new(1, -220, 0, 14)
+    studioLabel.Position = UDim2.new(0, 0, 0, 0)
+    studioLabel.BackgroundTransparency = 1
+    studioLabel.Text = "Studio:"
+    studioLabel.TextColor3 = Colors.textMuted
+    studioLabel.TextSize = 11
+    studioLabel.Font = Enum.Font.GothamMedium
+    studioLabel.TextXAlignment = Enum.TextXAlignment.Left
+    studioLabel.Parent = pathContainer
+
+    local studioPathLabel = Instance.new("TextLabel")
+    studioPathLabel.Size = UDim2.new(1, 0, 0, 16)
+    studioPathLabel.Position = UDim2.new(0, 0, 0, 14)
+    studioPathLabel.BackgroundTransparency = 1
+    studioPathLabel.Text = studioPath
+    studioPathLabel.TextColor3 = Colors.textPrimary
+    studioPathLabel.TextSize = 11
+    studioPathLabel.Font = Enum.Font.Code
+    studioPathLabel.TextXAlignment = Enum.TextXAlignment.Left
+    studioPathLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    studioPathLabel.Parent = pathContainer
+
+    -- VS Code path
+    local vscodeLabel = Instance.new("TextLabel")
+    vscodeLabel.Size = UDim2.new(1, -220, 0, 14)
+    vscodeLabel.Position = UDim2.new(0, 0, 0, 34)
+    vscodeLabel.BackgroundTransparency = 1
+    vscodeLabel.Text = "VS Code:"
+    vscodeLabel.TextColor3 = Colors.textMuted
+    vscodeLabel.TextSize = 11
+    vscodeLabel.Font = Enum.Font.GothamMedium
+    vscodeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    vscodeLabel.Parent = pathContainer
+
+    local vscodePathLabel = Instance.new("TextLabel")
+    vscodePathLabel.Size = UDim2.new(1, 0, 0, 16)
+    vscodePathLabel.Position = UDim2.new(0, 0, 0, 48)
+    vscodePathLabel.BackgroundTransparency = 1
+    vscodePathLabel.Text = vscodePath
+    vscodePathLabel.TextColor3 = Colors.accent
+    vscodePathLabel.TextSize = 11
+    vscodePathLabel.Font = Enum.Font.Code
+    vscodePathLabel.TextXAlignment = Enum.TextXAlignment.Left
+    vscodePathLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    vscodePathLabel.Parent = pathContainer
+
+    -- Warning message
+    local warningMsg = Instance.new("TextLabel")
+    warningMsg.Size = UDim2.new(1, -40, 0, 16)
+    warningMsg.Position = UDim2.new(0, 80, 0, 112)
+    warningMsg.BackgroundTransparency = 1
+    warningMsg.Text = "Files will extract to Studio path, not VS Code!"
+    warningMsg.TextColor3 = Colors.warning
+    warningMsg.TextSize = 11
+    warningMsg.Font = Enum.Font.GothamMedium
+    warningMsg.TextXAlignment = Enum.TextXAlignment.Left
+    warningMsg.Parent = frame
 
     -- Button container
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, -16, 0, 50)
-    buttonContainer.Position = UDim2.new(0, 8, 1, -58)
+    buttonContainer.Size = UDim2.new(1, -28, 0, 34)
+    buttonContainer.Position = UDim2.new(0, 14, 1, -48)
     buttonContainer.BackgroundTransparency = 1
-    buttonContainer.ZIndex = 102
-    buttonContainer.Parent = dialog
+    buttonContainer.Parent = frame
 
-    -- Use VS Code Path button (primary action)
-    local fixBtn = Instance.new("TextButton")
-    fixBtn.Size = UDim2.new(1, 0, 0, 22)
-    fixBtn.Position = UDim2.new(0, 0, 0, 0)
-    fixBtn.BackgroundColor3 = Colors.accent
-    fixBtn.BorderSizePixel = 0
-    fixBtn.Text = "Use VS Code Path"
-    fixBtn.TextColor3 = Colors.background
-    fixBtn.TextSize = 11
-    fixBtn.Font = Enum.Font.GothamBold
-    fixBtn.ZIndex = 103
-    fixBtn.Parent = buttonContainer
+    local buttonLayout = Instance.new("UIListLayout")
+    buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+    buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    buttonLayout.Padding = UDim.new(0, 8)
+    buttonLayout.Parent = buttonContainer
 
-    local fixCorner = Instance.new("UICorner")
-    fixCorner.CornerRadius = UDim.new(0, 4)
-    fixCorner.Parent = fixBtn
+    -- Dismiss button (ghost)
+    local dismissBtn = Instance.new("TextButton")
+    dismissBtn.Size = UDim2.new(0, 70, 0, 32)
+    dismissBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 46)
+    dismissBtn.BorderSizePixel = 0
+    dismissBtn.Text = "Cancel"
+    dismissBtn.TextColor3 = Colors.textMuted
+    dismissBtn.TextSize = 11
+    dismissBtn.Font = Enum.Font.GothamMedium
+    dismissBtn.AutoButtonColor = false
+    dismissBtn.LayoutOrder = 1
+    dismissBtn.Parent = buttonContainer
 
-    -- Continue Anyway and Cancel buttons (side by side)
+    local dismissCorner = Instance.new("UICorner")
+    dismissCorner.CornerRadius = UDim.new(0, 6)
+    dismissCorner.Parent = dismissBtn
+
+    -- Extract Anyway button (secondary)
     local continueBtn = Instance.new("TextButton")
-    continueBtn.Size = UDim2.new(0.48, 0, 0, 22)
-    continueBtn.Position = UDim2.new(0, 0, 0, 26)
-    continueBtn.BackgroundColor3 = Colors.surface
+    continueBtn.Size = UDim2.new(0, 105, 0, 32)
+    continueBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 46)
     continueBtn.BorderSizePixel = 0
     continueBtn.Text = "Extract Anyway"
     continueBtn.TextColor3 = Colors.textSecondary
-    continueBtn.TextSize = 10
+    continueBtn.TextSize = 11
     continueBtn.Font = Enum.Font.GothamMedium
-    continueBtn.ZIndex = 103
+    continueBtn.AutoButtonColor = false
+    continueBtn.LayoutOrder = 2
     continueBtn.Parent = buttonContainer
 
     local continueCorner = Instance.new("UICorner")
-    continueCorner.CornerRadius = UDim.new(0, 4)
+    continueCorner.CornerRadius = UDim.new(0, 6)
     continueCorner.Parent = continueBtn
 
-    local continueStroke = Instance.new("UIStroke")
-    continueStroke.Color = Colors.textMuted
-    continueStroke.Thickness = 1
-    continueStroke.Parent = continueBtn
+    -- Use VS Code Path button (primary)
+    local fixBtn = Instance.new("TextButton")
+    fixBtn.Size = UDim2.new(0, 125, 0, 32)
+    fixBtn.BackgroundColor3 = Colors.accent
+    fixBtn.BorderSizePixel = 0
+    fixBtn.Text = "Use VS Code Path"
+    fixBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    fixBtn.TextSize = 11
+    fixBtn.Font = Enum.Font.GothamBold
+    fixBtn.AutoButtonColor = false
+    fixBtn.LayoutOrder = 3
+    fixBtn.Parent = buttonContainer
 
-    local cancelBtn = Instance.new("TextButton")
-    cancelBtn.Size = UDim2.new(0.48, 0, 0, 22)
-    cancelBtn.Position = UDim2.new(0.52, 0, 0, 26)
-    cancelBtn.BackgroundColor3 = Colors.surface
-    cancelBtn.BorderSizePixel = 0
-    cancelBtn.Text = "Cancel"
-    cancelBtn.TextColor3 = Colors.textSecondary
-    cancelBtn.TextSize = 10
-    cancelBtn.Font = Enum.Font.GothamMedium
-    cancelBtn.ZIndex = 103
-    cancelBtn.Parent = buttonContainer
+    local fixCorner = Instance.new("UICorner")
+    fixCorner.CornerRadius = UDim.new(0, 6)
+    fixCorner.Parent = fixBtn
 
-    local cancelCorner = Instance.new("UICorner")
-    cancelCorner.CornerRadius = UDim.new(0, 4)
-    cancelCorner.Parent = cancelBtn
+    -- Hover effects
+    dismissBtn.MouseEnter:Connect(function()
+        dismissBtn.BackgroundColor3 = Color3.fromRGB(52, 52, 60)
+    end)
+    dismissBtn.MouseLeave:Connect(function()
+        dismissBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 46)
+    end)
 
-    local cancelStroke = Instance.new("UIStroke")
-    cancelStroke.Color = Colors.textMuted
-    cancelStroke.Thickness = 1
-    cancelStroke.Parent = cancelBtn
+    continueBtn.MouseEnter:Connect(function()
+        continueBtn.BackgroundColor3 = Color3.fromRGB(52, 52, 60)
+    end)
+    continueBtn.MouseLeave:Connect(function()
+        continueBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 46)
+    end)
+
+    fixBtn.MouseEnter:Connect(function()
+        fixBtn.BackgroundColor3 = Colors.accentHover
+    end)
+    fixBtn.MouseLeave:Connect(function()
+        fixBtn.BackgroundColor3 = Colors.accent
+    end)
 
     -- Button handlers
-    fixBtn.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-        pathMismatchOverlay = nil
-        onFixPath()
+    dismissBtn.MouseButton1Click:Connect(function()
+        dismissPathMismatchPopup()
+        onCancel()
     end)
 
     continueBtn.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-        pathMismatchOverlay = nil
+        dismissPathMismatchPopup()
         onContinue()
     end)
 
-    cancelBtn.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-        pathMismatchOverlay = nil
-        onCancel()
+    fixBtn.MouseButton1Click:Connect(function()
+        dismissPathMismatchPopup()
+        onFixPath()
+    end)
+
+    -- Animate in from right
+    task.defer(function()
+        local tween = game:GetService("TweenService"):Create(
+            frame,
+            TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Position = UDim2.new(1, -24, 1, -24)}
+        )
+        tween:Play()
     end)
 end
 
@@ -3937,7 +4092,6 @@ end
 -- VIEWPORT NOTIFICATION (appears in game viewport like Rojo)
 -- ============================================================================
 
-local CoreGui = game:GetService("CoreGui")
 local viewportNotification: ScreenGui? = nil
 
 dismissViewportNotification = function()

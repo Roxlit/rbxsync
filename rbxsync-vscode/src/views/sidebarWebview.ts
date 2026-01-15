@@ -385,8 +385,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Section */
-    .section { margin-bottom: 16px; }
-    .section-title {
+    .section { margin-bottom: 8px; }
+    .section-header {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -395,16 +395,39 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
-      padding: 0 2px;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: background 0.15s, color 0.15s;
     }
-    .section-title .icon { width: 12px; height: 12px; opacity: 0.7; }
-    .section-title .count {
-      margin-left: auto;
+    .section-header:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .section-header .icon { width: 12px; height: 12px; opacity: 0.7; }
+    .section-header .section-label { flex: 1; }
+    .section-header .count {
       background: var(--bg-elevated);
       padding: 2px 6px;
       border-radius: 10px;
       font-size: 9px;
+    }
+    .section-header .chevron {
+      width: 14px;
+      height: 14px;
+      opacity: 0.5;
+      transition: transform 0.2s;
+    }
+    .section-header.collapsed .chevron {
+      transform: rotate(-90deg);
+    }
+    .section-content {
+      display: none;
+      padding: 0 4px;
+    }
+    .section-content.visible {
+      display: block;
     }
 
     /* Studio Card */
@@ -694,39 +717,42 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
     .hidden { display: none !important; }
 
-    /* Zen Cat Mascot - Compact */
+    /* Zen Cat Mascot - Fixed above scroll */
     .zen-cat-container {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 6px 10px;
-      margin-bottom: 8px;
-      position: relative;
-      overflow: hidden;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 4px 12px 8px 12px;
       cursor: pointer;
       user-select: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-base);
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
     }
-    .zen-cat-container:hover {
-      border-color: var(--border-light);
+    /* Spacer to push content below fixed cat */
+    .cat-spacer {
+      height: 52px;
     }
     .zen-cat-container:active .zen-cat {
       transform: scale(0.95);
     }
-    .zen-cat-container::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #f472b6, #a78bfa, #60a5fa, #4ade80, #facc15, #f472b6);
-      background-size: 200% 100%;
-      animation: rainbow-slide 3s linear infinite;
+    .zen-cat-container.wiggle .zen-cat {
+      animation: wiggle 0.3s ease infinite;
     }
-    @keyframes rainbow-slide {
-      0% { background-position: 0% 0%; }
-      100% { background-position: 200% 0%; }
+    .zen-cat-container.pulse .zen-cat {
+      animation: pulse-glow 1s ease infinite;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 2px currentColor); }
+      50% { opacity: 0.7; filter: drop-shadow(0 0 6px currentColor); }
     }
     .zen-cat {
       font-family: var(--vscode-editor-font-family, monospace);
@@ -734,7 +760,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       line-height: 1.1;
       white-space: pre;
       flex-shrink: 0;
-      transition: color 0.3s ease;
+      transition: color 0.3s ease, transform 0.15s ease;
     }
     .zen-cat.idle { color: #a78bfa; }
     .zen-cat.syncing { color: #60a5fa; animation: cat-bounce 0.5s ease infinite; }
@@ -742,26 +768,45 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     .zen-cat.error { color: #f87171; }
     @keyframes cat-bounce {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-1px); }
+      50% { transform: translateY(-2px); }
     }
+    /* Speech bubble */
     .zen-quote-feed {
       flex: 1;
-      display: flex;
-      align-items: center;
       min-width: 0;
+      position: relative;
+      padding-left: 6px;
     }
     .zen-quote {
+      --bubble-bg: var(--bg-surface);
+      display: inline-block;
       font-size: 10px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       font-style: italic;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      opacity: 1;
-      transition: opacity 0.5s ease;
+      word-wrap: break-word;
+      background: var(--bubble-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      position: relative;
+      transition: border-color 0.3s ease, background 0.3s ease;
     }
-    .zen-quote.fade { opacity: 0; }
-    .zen-cat-container:hover .zen-quote { color: var(--text-secondary); }
+    /* Speech bubble tail - simple triangle */
+    .zen-quote::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-right-color: var(--bubble-bg);
+      border-left: 0;
+      transition: border-right-color 0.3s ease;
+    }
+    .zen-cat-container:hover .zen-quote {
+      border-color: var(--border-light);
+      color: var(--text-primary);
+    }
     /* Typewriter cursor */
     .zen-quote.typing::after {
       content: '|';
@@ -891,6 +936,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       <div class="zen-quote" id="zenQuote"></div>
     </div>
   </div>
+  <div class="cat-spacer"></div>
 
   <!-- Toast -->
   <div class="toast hidden" id="toast">
@@ -902,54 +948,63 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
   <!-- Studios Section -->
   <div class="section">
-    <div class="section-title">
+    <div class="section-header" data-section="studios">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      Studios
+      <span class="section-label">Studios</span>
       <span class="count" id="studioCount">0</span>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </div>
-    <div id="studioList"></div>
-    <div class="empty-state" id="emptyState">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M9 10h6M12 7v6" opacity="0.5"/></svg>
-      <h3 id="emptyTitle">No Studios Connected</h3>
-      <p id="emptyDesc">Open Roblox Studio and install the RbxSync plugin</p>
+    <div class="section-content visible" id="studiosContent">
+      <div id="studioList"></div>
+      <div class="empty-state" id="emptyState">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M9 10h6M12 7v6" opacity="0.5"/></svg>
+        <h3 id="emptyTitle">No Studios Connected</h3>
+        <p id="emptyDesc">Open Roblox Studio and install the RbxSync plugin</p>
+      </div>
     </div>
   </div>
 
   <!-- Server Section -->
   <div class="section">
-    <div class="section-title">
+    <div class="section-header" data-section="server">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>
-      Server
+      <span class="section-label">Server</span>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </div>
-    <div class="server-bar">
-      <div class="server-status">
-        <div class="status-dot" id="serverDot"></div>
-        <span class="server-label" id="serverLabel">Stopped</span>
+    <div class="section-content visible" id="serverContent">
+      <div class="server-bar">
+        <div class="server-status">
+          <div class="status-dot" id="serverDot"></div>
+          <span class="server-label" id="serverLabel">Stopped</span>
+        </div>
+        <button class="server-btn start" id="serverBtn">Start</button>
       </div>
-      <button class="server-btn start" id="serverBtn">Start</button>
     </div>
   </div>
 
   <!-- Tools Section -->
   <div class="section">
-    <div class="section-title">
+    <div class="section-header" data-section="tools">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-      Tools
+      <span class="section-label">Tools</span>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </div>
-    <div class="quick-row" id="consoleBtn">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-      <span class="label">Console</span>
-      <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-    </div>
-    <div class="quick-row" id="e2eBtn">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <span class="label">E2E Mode</span>
-      <div class="toggle" id="e2eToggle"></div>
-    </div>
-    <div class="quick-row" id="rbxjsonBtn">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span class="label">Toggle .rbxjson</span>
-      <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    <div class="section-content visible" id="toolsContent">
+      <div class="quick-row" id="consoleBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span class="label">Console</span>
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="quick-row" id="e2eBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="label">E2E Mode</span>
+        <div class="toggle" id="e2eToggle"></div>
+      </div>
+      <div class="quick-row" id="rbxjsonBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="label">Toggle .rbxjson</span>
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
     </div>
   </div>
 
@@ -1025,8 +1080,62 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         "Hiss!",
         "Uh oh...",
         "Error meow!"
+      ],
+      serverStart: [
+        "Server starting~",
+        "Waking up...",
+        "Stretching...",
+        "Coming online!"
+      ],
+      serverConnected: [
+        "Connected! Purr~",
+        "Ready to go!",
+        "All systems meow!",
+        "Online and cozy~"
+      ],
+      serverStopped: [
+        "Server stopped~",
+        "Taking a nap...",
+        "Zzz...",
+        "Going offline~"
       ]
     };
+
+    // Cat click reactions - fun cat things to say
+    const CAT_CLICK_MESSAGES = [
+      "Meow!",
+      "Mrrp?",
+      "Purrr~",
+      "*blinks slowly*",
+      "Nya~",
+      "*head bonk*",
+      "Pet me more!",
+      "*kneads paws*",
+      "Prrrrt!",
+      "*tail swish*",
+      "Feed me?",
+      "*chirp chirp*",
+      "So sleepy...",
+      "*stretches*",
+      "Mrow!",
+      "*flops over*",
+      "Treats?",
+      "*ear twitch*",
+      "Mew~",
+      "*purrs loudly*"
+    ];
+
+    // Fun colors for cat clicks
+    const CAT_CLICK_COLORS = [
+      '#f472b6', // pink
+      '#a78bfa', // purple
+      '#60a5fa', // blue
+      '#4ade80', // green
+      '#facc15', // yellow
+      '#fb923c', // orange
+      '#f87171', // red
+      '#2dd4bf', // teal
+    ];
 
     // Zen wisdom quotes
     const ZEN_QUOTES = [
@@ -1139,6 +1248,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     let isTyping = false;
     let lastOperationType = null;
     let operationMessageIndex = 0;
+    let lastConnectionStatus = null;
 
     // Typewriter effect - types text character by character
     function typewriterEffect(text, element, speed = 40) {
@@ -1206,28 +1316,59 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     // Cat click reaction
+    let isClickAnimating = false;
     function onCatClick() {
       const catEl = document.getElementById('zenCatArt');
       const quoteEl = document.getElementById('zenQuote');
-      if (!catEl) return;
+      const container = document.getElementById('zenCat');
+      if (!catEl || isClickAnimating) return;
+
+      isClickAnimating = true;
+
+      // Pick random color
+      const randomColor = CAT_CLICK_COLORS[Math.floor(Math.random() * CAT_CLICK_COLORS.length)];
 
       // Show surprised face (4-line version)
       catEl.textContent = \` /\\\\_/\\\\
 ( O.O )
  />!<\\\\
  meow!\`;
-      catEl.style.color = '#facc15';
+      catEl.style.color = randomColor;
 
-      // Show new quote immediately with typewriter (only if idle)
-      if (quoteEl && shuffledQuotes.length > 0 && (state?.catMood === 'idle' || !state?.catMood)) {
-        quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
-        typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+      // Add wiggle animation to container, color to speech bubble
+      if (container) {
+        container.classList.add('wiggle');
+      }
+      if (quoteEl) {
+        quoteEl.style.borderColor = randomColor;
+        quoteEl.style.setProperty('--bubble-bg', randomColor + '40');
       }
 
-      // Return to normal after a moment
+      // Show cat message with typewriter
+      if (quoteEl) {
+        const catMsg = CAT_CLICK_MESSAGES[Math.floor(Math.random() * CAT_CLICK_MESSAGES.length)];
+        typewriterEffect(catMsg, quoteEl, 30);
+      }
+
+      // Return to normal after longer delay
       setTimeout(() => {
         updateCatMood(state?.catMood || 'idle');
-      }, 800);
+        if (container) {
+          container.classList.remove('wiggle');
+        }
+        if (quoteEl) {
+          quoteEl.style.borderColor = '';
+          quoteEl.style.setProperty('--bubble-bg', '');
+        }
+        isClickAnimating = false;
+        // Return to zen quote after click message
+        if (quoteEl && (state?.catMood === 'idle' || !state?.catMood)) {
+          setTimeout(() => {
+            quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
+            typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+          }, 1000);
+        }
+      }, 2000);
     }
 
     // Initialize on load
@@ -1248,11 +1389,94 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       const catMood = s.catMood || 'idle';
       const opType = s.catOperationType;
       const quoteEl = document.getElementById('zenQuote');
+      const catEl = document.getElementById('zenCatArt');
+      const container = document.getElementById('zenCat');
+      const connStatus = s.connectionStatus;
 
-      updateCatMood(catMood);
+      // Check for server connection status changes
+      if (connStatus !== lastConnectionStatus && !isClickAnimating) {
+        if (connStatus === 'connecting' && lastConnectionStatus !== 'connecting') {
+          // Server starting - show alert cat with animation
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( o.o )
+ />~<\\\\
+  ~~~\`;
+            catEl.style.color = '#facc15';
+          }
+          if (container) {
+            container.classList.add('pulse');
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#facc15';
+            quoteEl.style.setProperty('--bubble-bg', '#facc1540');
+            const msg = getOperationMessage('serverStart');
+            typewriterEffect(msg, quoteEl, 35);
+          }
+        } else if (connStatus === 'connected' && lastConnectionStatus !== 'connected') {
+          // Server connected - show happy cat
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( ^.^ )
+ />v<\\\\
+*purr*\`;
+            catEl.style.color = '#4ade80';
+          }
+          if (container) {
+            container.classList.remove('pulse');
+            container.classList.add('wiggle');
+            setTimeout(() => container.classList.remove('wiggle'), 1000);
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#4ade80';
+            quoteEl.style.setProperty('--bubble-bg', '#4ade8040');
+            const msg = getOperationMessage('serverConnected');
+            typewriterEffect(msg, quoteEl, 35);
+          }
+          // Reset cat after delay
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+            updateCatMood('idle');
+          }, 3000);
+        } else if (connStatus === 'disconnected' && lastConnectionStatus && lastConnectionStatus !== 'disconnected') {
+          // Server stopped - show sleepy cat
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( -.- )
+ />♡<\\\\
+  ~z~\`;
+            catEl.style.color = '#a78bfa';
+          }
+          if (container) {
+            container.classList.remove('pulse');
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#a78bfa';
+            quoteEl.style.setProperty('--bubble-bg', '#a78bfa40');
+            const msg = getOperationMessage('serverStopped');
+            typewriterEffect(msg, quoteEl, 35);
+          }
+          // Reset after delay
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+          }, 3000);
+        }
+        lastConnectionStatus = connStatus;
+      } else if (!isClickAnimating) {
+        // Normal mood updates (when not reacting to server changes)
+        updateCatMood(catMood);
+      }
 
-      // Show contextual messages during operations
-      if (quoteEl) {
+      // Show contextual messages during operations (only if not reacting to server)
+      if (quoteEl && lastConnectionStatus === connStatus) {
         if (opType && catMood === 'syncing') {
           // Active operation - show contextual message
           if (lastOperationType !== opType) {
@@ -1432,6 +1656,18 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       const m = Math.floor(s / 60);
       return m + 'm';
     }
+
+    // Collapsible sections
+    document.querySelectorAll('.section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.dataset.section;
+        const content = document.getElementById(section + 'Content');
+        if (content) {
+          header.classList.toggle('collapsed');
+          content.classList.toggle('visible');
+        }
+      });
+    });
 
     document.getElementById('serverBtn').onclick = () => {
       vscode.postMessage({ command: state?.connectionStatus === 'connected' ? 'disconnect' : 'connect' });
