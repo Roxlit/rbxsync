@@ -2646,80 +2646,202 @@
             overflow-x: hidden;
         }
 
-        /* Scale down on very narrow screens */
-        @media (max-width: 420px) {
-            .comparison-compact .comparison-table-wrapper {
-                transform-origin: top center;
-            }
+        /* Hide tool names in compact mode - icons only */
+        .comparison-compact .tool-header-name {
+            display: none;
+        }
 
-            .comparison-compact .comparison-table th,
-            .comparison-compact .comparison-table td {
-                padding: 0.625rem 0.5rem !important;
-                font-size: 0.8125rem;
-            }
+        .comparison-compact .tool-header-content {
+            gap: 0;
+        }
 
-            .comparison-compact .comparison-table th:nth-child(2),
-            .comparison-compact .comparison-table td:nth-child(2) {
-                width: 100px !important;
-                min-width: 100px !important;
-                max-width: 100px !important;
-            }
+        /* Legend inside aurora wrapper */
+        .comparison-compact .comparison-legend {
+            margin-top: 1rem;
+        }
 
-            .comparison-compact .comparison-table th.mobile-visible,
-            .comparison-compact .comparison-table td.mobile-visible {
-                width: 90px !important;
-                min-width: 90px !important;
-                max-width: 90px !important;
-            }
+        /* ===== BATTLE MODE - Mobile Comparison ===== */
+        .comparison-battle {
+            display: none;
+        }
 
-            .comparison-compact .comparison-table td:first-child {
-                padding-right: 0.75rem !important;
-            }
+        .comparison-compact .comparison-aurora-wrapper {
+            display: none;
+        }
 
-            .comparison-compact .feature-name {
-                font-size: 0.75rem;
-            }
+        .comparison-compact .comparison-battle {
+            display: block;
+            background: rgba(12, 12, 14, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
-            .comparison-compact .status-icon {
-                width: 22px;
-                height: 22px;
-            }
+        .battle-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.25rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
 
-            .comparison-compact .status-icon svg {
-                width: 12px;
-                height: 12px;
-            }
+        .battle-tool {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.375rem;
+        }
 
-            .comparison-compact .exclusive-tag {
-                font-size: 0.5rem;
-                padding: 0.2rem 0.4rem;
-                padding-left: calc(0.4rem + 0.08em);
+        .battle-tool-logo {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .battle-tool-name {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .battle-tool.rbxsync .battle-tool-name {
+            color: var(--success);
+        }
+
+        .battle-vs {
+            font-size: 0.875rem;
+            font-weight: 900;
+            color: var(--rbx-red);
+            text-shadow: 0 0 20px rgba(194, 60, 64, 0.4);
+            letter-spacing: 0.1em;
+        }
+
+        .battle-rows {
+            padding: 0.5rem 0;
+        }
+
+        .battle-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .battle-row:last-child {
+            border-bottom: none;
+        }
+
+        .battle-feature-name {
+            grid-column: 1 / -1;
+            padding: 0.625rem 1rem 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .battle-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.375rem 0.75rem 0.75rem;
+            min-height: 40px;
+        }
+
+        .battle-cell.rbxsync {
+            background: rgba(45, 212, 191, 0.03);
+        }
+
+        .battle-cell .status-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .battle-cell .status-icon svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .battle-cell .exclusive-tag {
+            font-size: 0.5625rem;
+        }
+
+        /* Battle legend */
+        .battle-legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.25rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .battle-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.625rem;
+            color: var(--text-muted);
+        }
+
+        .battle-legend-item .status-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .battle-legend-item .status-icon svg {
+            width: 10px;
+            height: 10px;
+        }
+
+        /* Battle mode transition */
+        .battle-cell.fade-out {
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .battle-cell.fade-in {
+            animation: battleFadeIn 0.2s ease forwards;
+        }
+
+        @keyframes battleFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
             }
         }
 
-        @media (max-width: 360px) {
-            .comparison-compact .comparison-table th:nth-child(2),
-            .comparison-compact .comparison-table td:nth-child(2) {
-                width: 85px !important;
-                min-width: 85px !important;
-                max-width: 85px !important;
-            }
+        /* Light theme */
+        [data-theme="light"] .comparison-compact .comparison-battle {
+            background: rgba(255, 255, 255, 0.98);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
 
-            .comparison-compact .comparison-table th.mobile-visible,
-            .comparison-compact .comparison-table td.mobile-visible {
-                width: 75px !important;
-                min-width: 75px !important;
-                max-width: 75px !important;
-            }
+        [data-theme="light"] .battle-header {
+            background: rgba(0, 0, 0, 0.02);
+            border-bottom-color: rgba(0, 0, 0, 0.06);
+        }
 
-            .comparison-compact .feature-name {
-                font-size: 0.6875rem;
-            }
+        [data-theme="light"] .battle-row {
+            border-bottom-color: rgba(0, 0, 0, 0.04);
+        }
 
-            .comparison-compact .status-icon {
-                width: 20px;
-                height: 20px;
-            }
+        [data-theme="light"] .battle-cell.rbxsync {
+            background: rgba(45, 212, 191, 0.05);
+        }
+
+        [data-theme="light"] .battle-legend {
+            background: rgba(0, 0, 0, 0.02);
+            border-top-color: rgba(0, 0, 0, 0.06);
         }
 
         /* rbxjson Section */
@@ -6170,8 +6292,6 @@
                     </tbody>
                 </table>
             </div>
-            </div>
-
             <div class="comparison-legend">
                 <div class="comparison-legend-item">
                     <span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
@@ -6184,6 +6304,39 @@
                 <div class="comparison-legend-item">
                     <span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12"/></svg></span>
                     <span>Not available</span>
+                </div>
+            </div>
+            </div>
+
+            <!-- Battle Mode - Mobile Comparison -->
+            <div class="comparison-battle" id="comparison-battle">
+                <div class="battle-header">
+                    <div class="battle-tool rbxsync">
+                        <img src="logo.png" alt="RbxSync" class="battle-tool-logo">
+                        <span class="battle-tool-name">RbxSync</span>
+                    </div>
+                    <span class="battle-vs">VS</span>
+                    <div class="battle-tool competitor" id="battle-competitor">
+                        <img src="https://rojo.space/img/logo.png" alt="Rojo" class="battle-tool-logo" id="battle-competitor-logo">
+                        <span class="battle-tool-name" id="battle-competitor-name">Rojo</span>
+                    </div>
+                </div>
+                <div class="battle-rows" id="battle-rows">
+                    <!-- Generated by JS -->
+                </div>
+                <div class="battle-legend">
+                    <div class="battle-legend-item">
+                        <span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span>Supported</span>
+                    </div>
+                    <div class="battle-legend-item">
+                        <span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span>
+                        <span>Partial</span>
+                    </div>
+                    <div class="battle-legend-item">
+                        <span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12"/></svg></span>
+                        <span>N/A</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -6644,46 +6797,127 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             }
         })();
 
-        // Comparison table compact mode detection
+        // Comparison table compact mode detection + Battle Mode
         (function() {
             const section = document.getElementById('comparison');
             const sectionInner = section?.querySelector('.section-inner');
             const wrapper = document.querySelector('.comparison-table-wrapper');
             const table = document.querySelector('.comparison-table');
             const pills = document.querySelectorAll('.competitor-pill');
-            if (!section || !sectionInner || !wrapper || !table || !pills.length) return;
+            const battleContainer = document.getElementById('comparison-battle');
+            const battleRows = document.getElementById('battle-rows');
+            const battleCompetitorLogo = document.getElementById('battle-competitor-logo');
+            const battleCompetitorName = document.getElementById('battle-competitor-name');
+            if (!section || !sectionInner || !wrapper || !table || !pills.length || !battleContainer) return;
 
             let isCompact = false;
             let activeColumn = 3; // Default to Rojo
-            let naturalTableWidth = null; // Cached width of full table
+            let naturalTableWidth = null;
 
-            function setActiveCompetitor(columnIndex) {
+            // Competitor data for battle mode
+            const competitors = {
+                3: { name: 'Rojo', logo: 'https://rojo.space/img/logo.png' },
+                4: { name: 'Argon', logo: 'images/argon.svg' },
+                5: { name: 'Pesto', logo: 'https://tr.rbxcdn.com/180DAY-f955c288b7f0f28cd1c8f5e2b56b0d12/420/420/Image/Webp/noFilter' },
+                6: { name: 'Script Sync', logo: 'images/scriptsync.svg' },
+                7: { name: 'Azul', logo: 'images/azullogo.png' }
+            };
+
+            // Extract feature data from table
+            function extractFeatureData() {
+                const features = [];
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length < 7) return;
+
+                    const featureName = cells[0].querySelector('.feature-name')?.textContent || '';
+                    const rbxsyncCell = cells[1];
+                    const isExclusive = rbxsyncCell.querySelector('.exclusive-tag') !== null;
+                    const rbxsyncStatus = isExclusive ? 'exclusive' :
+                        rbxsyncCell.querySelector('.status-icon.yes') ? 'yes' :
+                        rbxsyncCell.querySelector('.status-icon.partial') ? 'partial' : 'no';
+
+                    const competitorStatuses = {};
+                    for (let i = 2; i <= 6; i++) {
+                        const cell = cells[i];
+                        const colIndex = i + 1; // columns are 3-7
+                        competitorStatuses[colIndex] =
+                            cell.querySelector('.status-icon.yes') ? 'yes' :
+                            cell.querySelector('.status-icon.partial') ? 'partial' : 'no';
+                    }
+
+                    features.push({ featureName, rbxsyncStatus, competitorStatuses });
+                });
+                return features;
+            }
+
+            const featureData = extractFeatureData();
+
+            // Generate status icon HTML
+            function getStatusIcon(status) {
+                if (status === 'exclusive') {
+                    return '<span class="exclusive-tag">Exclusive</span>';
+                } else if (status === 'yes') {
+                    return '<span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>';
+                } else if (status === 'partial') {
+                    return '<span class="status-icon partial"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16V4z"/></svg></span>';
+                } else {
+                    return '<span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12"/></svg></span>';
+                }
+            }
+
+            // Update battle view with selected competitor
+            function updateBattleView(columnIndex, animate = false) {
+                const competitor = competitors[columnIndex];
+                if (!competitor) return;
+
+                // Update header
+                battleCompetitorLogo.src = competitor.logo;
+                battleCompetitorLogo.alt = competitor.name;
+                battleCompetitorName.textContent = competitor.name;
+
+                // Generate rows
+                let rowsHtml = '';
+                featureData.forEach(feature => {
+                    const competitorStatus = feature.competitorStatuses[columnIndex] || 'no';
+                    rowsHtml += `
+                        <div class="battle-row">
+                            <div class="battle-feature-name">${feature.featureName}</div>
+                            <div class="battle-cell rbxsync${animate ? ' fade-in' : ''}">${getStatusIcon(feature.rbxsyncStatus)}</div>
+                            <div class="battle-cell competitor${animate ? ' fade-in' : ''}">${getStatusIcon(competitorStatus)}</div>
+                        </div>
+                    `;
+                });
+                battleRows.innerHTML = rowsHtml;
+            }
+
+            function setActiveCompetitor(columnIndex, animate = false) {
                 activeColumn = columnIndex;
-
-                // Remove mobile-visible from all competitor columns (3-7)
-                table.querySelectorAll('th, td').forEach(cell => {
-                    cell.classList.remove('mobile-visible');
-                });
-
-                // Add mobile-visible to selected column
-                table.querySelectorAll(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`).forEach(cell => {
-                    cell.classList.add('mobile-visible');
-                });
 
                 // Update pill states
                 pills.forEach(pill => {
                     pill.classList.toggle('active', pill.dataset.column === String(columnIndex));
                 });
+
+                // Update battle view
+                updateBattleView(columnIndex, animate);
+
+                // Also update table for desktop (mobile-visible class)
+                table.querySelectorAll('th, td').forEach(cell => {
+                    cell.classList.remove('mobile-visible');
+                });
+                table.querySelectorAll(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`).forEach(cell => {
+                    cell.classList.add('mobile-visible');
+                });
             }
 
             function measureNaturalWidth() {
-                // Measure full table width without compact mode
                 section.classList.remove('comparison-compact');
                 naturalTableWidth = table.scrollWidth;
             }
 
             function checkCompactMode() {
-                // Use section-inner width as stable reference (doesn't shrink in compact mode)
                 const availableWidth = sectionInner.clientWidth;
                 const needsCompact = naturalTableWidth > availableWidth;
 
@@ -6694,35 +6928,9 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                         setActiveCompetitor(activeColumn);
                     }
                 }
-
-                // After compact mode is set, check if we need to scale
-                applyScaleIfNeeded();
             }
 
-            function applyScaleIfNeeded() {
-                const auroraWrapper = section.querySelector('.comparison-aurora-wrapper');
-                if (!auroraWrapper) return;
-
-                // Reset scale first to measure natural size
-                auroraWrapper.style.transform = '';
-                auroraWrapper.style.transformOrigin = '';
-
-                if (!isCompact) return; // Only scale in compact mode
-
-                // Get the compact table's natural width
-                const tableWidth = table.scrollWidth;
-                const availableWidth = sectionInner.clientWidth - 32; // Account for section padding
-
-                if (tableWidth > availableWidth) {
-                    const scale = availableWidth / tableWidth;
-                    // Don't scale below 0.7 for readability
-                    const finalScale = Math.max(scale, 0.7);
-                    auroraWrapper.style.transform = `scale(${finalScale})`;
-                    auroraWrapper.style.transformOrigin = 'top center';
-                }
-            }
-
-            // Initialize - measure natural width first
+            // Initialize
             setActiveCompetitor(3);
             measureNaturalWidth();
             checkCompactMode();
@@ -6738,7 +6946,9 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             pills.forEach(pill => {
                 pill.addEventListener('click', () => {
                     const column = parseInt(pill.dataset.column, 10);
-                    setActiveCompetitor(column);
+                    if (column !== activeColumn) {
+                        setActiveCompetitor(column, true);
+                    }
                 });
             });
         })();
