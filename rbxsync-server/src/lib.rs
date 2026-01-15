@@ -418,6 +418,29 @@ async fn handle_register(
     // Fall back to place_id for backwards compatibility with older plugins
     let key = req.session_id.clone().unwrap_or_else(|| req.place_id.to_string());
 
+    // For published places (place_id > 0), remove any stale entries with the same place_id
+    // but a different session_id. This prevents duplicates when Studio is closed and reopened.
+    if req.place_id > 0 {
+        let stale_keys: Vec<String> = registry
+            .iter()
+            .filter(|(k, info)| {
+                info.place_id == req.place_id && *k != &key
+            })
+            .map(|(k, _)| k.clone())
+            .collect();
+
+        for stale_key in stale_keys {
+            if let Some(info) = registry.remove(&stale_key) {
+                tracing::info!(
+                    "Removed stale session for place {}: {} (old key: {})",
+                    req.place_name,
+                    info.session_id.unwrap_or_default(),
+                    stale_key
+                );
+            }
+        }
+    }
+
     // Register/update this place (replaces any existing entry for this session)
     registry.insert(key.clone(), PlaceInfo {
         place_id: req.place_id,
