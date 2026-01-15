@@ -2503,89 +2503,59 @@
             color: var(--gold-dark);
         }
 
-        /* Mobile comparison table adjustments */
-        @media (max-width: 768px) {
-            .mobile-competitor-selector {
-                display: block;
-            }
+        /* Compact comparison mode - triggered by JS when table is too wide */
+        .comparison-compact .mobile-competitor-selector {
+            display: block;
+        }
 
-            .comparison-table {
-                min-width: unset !important;
-            }
+        .comparison-compact .comparison-table {
+            min-width: unset !important;
+        }
 
-            .comparison-table th,
-            .comparison-table td {
-                width: auto !important;
-                min-width: unset !important;
-                max-width: unset !important;
-            }
+        .comparison-compact .comparison-table th,
+        .comparison-compact .comparison-table td {
+            width: auto !important;
+            min-width: unset !important;
+            max-width: unset !important;
+        }
 
-            /* Feature column */
-            .comparison-table th:first-child,
-            .comparison-table td:first-child {
-                width: 55% !important;
-                min-width: 140px !important;
-                max-width: none !important;
-                position: relative !important;
-                left: auto !important;
-            }
+        /* Feature column in compact mode */
+        .comparison-compact .comparison-table th:first-child,
+        .comparison-compact .comparison-table td:first-child {
+            width: 55% !important;
+            min-width: 140px !important;
+            max-width: none !important;
+            position: relative !important;
+            left: auto !important;
+        }
 
-            /* RbxSync column - always visible */
-            .comparison-table th:nth-child(2),
-            .comparison-table td:nth-child(2) {
-                width: 22.5% !important;
-                min-width: 80px !important;
-                max-width: none !important;
-                position: relative !important;
-                left: auto !important;
-            }
+        /* RbxSync column in compact mode - always visible */
+        .comparison-compact .comparison-table th:nth-child(2),
+        .comparison-compact .comparison-table td:nth-child(2) {
+            width: 22.5% !important;
+            min-width: 80px !important;
+            max-width: none !important;
+            position: relative !important;
+            left: auto !important;
+        }
 
-            /* All competitor columns - hidden by default on mobile */
-            .comparison-table th:nth-child(n+3),
-            .comparison-table td:nth-child(n+3) {
-                display: none;
-            }
+        /* All competitor columns - hidden by default in compact mode */
+        .comparison-compact .comparison-table th:nth-child(n+3),
+        .comparison-compact .comparison-table td:nth-child(n+3) {
+            display: none;
+        }
 
-            /* Show only the selected competitor column */
-            .comparison-table th.mobile-visible,
-            .comparison-table td.mobile-visible {
-                display: table-cell !important;
-                width: 22.5% !important;
-                min-width: 80px !important;
-            }
+        /* Show only the selected competitor column in compact mode */
+        .comparison-compact .comparison-table th.mobile-visible,
+        .comparison-compact .comparison-table td.mobile-visible {
+            display: table-cell !important;
+            width: 22.5% !important;
+            min-width: 80px !important;
+        }
 
-            /* Adjust table wrapper */
-            .comparison-table-wrapper {
-                overflow-x: hidden;
-            }
-
-            /* Smaller tool headers on mobile */
-            .tool-header {
-                height: 70px !important;
-                padding: 0.625rem 0.5rem !important;
-            }
-
-            .tool-header-logo {
-                width: 24px;
-                height: 24px;
-            }
-
-            .tool-header-name {
-                font-size: 0.6875rem;
-            }
-
-            /* Smaller feature tags */
-            .feature-tag {
-                padding: 0.1rem 0.35rem;
-                font-size: 0.5625rem;
-            }
-
-            /* Feature name wrapping */
-            .feature-name {
-                white-space: normal;
-                flex-wrap: wrap;
-                gap: 0.25rem 0.5rem;
-            }
+        /* Adjust table wrapper in compact mode */
+        .comparison-compact .comparison-table-wrapper {
+            overflow-x: hidden;
         }
 
         /* rbxjson Section */
@@ -6514,13 +6484,20 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             }
         })();
 
-        // Mobile competitor selector
+        // Comparison table compact mode detection
         (function() {
-            const pills = document.querySelectorAll('.competitor-pill');
+            const section = document.getElementById('comparison');
+            const wrapper = document.querySelector('.comparison-table-wrapper');
             const table = document.querySelector('.comparison-table');
-            if (!pills.length || !table) return;
+            const pills = document.querySelectorAll('.competitor-pill');
+            if (!section || !wrapper || !table || !pills.length) return;
+
+            let isCompact = false;
+            let activeColumn = 3; // Default to Rojo
 
             function setActiveCompetitor(columnIndex) {
+                activeColumn = columnIndex;
+
                 // Remove mobile-visible from all competitor columns (3-7)
                 table.querySelectorAll('th, td').forEach(cell => {
                     cell.classList.remove('mobile-visible');
@@ -6537,8 +6514,39 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                 });
             }
 
-            // Initialize with first competitor (Rojo, column 3)
+            function checkCompactMode() {
+                // Temporarily remove compact mode to measure true table width
+                const wasCompact = section.classList.contains('comparison-compact');
+                if (wasCompact) {
+                    section.classList.remove('comparison-compact');
+                }
+
+                // Check if table overflows its container
+                const containerWidth = wrapper.clientWidth;
+                const tableWidth = table.scrollWidth;
+                const needsCompact = tableWidth > containerWidth + 10; // 10px threshold
+
+                if (needsCompact !== isCompact) {
+                    isCompact = needsCompact;
+                    section.classList.toggle('comparison-compact', isCompact);
+                    if (isCompact) {
+                        setActiveCompetitor(activeColumn);
+                    }
+                } else if (wasCompact) {
+                    section.classList.add('comparison-compact');
+                }
+            }
+
+            // Initialize
             setActiveCompetitor(3);
+            checkCompactMode();
+
+            // Check on resize
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(checkCompactMode, 100);
+            });
 
             // Handle pill clicks
             pills.forEach(pill => {

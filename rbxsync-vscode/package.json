@@ -113,6 +113,11 @@
         "command": "rbxsync.openSettings",
         "title": "RbxSync: Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "rbxsync.toggleCat",
+        "title": "RbxSync: Toggle Cat",
+        "icon": "$(smiley)"
       }
     ],
     "viewsContainers": {
@@ -135,6 +140,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "rbxsync.toggleCat",
+          "when": "view == rbxsync.sidebarView",
+          "group": "navigation"
+        },
         {
           "command": "rbxsync.openConsole",
           "when": "view == rbxsync.sidebarView",

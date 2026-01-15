@@ -289,6 +289,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Settings command
     vscode.commands.registerCommand('rbxsync.openSettings', () => {
       vscode.commands.executeCommand('workbench.action.openSettings', '@ext:rbxsync.rbxsync');
+    }),
+
+    // Toggle cat visibility
+    vscode.commands.registerCommand('rbxsync.toggleCat', () => {
+      sidebarView.toggleCat();
     })
   ];
 

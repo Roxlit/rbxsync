@@ -29,6 +29,8 @@ interface SidebarState {
   catOperationType: 'sync' | 'extract' | 'test' | null;
   // Rbxjson files visibility
   rbxjsonHidden: boolean;
+  // Cat panel visibility
+  catVisible: boolean;
 }
 
 /**
@@ -71,7 +73,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     updateAvailable: null,
     catMood: 'idle',
     catOperationType: null,
-    rbxjsonHidden: true
+    rbxjsonHidden: true,
+    catVisible: true
   };
 
   constructor(extensionUri: vscode.Uri, version?: string) {
@@ -191,6 +194,12 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
   public setRbxjsonHidden(hidden: boolean): void {
     this.state.rbxjsonHidden = hidden;
     this._updateWebview();
+  }
+
+  public toggleCat(): boolean {
+    this.state.catVisible = !this.state.catVisible;
+    this._updateWebview();
+    return this.state.catVisible;
   }
 
   public setUpdateAvailable(version: string | null): void {
@@ -941,7 +950,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       <div class="zen-quote" id="zenQuote"></div>
     </div>
   </div>
-  <div class="cat-spacer"></div>
+  <div class="cat-spacer" id="catSpacer"></div>
 
   <!-- Toast -->
   <div class="toast hidden" id="toast">
@@ -1838,6 +1847,10 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
       // Rbxjson toggle (on = visible, off = hidden)
       document.getElementById('rbxjsonToggle').classList.toggle('on', !s.rbxjsonHidden);
+
+      // Cat visibility
+      document.getElementById('zenCat').classList.toggle('hidden', !s.catVisible);
+      document.getElementById('catSpacer').classList.toggle('hidden', !s.catVisible);
     }
 
     function shortenPath(p) {
