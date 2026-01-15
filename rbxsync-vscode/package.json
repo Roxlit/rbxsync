@@ -108,29 +108,11 @@
       {
         "command": "rbxsync.recoverDeleted",
         "title": "RbxSync: Recover Deleted Folder"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "rbxsync.runTest",
-        "key": "ctrl+alt+t",
-        "mac": "cmd+alt+t"
       },
       {
-        "command": "rbxsync.sync",
-        "key": "ctrl+alt+s",
-        "mac": "cmd+alt+s"
-      },
-      {
-        "command": "rbxsync.extract",
-        "key": "ctrl+alt+e",
-        "mac": "cmd+alt+e"
-      },
-      {
-        "command": "rbxsync.openMetadata",
-        "key": "ctrl+alt+m",
-        "mac": "cmd+alt+m",
-        "when": "resourceExtname =~ /\\.luau?$/"
+        "command": "rbxsync.openSettings",
+        "title": "RbxSync: Settings",
+        "icon": "$(gear)"
       }
     ],
     "viewsContainers": {
@@ -152,7 +134,18 @@
       ]
     },
     "menus": {
-      "view/title": []
+      "view/title": [
+        {
+          "command": "rbxsync.openConsole",
+          "when": "view == rbxsync.sidebarView",
+          "group": "navigation"
+        },
+        {
+          "command": "rbxsync.openSettings",
+          "when": "view == rbxsync.sidebarView",
+          "group": "navigation"
+        }
+      ]
     },
     "configuration": {
       "title": "RbxSync",

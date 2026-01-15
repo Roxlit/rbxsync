@@ -46,6 +46,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const extensionVersion = context.extension.packageJSON.version || '1.1.0';
   sidebarView = new SidebarWebviewProvider(context.extensionUri, extensionVersion);
 
+  // Initialize rbxjson hidden state from config
+  const filesConfig = vscode.workspace.getConfiguration('files');
+  const exclude = filesConfig.get<Record<string, boolean>>('exclude') || {};
+  sidebarView.setRbxjsonHidden(exclude['**/*.rbxjson'] === true);
+
   // Register webview sidebar view
   const sidebarViewDisposable = vscode.window.registerWebviewViewProvider(
     SidebarWebviewProvider.viewType,
@@ -254,6 +259,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       exclude['**/*.rbxjson'] = !isHidden;
       await filesConfig.update('exclude', exclude, vscode.ConfigurationTarget.Workspace);
+      sidebarView.setRbxjsonHidden(!isHidden);
     }),
 
     // Console commands for E2E testing
@@ -278,6 +284,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Trash recovery command
     vscode.commands.registerCommand('rbxsync.recoverDeleted', async () => {
       await recoverDeletedFolder();
+    }),
+
+    // Settings command
+    vscode.commands.registerCommand('rbxsync.openSettings', () => {
+      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:rbxsync.rbxsync');
     })
   ];
 

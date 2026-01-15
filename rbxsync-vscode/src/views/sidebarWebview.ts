@@ -27,6 +27,8 @@ interface SidebarState {
   // Zen cat mascot state
   catMood: 'idle' | 'syncing' | 'success' | 'error';
   catOperationType: 'sync' | 'extract' | 'test' | null;
+  // Rbxjson files visibility
+  rbxjsonHidden: boolean;
 }
 
 /**
@@ -68,7 +70,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     extractTerrain: true,
     updateAvailable: null,
     catMood: 'idle',
-    catOperationType: null
+    catOperationType: null,
+    rbxjsonHidden: true
   };
 
   constructor(extensionUri: vscode.Uri, version?: string) {
@@ -82,6 +85,9 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken
   ): void {
     this._view = webviewView;
+
+    // Set the title to show version with dash separator
+    webviewView.title = `- v${this._version}`;
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -179,6 +185,11 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
   public setE2EMode(enabled: boolean): void {
     this.state.e2eModeEnabled = enabled;
+    this._updateWebview();
+  }
+
+  public setRbxjsonHidden(hidden: boolean): void {
+    this.state.rbxjsonHidden = hidden;
     this._updateWebview();
   }
 
@@ -422,6 +433,21 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     .section-header.collapsed .chevron {
       transform: rotate(-90deg);
     }
+    .section-header .header-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .section-header .header-status-dot.on {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+    .section-header .header-status-dot.connecting {
+      background: var(--warning);
+      animation: pulse 1s infinite;
+    }
     .section-content {
       display: none;
       padding: 0 4px;
@@ -582,26 +608,34 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       opacity: 0.7;
     }
 
-    /* Empty State */
+    /* Empty State - Compact */
     .empty-state {
-      text-align: center;
-      padding: 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
       color: var(--text-secondary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
     }
     .empty-state .icon {
-      width: 40px; height: 40px;
-      margin: 0 auto 12px;
-      opacity: 0.4;
+      width: 24px; height: 24px;
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+    .empty-state .empty-text {
+      flex: 1;
     }
     .empty-state h3 {
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .empty-state p {
-      font-size: 11px;
-      margin-bottom: 12px;
+      font-size: 10px;
+      margin: 0;
     }
 
     /* Server Control */
@@ -693,36 +727,14 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     .quick-row .toggle.on::after { transform: translateX(12px); }
     .quick-row .arrow { width: 12px; height: 12px; opacity: 0.4; flex-shrink: 0; }
 
-    /* Keyboard hint */
-    .keyboard-hint {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 8px;
-      background: var(--bg-surface);
-      border-radius: var(--radius-sm);
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 8px;
-    }
-    .kbd {
-      background: var(--bg-elevated);
-      padding: 2px 5px;
-      border-radius: 3px;
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 9px;
-      border: 1px solid var(--border);
-    }
-
     .hidden { display: none !important; }
 
-    /* Zen Cat Mascot - Fixed above scroll */
+    /* Zen Cat Mascot - Fixed at top */
     .zen-cat-container {
       display: flex;
       align-items: flex-start;
       gap: 6px;
-      padding: 4px 12px 8px 12px;
+      padding: 2px 12px 10px 12px;
       cursor: pointer;
       user-select: none;
       position: fixed;
@@ -732,10 +744,11 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       background: var(--bg-base);
       z-index: 100;
       border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     /* Spacer to push content below fixed cat */
     .cat-spacer {
-      height: 52px;
+      height: 56px;
     }
     .zen-cat-container:active .zen-cat {
       transform: scale(0.95);
@@ -772,18 +785,19 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     }
     /* Speech bubble */
     .zen-quote-feed {
-      flex: 1;
-      min-width: 0;
       position: relative;
       padding-left: 6px;
+      flex: 1;
+      min-width: 0;
     }
     .zen-quote {
       --bubble-bg: var(--bg-surface);
-      display: inline-block;
+      display: block;
+      width: fit-content;
+      max-width: 100%;
       font-size: 10px;
       color: var(--text-secondary);
       font-style: italic;
-      word-wrap: break-word;
       background: var(--bubble-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -910,15 +924,6 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     .server-stat { display: flex; align-items: center; gap: 4px; }
     .server-stat .icon { width: 10px; height: 10px; opacity: 0.7; }
 
-    /* Version Footer */
-    .version-footer {
-      text-align: center;
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
   </style>
 </head>
 <body>
@@ -957,9 +962,11 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-content visible" id="studiosContent">
       <div id="studioList"></div>
       <div class="empty-state" id="emptyState">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M9 10h6M12 7v6" opacity="0.5"/></svg>
-        <h3 id="emptyTitle">No Studios Connected</h3>
-        <p id="emptyDesc">Open Roblox Studio and install the RbxSync plugin</p>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <div class="empty-text">
+          <h3 id="emptyTitle">No Studios Connected</h3>
+          <p id="emptyDesc">Open Roblox Studio and install the RbxSync plugin</p>
+        </div>
       </div>
     </div>
   </div>
@@ -969,6 +976,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-header" data-section="server">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>
       <span class="section-label">Server</span>
+      <div class="header-status-dot" id="headerServerDot"></div>
       <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </div>
     <div class="section-content visible" id="serverContent">
@@ -1002,22 +1010,10 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       </div>
       <div class="quick-row" id="rbxjsonBtn">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span class="label">Toggle .rbxjson</span>
-        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="label">Show .rbxjson</span>
+        <div class="toggle" id="rbxjsonToggle"></div>
       </div>
     </div>
-  </div>
-
-  <!-- Keyboard Hints -->
-  <div class="keyboard-hint">
-    <span><kbd class="kbd">⌘⌥S</kbd> Sync</span>
-    <span><kbd class="kbd">⌘⌥E</kbd> Extract</span>
-    <span><kbd class="kbd">⌘⌥T</kbd> Test</span>
-  </div>
-
-  <!-- Version -->
-  <div class="version-footer">
-    RbxSync v${this._version}
   </div>
 
   <script nonce="${nonce}">
@@ -1043,6 +1039,18 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
  />!<\\\\
   ?!?\`
     };
+
+    // Talking cat faces for animation while typing
+    const CAT_TALK = [
+      \` /\\\\_/\\\\
+( °o° )
+ />~<\\\\
+  ...\`,
+      \` /\\\\_/\\\\
+( °-° )
+ />~<\\\\
+  ...\`
+    ];
 
     // Contextual cat messages by operation type
     const CAT_MESSAGES = {
@@ -1098,6 +1106,30 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         "Taking a nap...",
         "Zzz...",
         "Going offline~"
+      ],
+      studioJoined: [
+        "New friend!",
+        "Hello Studio~",
+        "Welcome meow!",
+        "A visitor!"
+      ],
+      studioLeft: [
+        "Bye bye~",
+        "Studio left...",
+        "See you later!",
+        "Gone meow..."
+      ],
+      studioLinked: [
+        "Linked up!",
+        "Connected meow~",
+        "We're bonded!",
+        "Link established!"
+      ],
+      studioUnlinked: [
+        "Unlinked~",
+        "Disconnected...",
+        "Link broken",
+        "Separated meow"
       ]
     };
 
@@ -1249,18 +1281,37 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     let lastOperationType = null;
     let operationMessageIndex = 0;
     let lastConnectionStatus = null;
+    let priorityMessageUntil = 0; // timestamp when priority message expires
+    let lastPlaceCount = 0;
+    let lastLinkedPlaceIds = new Set();
 
     // Typewriter effect - types text character by character
+    let talkInterval = null;
+
     function typewriterEffect(text, element, speed = 40) {
       // Clear any existing typewriter
       if (typewriterTimeout) {
         clearTimeout(typewriterTimeout);
+      }
+      if (talkInterval) {
+        clearInterval(talkInterval);
+        talkInterval = null;
       }
 
       currentTypewriterText = text;
       isTyping = true;
       element.textContent = '';
       element.classList.add('typing');
+
+      // Start cat talking animation
+      const catEl = document.getElementById('zenCatArt');
+      let talkFrame = 0;
+      if (catEl && !isClickAnimating) {
+        talkInterval = setInterval(() => {
+          catEl.textContent = CAT_TALK[talkFrame % 2];
+          talkFrame++;
+        }, 150);
+      }
 
       let i = 0;
       function typeChar() {
@@ -1271,6 +1322,14 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         } else {
           isTyping = false;
           element.classList.remove('typing');
+          // Stop talking animation and restore cat
+          if (talkInterval) {
+            clearInterval(talkInterval);
+            talkInterval = null;
+          }
+          if (catEl && !isClickAnimating) {
+            updateCatMood(state?.catMood || 'idle');
+          }
         }
       }
       typeChar();
@@ -1283,6 +1342,23 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       return messages[Math.floor(Math.random() * messages.length)];
     }
 
+    // Show a priority message (operations, server status, clicks)
+    function showPriorityMessage(text, element, duration = 5000) {
+      priorityMessageUntil = Date.now() + duration;
+      lastQuoteTime = Date.now() + duration; // Reset quote timer to after priority expires
+      typewriterEffect(text, element, 35);
+    }
+
+    // Check if we can show a low-priority zen quote
+    function canShowZenQuote() {
+      if (Date.now() < priorityMessageUntil) return false;
+      if (isClickAnimating) return false;
+      if (state?.catMood && state.catMood !== 'idle') return false;
+      return true;
+    }
+
+    let lastQuoteTime = 0;
+
     function initZenCat() {
       const quoteEl = document.getElementById('zenQuote');
       if (!quoteEl) return;
@@ -1290,18 +1366,24 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       // Shuffle quotes for variety
       shuffledQuotes = [...ZEN_QUOTES].sort(() => Math.random() - 0.5);
       typewriterEffect(shuffledQuotes[0], quoteEl);
+      lastQuoteTime = Date.now();
 
-      // Swap quote every 10 seconds (only when idle)
+      // Check every 2 seconds if we should show a new quote (10s after last activity)
       setInterval(() => {
         const quoteEl = document.getElementById('zenQuote');
         if (!quoteEl) return;
 
-        // Only swap quotes when idle (not during operations)
-        if (state?.catMood === 'idle' || !state?.catMood) {
+        const now = Date.now();
+        const timeSinceLastQuote = now - lastQuoteTime;
+        const timeSincePriority = now - priorityMessageUntil;
+
+        // Show new quote if: can show zen quote AND (10s since last quote OR priority just expired)
+        if (canShowZenQuote() && timeSinceLastQuote >= 10000 && timeSincePriority >= 0) {
           quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
           typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+          lastQuoteTime = now;
         }
-      }, 10000);
+      }, 2000);
 
       // Update cat art
       updateCatMood('idle');
@@ -1344,10 +1426,10 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         quoteEl.style.setProperty('--bubble-bg', randomColor + '40');
       }
 
-      // Show cat message with typewriter
+      // Show cat message with priority
       if (quoteEl) {
         const catMsg = CAT_CLICK_MESSAGES[Math.floor(Math.random() * CAT_CLICK_MESSAGES.length)];
-        typewriterEffect(catMsg, quoteEl, 30);
+        showPriorityMessage(catMsg, quoteEl, 4000);
       }
 
       // Return to normal after longer delay
@@ -1361,13 +1443,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
           quoteEl.style.setProperty('--bubble-bg', '');
         }
         isClickAnimating = false;
-        // Return to zen quote after click message
-        if (quoteEl && (state?.catMood === 'idle' || !state?.catMood)) {
-          setTimeout(() => {
-            quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
-            typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
-          }, 1000);
-        }
+        // Zen quote will naturally cycle after 45 seconds
       }, 2000);
     }
 
@@ -1411,7 +1487,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
             quoteEl.style.borderColor = '#facc15';
             quoteEl.style.setProperty('--bubble-bg', '#facc1540');
             const msg = getOperationMessage('serverStart');
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 5000);
           }
         } else if (connStatus === 'connected' && lastConnectionStatus !== 'connected') {
           // Server connected - show happy cat
@@ -1431,7 +1507,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
             quoteEl.style.borderColor = '#4ade80';
             quoteEl.style.setProperty('--bubble-bg', '#4ade8040');
             const msg = getOperationMessage('serverConnected');
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 5000);
           }
           // Reset cat after delay
           setTimeout(() => {
@@ -1458,7 +1534,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
             quoteEl.style.borderColor = '#a78bfa';
             quoteEl.style.setProperty('--bubble-bg', '#a78bfa40');
             const msg = getOperationMessage('serverStopped');
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 5000);
           }
           // Reset after delay
           setTimeout(() => {
@@ -1475,34 +1551,152 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         updateCatMood(catMood);
       }
 
+      // Check for studio count changes (new studios joining or leaving)
+      const currentPlaceCount = s.places ? s.places.length : 0;
+      if (currentPlaceCount !== lastPlaceCount && lastConnectionStatus === 'connected') {
+        if (currentPlaceCount > lastPlaceCount && lastPlaceCount > 0) {
+          // New studio joined
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( o.o )
+ />~<\\\\
+  !!!\`;
+            catEl.style.color = '#60a5fa';
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#60a5fa';
+            quoteEl.style.setProperty('--bubble-bg', '#60a5fa40');
+            showPriorityMessage(getOperationMessage('studioJoined'), quoteEl, 4000);
+          }
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+            updateCatMood('idle');
+          }, 3000);
+        } else if (currentPlaceCount < lastPlaceCount) {
+          // Studio left
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( ;.; )
+ />~<\\\\
+  ...\`;
+            catEl.style.color = '#a78bfa';
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#a78bfa';
+            quoteEl.style.setProperty('--bubble-bg', '#a78bfa40');
+            showPriorityMessage(getOperationMessage('studioLeft'), quoteEl, 4000);
+          }
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+            updateCatMood('idle');
+          }, 3000);
+        }
+        lastPlaceCount = currentPlaceCount;
+      } else if (lastPlaceCount === 0) {
+        lastPlaceCount = currentPlaceCount;
+      }
+
+      // Check for link/unlink changes
+      const currentLinkedIds = new Set();
+      if (s.places) {
+        s.places.forEach(p => {
+          if (p.project_dir === s.currentProjectDir && p.place_id) {
+            currentLinkedIds.add(p.place_id);
+          }
+        });
+      }
+      // Check for newly linked
+      for (const id of currentLinkedIds) {
+        if (!lastLinkedPlaceIds.has(id) && lastLinkedPlaceIds.size > 0 || (lastLinkedPlaceIds.size === 0 && currentLinkedIds.size > 0 && lastPlaceCount > 0)) {
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( ^.^ )
+ />v<\\\\
+ yay!\`;
+            catEl.style.color = '#4ade80';
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#4ade80';
+            quoteEl.style.setProperty('--bubble-bg', '#4ade8040');
+            showPriorityMessage(getOperationMessage('studioLinked'), quoteEl, 4000);
+          }
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+            updateCatMood('idle');
+          }, 3000);
+          break;
+        }
+      }
+      // Check for newly unlinked
+      for (const id of lastLinkedPlaceIds) {
+        if (!currentLinkedIds.has(id)) {
+          if (catEl) {
+            catEl.textContent = \` /\\\\_/\\\\
+( -.- )
+ />~<\\\\
+  ok~\`;
+            catEl.style.color = '#facc15';
+          }
+          if (quoteEl) {
+            quoteEl.style.borderColor = '#facc15';
+            quoteEl.style.setProperty('--bubble-bg', '#facc1540');
+            showPriorityMessage(getOperationMessage('studioUnlinked'), quoteEl, 4000);
+          }
+          setTimeout(() => {
+            if (catEl) catEl.style.color = '';
+            if (quoteEl) {
+              quoteEl.style.borderColor = '';
+              quoteEl.style.setProperty('--bubble-bg', '');
+            }
+            updateCatMood('idle');
+          }, 3000);
+          break;
+        }
+      }
+      lastLinkedPlaceIds = currentLinkedIds;
+
       // Show contextual messages during operations (only if not reacting to server)
       if (quoteEl && lastConnectionStatus === connStatus) {
         if (opType && catMood === 'syncing') {
-          // Active operation - show contextual message
+          // Active operation - show contextual message (high priority)
           if (lastOperationType !== opType) {
             lastOperationType = opType;
             const msg = getOperationMessage(opType);
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 10000);
           }
         } else if (catMood === 'success') {
-          // Success - show celebration message
+          // Success - show celebration message (high priority)
           if (lastOperationType !== 'success') {
             lastOperationType = 'success';
             const msg = getOperationMessage('success');
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 6000);
           }
         } else if (catMood === 'error') {
-          // Error - show error message
+          // Error - show error message (high priority)
           if (lastOperationType !== 'error') {
             lastOperationType = 'error';
             const msg = getOperationMessage('error');
-            typewriterEffect(msg, quoteEl, 35);
+            showPriorityMessage(msg, quoteEl, 6000);
           }
         } else if (catMood === 'idle' && lastOperationType !== null) {
-          // Returned to idle - show a zen quote
+          // Returned to idle - only show zen quote if no priority message active
           lastOperationType = null;
-          quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
-          typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+          if (canShowZenQuote()) {
+            quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
+            typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+          }
         }
       }
 
@@ -1523,6 +1717,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       const isOn = s.connectionStatus === 'connected';
       const isConnecting = s.connectionStatus === 'connecting';
       document.getElementById('serverDot').className = 'status-dot' + (isOn ? ' on' : isConnecting ? ' connecting' : '');
+      document.getElementById('headerServerDot').className = 'header-status-dot' + (isOn ? ' on' : isConnecting ? ' connecting' : '');
       document.getElementById('serverLabel').textContent = isOn ? 'Running' : isConnecting ? 'Starting...' : 'Stopped';
       const btn = document.getElementById('serverBtn');
       btn.textContent = isOn ? 'Stop' : isConnecting ? '...' : 'Start';
@@ -1640,6 +1835,9 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
       // E2E toggle
       document.getElementById('e2eToggle').classList.toggle('on', s.e2eModeEnabled);
+
+      // Rbxjson toggle (on = visible, off = hidden)
+      document.getElementById('rbxjsonToggle').classList.toggle('on', !s.rbxjsonHidden);
     }
 
     function shortenPath(p) {

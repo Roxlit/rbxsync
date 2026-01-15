@@ -2386,6 +2386,208 @@
             100% { transform: scale(1); }
         }
 
+        /* Mobile Competitor Selector */
+        .mobile-competitor-selector {
+            display: none;
+            margin-bottom: 1rem;
+        }
+
+        .competitor-selector-label {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.625rem;
+            padding-left: 0.25rem;
+        }
+
+        .competitor-pills {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 0.25rem;
+            margin: -0.25rem;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            mask-image: linear-gradient(to right, transparent, black 0.5rem, black calc(100% - 0.5rem), transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 0.5rem, black calc(100% - 0.5rem), transparent);
+        }
+
+        .competitor-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .competitor-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .competitor-pill:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .competitor-pill.active {
+            background: rgba(212, 164, 56, 0.08);
+            border-color: rgba(212, 164, 56, 0.35);
+            box-shadow: 0 0 20px -4px rgba(212, 164, 56, 0.25);
+        }
+
+        .competitor-pill-logo {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .competitor-pill-name {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .competitor-pill.active .competitor-pill-name {
+            color: var(--gold-light);
+        }
+
+        /* Swipe hint animation for pills */
+        .competitor-pills::after {
+            content: '';
+            flex-shrink: 0;
+            width: 1.5rem;
+        }
+
+        /* Transition for column switching */
+        .comparison-table td,
+        .comparison-table th {
+            transition: opacity 0.15s ease;
+        }
+
+        .comparison-table td.mobile-visible,
+        .comparison-table th.mobile-visible {
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        [data-theme="light"] .competitor-pill {
+            background: rgba(0, 0, 0, 0.02);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="light"] .competitor-pill:hover {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="light"] .competitor-pill.active {
+            background: rgba(184, 146, 46, 0.1);
+            border-color: rgba(184, 146, 46, 0.4);
+            box-shadow: 0 0 20px -4px rgba(184, 146, 46, 0.2);
+        }
+
+        [data-theme="light"] .competitor-pill.active .competitor-pill-name {
+            color: var(--gold-dark);
+        }
+
+        /* Mobile comparison table adjustments */
+        @media (max-width: 768px) {
+            .mobile-competitor-selector {
+                display: block;
+            }
+
+            .comparison-table {
+                min-width: unset !important;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                width: auto !important;
+                min-width: unset !important;
+                max-width: unset !important;
+            }
+
+            /* Feature column */
+            .comparison-table th:first-child,
+            .comparison-table td:first-child {
+                width: 55% !important;
+                min-width: 140px !important;
+                max-width: none !important;
+                position: relative !important;
+                left: auto !important;
+            }
+
+            /* RbxSync column - always visible */
+            .comparison-table th:nth-child(2),
+            .comparison-table td:nth-child(2) {
+                width: 22.5% !important;
+                min-width: 80px !important;
+                max-width: none !important;
+                position: relative !important;
+                left: auto !important;
+            }
+
+            /* All competitor columns - hidden by default on mobile */
+            .comparison-table th:nth-child(n+3),
+            .comparison-table td:nth-child(n+3) {
+                display: none;
+            }
+
+            /* Show only the selected competitor column */
+            .comparison-table th.mobile-visible,
+            .comparison-table td.mobile-visible {
+                display: table-cell !important;
+                width: 22.5% !important;
+                min-width: 80px !important;
+            }
+
+            /* Adjust table wrapper */
+            .comparison-table-wrapper {
+                overflow-x: hidden;
+            }
+
+            /* Smaller tool headers on mobile */
+            .tool-header {
+                height: 70px !important;
+                padding: 0.625rem 0.5rem !important;
+            }
+
+            .tool-header-logo {
+                width: 24px;
+                height: 24px;
+            }
+
+            .tool-header-name {
+                font-size: 0.6875rem;
+            }
+
+            /* Smaller feature tags */
+            .feature-tag {
+                padding: 0.1rem 0.35rem;
+                font-size: 0.5625rem;
+            }
+
+            /* Feature name wrapping */
+            .feature-name {
+                white-space: normal;
+                flex-wrap: wrap;
+                gap: 0.25rem 0.5rem;
+            }
+        }
+
         /* rbxjson Section */
         .format-section {
             display: grid;
@@ -5666,6 +5868,33 @@
                 <p class="section-desc">Feature comparison across Roblox sync tools.</p>
             </div>
 
+            <!-- Mobile Competitor Selector -->
+            <div class="mobile-competitor-selector">
+                <div class="competitor-selector-label">Compare against</div>
+                <div class="competitor-pills">
+                    <button class="competitor-pill active" data-column="3">
+                        <img src="https://rojo.space/img/logo.png" alt="Rojo" class="competitor-pill-logo">
+                        <span class="competitor-pill-name">Rojo</span>
+                    </button>
+                    <button class="competitor-pill" data-column="4">
+                        <img src="images/argon.svg" alt="Argon" class="competitor-pill-logo">
+                        <span class="competitor-pill-name">Argon</span>
+                    </button>
+                    <button class="competitor-pill" data-column="5">
+                        <img src="https://tr.rbxcdn.com/180DAY-f955c288b7f0f28cd1c8f5e2b56b0d12/420/420/Image/Webp/noFilter" alt="Pesto" class="competitor-pill-logo">
+                        <span class="competitor-pill-name">Pesto</span>
+                    </button>
+                    <button class="competitor-pill" data-column="6">
+                        <img src="images/scriptsync.svg" alt="Script Sync" class="competitor-pill-logo">
+                        <span class="competitor-pill-name">Script Sync</span>
+                    </button>
+                    <button class="competitor-pill" data-column="7">
+                        <img src="images/azullogo.png" alt="Azul" class="competitor-pill-logo">
+                        <span class="competitor-pill-name">Azul</span>
+                    </button>
+                </div>
+            </div>
+
             <div class="comparison-aurora-wrapper">
             <div class="comparison-table-wrapper">
                 <table class="comparison-table">
@@ -6283,6 +6512,41 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
                     }
                 });
             }
+        })();
+
+        // Mobile competitor selector
+        (function() {
+            const pills = document.querySelectorAll('.competitor-pill');
+            const table = document.querySelector('.comparison-table');
+            if (!pills.length || !table) return;
+
+            function setActiveCompetitor(columnIndex) {
+                // Remove mobile-visible from all competitor columns (3-7)
+                table.querySelectorAll('th, td').forEach(cell => {
+                    cell.classList.remove('mobile-visible');
+                });
+
+                // Add mobile-visible to selected column
+                table.querySelectorAll(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`).forEach(cell => {
+                    cell.classList.add('mobile-visible');
+                });
+
+                // Update pill states
+                pills.forEach(pill => {
+                    pill.classList.toggle('active', pill.dataset.column === String(columnIndex));
+                });
+            }
+
+            // Initialize with first competitor (Rojo, column 3)
+            setActiveCompetitor(3);
+
+            // Handle pill clicks
+            pills.forEach(pill => {
+                pill.addEventListener('click', () => {
+                    const column = parseInt(pill.dataset.column, 10);
+                    setActiveCompetitor(column);
+                });
+            });
         })();
 
         // Fetch latest release from GitHub and update badge (via proxy to avoid rate limits)
