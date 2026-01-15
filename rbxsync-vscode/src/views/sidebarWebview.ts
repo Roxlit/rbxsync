@@ -26,6 +26,7 @@ interface SidebarState {
   updateAvailable: string | null;
   // Zen cat mascot state
   catMood: 'idle' | 'syncing' | 'success' | 'error';
+  catOperationType: 'sync' | 'extract' | 'test' | null;
 }
 
 /**
@@ -66,7 +67,8 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     testDuration: 5,
     extractTerrain: true,
     updateAvailable: null,
-    catMood: 'idle'
+    catMood: 'idle',
+    catOperationType: null
   };
 
   constructor(extensionUri: vscode.Uri, version?: string) {
@@ -206,6 +208,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       startTime: Date.now()
     };
     this.state.catMood = 'syncing';
+    this.state.catOperationType = type;
     this._updateWebview();
   }
 
@@ -224,6 +227,7 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         if (this.state.studioOperations[studioKey] === op) {
           delete this.state.studioOperations[studioKey];
           this.state.catMood = 'idle';
+          this.state.catOperationType = null;
           this._updateWebview();
         }
       }, 30000);
@@ -758,6 +762,16 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     }
     .zen-quote.fade { opacity: 0; }
     .zen-cat-container:hover .zen-quote { color: var(--text-secondary); }
+    /* Typewriter cursor */
+    .zen-quote.typing::after {
+      content: '|';
+      animation: blink 0.7s infinite;
+      margin-left: 1px;
+    }
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
 
     /* Collapsible Section */
     .collapsible-header {
@@ -955,16 +969,63 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     const vscode = acquireVsCodeApi();
     let state = null;
 
-    // Zen Cat ASCII Art for different moods (compact)
+    // Zen Cat ASCII Art for different moods (detailed 4-line)
     const CAT_ART = {
-      idle: \`/\\\\_/\\\\
-(-.-)\`,
-      syncing: \`/\\\\_/\\\\
-(o.o)\`,
-      success: \`/\\\\_/\\\\
-(^.^)\`,
-      error: \`/\\\\_/\\\\
-(>.<)\`
+      idle: \` /\\\\_/\\\\
+( -.- )
+ />♡<\\\\
+  ~z~\`,
+      syncing: \` /\\\\_/\\\\
+( o.o )
+ />~<\\\\
+  ~~~\`,
+      success: \` /\\\\_/\\\\
+( ^.^ )
+ />v<\\\\
+*purr*\`,
+      error: \` /\\\\_/\\\\
+( >.< )
+ />!<\\\\
+  ?!?\`
+    };
+
+    // Contextual cat messages by operation type
+    const CAT_MESSAGES = {
+      sync: [
+        "Syncing meow~",
+        "Pushing changes...",
+        "Almost there~",
+        "Uploading scripts...",
+        "Just a moment..."
+      ],
+      extract: [
+        "Extracting meow~",
+        "Grabbing files...",
+        "So many instances!",
+        "Downloading...",
+        "Fetching data~"
+      ],
+      test: [
+        "Testing meow~",
+        "Running checks...",
+        "Paws crossed!",
+        "Executing...",
+        "Let's see~"
+      ],
+      success: [
+        "All done! Purr~",
+        "Meow-velous!",
+        "Nailed it!",
+        "Purrfect!",
+        "Success meow~"
+      ],
+      error: [
+        "Oh no meow!",
+        "Something went wrong...",
+        "Hiss!",
+        "Uh oh...",
+        "Error meow!"
+      ]
     };
 
     // Zen wisdom quotes
@@ -1073,6 +1134,44 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     // Initialize zen cat quote feed
     let quoteIndex = 0;
     let shuffledQuotes = [];
+    let typewriterTimeout = null;
+    let currentTypewriterText = '';
+    let isTyping = false;
+    let lastOperationType = null;
+    let operationMessageIndex = 0;
+
+    // Typewriter effect - types text character by character
+    function typewriterEffect(text, element, speed = 40) {
+      // Clear any existing typewriter
+      if (typewriterTimeout) {
+        clearTimeout(typewriterTimeout);
+      }
+
+      currentTypewriterText = text;
+      isTyping = true;
+      element.textContent = '';
+      element.classList.add('typing');
+
+      let i = 0;
+      function typeChar() {
+        if (i < text.length && currentTypewriterText === text) {
+          element.textContent += text.charAt(i);
+          i++;
+          typewriterTimeout = setTimeout(typeChar, speed);
+        } else {
+          isTyping = false;
+          element.classList.remove('typing');
+        }
+      }
+      typeChar();
+    }
+
+    // Get random message for operation type
+    function getOperationMessage(opType) {
+      const messages = CAT_MESSAGES[opType];
+      if (!messages || messages.length === 0) return '';
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
 
     function initZenCat() {
       const quoteEl = document.getElementById('zenQuote');
@@ -1080,23 +1179,18 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
 
       // Shuffle quotes for variety
       shuffledQuotes = [...ZEN_QUOTES].sort(() => Math.random() - 0.5);
-      quoteEl.textContent = shuffledQuotes[0];
+      typewriterEffect(shuffledQuotes[0], quoteEl);
 
-      // Swap quote every 10 seconds
+      // Swap quote every 10 seconds (only when idle)
       setInterval(() => {
         const quoteEl = document.getElementById('zenQuote');
         if (!quoteEl) return;
 
-        // Fade out
-        quoteEl.classList.add('fade');
-
-        setTimeout(() => {
-          // Change quote
+        // Only swap quotes when idle (not during operations)
+        if (state?.catMood === 'idle' || !state?.catMood) {
           quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
-          quoteEl.textContent = shuffledQuotes[quoteIndex];
-          // Fade in
-          quoteEl.classList.remove('fade');
-        }, 500);
+          typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+        }
       }, 10000);
 
       // Update cat art
@@ -1117,15 +1211,17 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
       const quoteEl = document.getElementById('zenQuote');
       if (!catEl) return;
 
-      // Show surprised face
-      catEl.textContent = \`/\\\\_/\\\\
-(O.O)\`;
+      // Show surprised face (4-line version)
+      catEl.textContent = \` /\\\\_/\\\\
+( O.O )
+ />!<\\\\
+ meow!\`;
       catEl.style.color = '#facc15';
 
-      // Show new quote immediately
-      if (quoteEl && shuffledQuotes.length > 0) {
+      // Show new quote immediately with typewriter (only if idle)
+      if (quoteEl && shuffledQuotes.length > 0 && (state?.catMood === 'idle' || !state?.catMood)) {
         quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
-        quoteEl.textContent = shuffledQuotes[quoteIndex];
+        typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
       }
 
       // Return to normal after a moment
@@ -1148,8 +1244,43 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     });
 
     function render(s) {
-      // Update zen cat mood
-      updateCatMood(s.catMood || 'idle');
+      // Update zen cat mood and message
+      const catMood = s.catMood || 'idle';
+      const opType = s.catOperationType;
+      const quoteEl = document.getElementById('zenQuote');
+
+      updateCatMood(catMood);
+
+      // Show contextual messages during operations
+      if (quoteEl) {
+        if (opType && catMood === 'syncing') {
+          // Active operation - show contextual message
+          if (lastOperationType !== opType) {
+            lastOperationType = opType;
+            const msg = getOperationMessage(opType);
+            typewriterEffect(msg, quoteEl, 35);
+          }
+        } else if (catMood === 'success') {
+          // Success - show celebration message
+          if (lastOperationType !== 'success') {
+            lastOperationType = 'success';
+            const msg = getOperationMessage('success');
+            typewriterEffect(msg, quoteEl, 35);
+          }
+        } else if (catMood === 'error') {
+          // Error - show error message
+          if (lastOperationType !== 'error') {
+            lastOperationType = 'error';
+            const msg = getOperationMessage('error');
+            typewriterEffect(msg, quoteEl, 35);
+          }
+        } else if (catMood === 'idle' && lastOperationType !== null) {
+          // Returned to idle - show a zen quote
+          lastOperationType = null;
+          quoteIndex = (quoteIndex + 1) % shuffledQuotes.length;
+          typewriterEffect(shuffledQuotes[quoteIndex], quoteEl);
+        }
+      }
 
       // Toast
       const toast = document.getElementById('toast');
