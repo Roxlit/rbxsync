@@ -477,6 +477,18 @@
             background: #e2e8f0;
         }
 
+        [data-theme="light"] .comparison-table-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="light"] .comparison-table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        [data-theme="light"] .comparison-table-wrapper::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
         [data-theme="light"] .release-badge {
             background: rgba(255, 255, 255, 0.8);
             border: 1px solid var(--border);
@@ -1956,32 +1968,52 @@
             border-color: #c23c40;
         }
 
-        /* Comparison Section - Compact Table Design */
+        /* Comparison Section - Unified Aurora Design */
+        .comparison-aurora-wrapper {
+            position: relative;
+            border-radius: 16px;
+            isolation: isolate;
+        }
+
+        /* Outer aurora glow - emanates from RbxSync column */
+        .comparison-aurora-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 22px;
+            background: conic-gradient(
+                from var(--aurora-rotate, 0deg),
+                rgba(45, 212, 191, 0.75) 0deg,
+                rgba(34, 211, 238, 0.45) 60deg,
+                rgba(99, 102, 241, 0.6) 120deg,
+                rgba(244, 114, 182, 0.4) 180deg,
+                rgba(251, 146, 60, 0.5) 240deg,
+                rgba(74, 222, 128, 0.55) 300deg,
+                rgba(45, 212, 191, 0.75) 360deg
+            );
+            opacity: 0.6;
+            z-index: -1;
+            animation: aurora-hue-shift 8s ease-in-out infinite;
+        }
+
         .comparison-table-wrapper {
+            position: relative;
+            z-index: 1;
             overflow-x: auto;
             overflow-y: visible;
-            margin: 0 -1rem;
-            padding: 0 1rem 1rem;
-            scrollbar-width: thin;
-            scrollbar-color: var(--border) transparent;
+            scrollbar-width: none;
+            border-radius: 14px;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .comparison-table-wrapper::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .comparison-table-wrapper::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .comparison-table-wrapper::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
+            display: none;
         }
 
         .comparison-table {
             width: 100%;
-            min-width: 900px;
+            min-width: 800px;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.8125rem;
@@ -1989,60 +2021,163 @@
 
         .comparison-table th,
         .comparison-table td {
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1rem;
             text-align: center;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
             vertical-align: middle;
+            box-sizing: border-box;
+            width: 110px;
+            min-width: 110px;
         }
 
+        /* Remove border-right from last column */
+        .comparison-table th:last-child,
+        .comparison-table td:last-child {
+            border-right: none;
+        }
+
+        /* Last row - no bottom border */
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* First column (feature names) - sticky */
         .comparison-table th:first-child,
         .comparison-table td:first-child {
             text-align: left;
             position: sticky;
             left: 0;
             background: var(--bg-secondary);
-            z-index: 2;
-            min-width: 180px;
+            z-index: 4;
+            min-width: 210px;
+            max-width: 210px;
+            width: 210px;
+            padding-right: 1.5rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
         }
 
+        .comparison-table thead th:first-child {
+            background: rgba(30, 33, 36, 0.98);
+        }
+
+        /* RbxSync column - opaque with subtle tint */
+        .comparison-table th:nth-child(2),
+        .comparison-table td:nth-child(2) {
+            position: sticky;
+            left: 210px;
+            z-index: 3;
+            width: 110px;
+            min-width: 110px;
+            background: #1a2422;
+            border-left: 1px solid rgba(45, 212, 191, 0.15);
+            border-right: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        /* RbxSync header - slightly more prominent */
+        .comparison-table thead th:nth-child(2) {
+            background: #1c2725;
+        }
+
+        [data-theme="light"] .comparison-table th:nth-child(2),
+        [data-theme="light"] .comparison-table td:nth-child(2) {
+            background: #e8f5f3;
+        }
+
+        [data-theme="light"] .comparison-table thead th:nth-child(2) {
+            background: #dff0ed;
+        }
+
+        /* Shadow when scrolled */
+        .comparison-table-wrapper.scrolled .comparison-table th:nth-child(2),
+        .comparison-table-wrapper.scrolled .comparison-table td:nth-child(2) {
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Header row styling */
         .comparison-table thead th {
-            background: var(--bg-tertiary);
+            background: rgba(30, 33, 36, 0.98);
             font-weight: 600;
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
-            padding: 1rem;
-            border-bottom: 2px solid var(--border);
+            padding: 1.125rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .comparison-table thead th:first-child {
-            background: var(--bg-tertiary);
-            border-top-left-radius: 12px;
+        [data-theme="light"] .comparison-table thead th {
+            background: rgba(240, 242, 245, 0.98);
+            border-bottom-color: rgba(0, 0, 0, 0.08);
         }
 
-        .comparison-table thead th:last-child {
-            border-top-right-radius: 12px;
+        [data-theme="light"] .comparison-table thead th:first-child {
+            background: rgba(240, 242, 245, 0.98);
         }
 
-        .comparison-table tbody tr:last-child td:first-child {
-            border-bottom-left-radius: 12px;
+        [data-theme="light"] .comparison-table th,
+        [data-theme="light"] .comparison-table td {
+            border-bottom-color: rgba(0, 0, 0, 0.06);
+            border-right-color: rgba(0, 0, 0, 0.08);
         }
 
-        .comparison-table tbody tr:last-child td:last-child {
-            border-bottom-right-radius: 12px;
+        [data-theme="light"] .comparison-table th:first-child,
+        [data-theme="light"] .comparison-table td:first-child {
+            border-right-color: rgba(0, 0, 0, 0.06);
         }
 
+        /* Alternating rows for readability */
+        .comparison-table tbody tr:nth-child(odd) td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .comparison-table tbody tr:nth-child(odd) td:first-child {
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .comparison-table tbody tr:nth-child(odd) td:nth-child(2) {
+            background: #1e2926;
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:nth-child(odd) td {
+            background: rgba(0, 0, 0, 0.015);
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:nth-child(odd) td:first-child {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:nth-child(odd) td:nth-child(2) {
+            background: #dfeeed;
+        }
+
+        /* Row hover */
         .comparison-table tbody tr {
-            transition: background 0.15s ease;
+            transition: all 0.15s ease;
         }
 
-        .comparison-table tbody tr:hover {
-            background: rgba(255, 255, 255, 0.02);
+        .comparison-table tbody tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .comparison-table tbody tr:hover td:first-child {
-            background: var(--bg-elevated);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .comparison-table tbody tr:hover td:nth-child(2) {
+            background: #212e2b;
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:hover td {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:hover td:first-child {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        [data-theme="light"] .comparison-table tbody tr:hover td:nth-child(2) {
+            background: #d5e9e7;
         }
 
         /* Tool header cells */
@@ -2082,63 +2217,15 @@
         }
 
 
-        /* RbxSync Aurora Column Header */
-        .tool-header-aurora {
-            position: relative;
-            overflow: visible;
-        }
-
-        .tool-header-aurora::before {
-            content: '';
-            position: absolute;
-            inset: -3px;
-            border-radius: 10px;
-            background: conic-gradient(
-                from var(--aurora-rotate, 0deg),
-                rgba(45, 212, 191, 0.8) 0deg,
-                rgba(34, 211, 238, 0.6) 60deg,
-                rgba(99, 102, 241, 0.7) 120deg,
-                rgba(244, 114, 182, 0.5) 180deg,
-                rgba(251, 146, 60, 0.6) 240deg,
-                rgba(74, 222, 128, 0.7) 300deg,
-                rgba(45, 212, 191, 0.8) 360deg
-            );
-            opacity: 0.6;
-            z-index: -1;
-            animation: aurora-hue-shift 8s ease-in-out infinite;
-            filter: blur(8px);
-        }
-
-        .tool-header-aurora::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 8px;
-            background: var(--bg-tertiary);
-            z-index: -1;
-        }
-
+        /* RbxSync Column Header - clean white text */
         .tool-header-aurora .tool-header-name {
-            background: linear-gradient(135deg, #2dd4bf, #22d3ee, #6366f1, #f472b6, #fb923c, #4ade80);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradient-shift 6s ease infinite;
+            color: #fff;
+            font-weight: 700;
         }
 
-        @keyframes gradient-shift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        /* RbxSync column highlight */
+        /* RbxSync column class - inherits aurora from nth-child(2) */
         .col-rbxsync {
-            background: rgba(45, 212, 191, 0.03);
-        }
-
-        .comparison-table tbody tr:hover .col-rbxsync {
-            background: rgba(45, 212, 191, 0.06);
+            /* Styles handled by td:nth-child(2) selector */
         }
 
         /* Feature name styling */
@@ -2148,27 +2235,75 @@
             gap: 0.5rem;
             color: var(--text-secondary);
             font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .feature-name .rbxjson-text {
+            background: linear-gradient(90deg, #2dd4bf, #22d3ee, #6366f1, #f472b6, #fb923c, #4ade80, #2dd4bf);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow-shift 3s linear infinite;
+            font-weight: 600;
         }
 
         .feature-tag {
             display: inline-flex;
             align-items: center;
-            padding: 2px 5px;
+            padding: 2px 6px;
             font-size: 0.5rem;
             font-weight: 700;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: var(--gold);
-            background: rgba(212, 164, 56, 0.1);
-            border: 1px solid rgba(212, 164, 56, 0.2);
             border-radius: 3px;
             line-height: 1;
+            position: relative;
+            background: linear-gradient(135deg,
+                rgba(45, 212, 191, 0.12),
+                rgba(99, 102, 241, 0.12),
+                rgba(244, 114, 182, 0.12)
+            );
+            /* Rainbow text */
+            background: linear-gradient(90deg, #2dd4bf, #22d3ee, #6366f1, #f472b6, #fb923c, #4ade80, #2dd4bf);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow-shift 3s linear infinite;
         }
 
-        [data-theme="light"] .feature-tag {
-            background: rgba(212, 164, 56, 0.12);
-            border-color: rgba(212, 164, 56, 0.25);
-            color: var(--gold-dark);
+        .feature-tag::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 4px;
+            padding: 1px;
+            background: linear-gradient(90deg, #2dd4bf, #22d3ee, #6366f1, #f472b6, #fb923c, #4ade80, #2dd4bf);
+            background-size: 200% 100%;
+            animation: rainbow-shift 3s linear infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            z-index: -1;
+        }
+
+        .feature-tag::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 3px;
+            background: var(--bg-secondary);
+            z-index: -2;
+        }
+
+        @keyframes rainbow-shift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        [data-theme="light"] .feature-tag::after {
+            background: var(--bg-primary);
         }
 
         /* Status icons - SVG based */
@@ -4614,7 +4749,16 @@
 
             .comparison-table { min-width: 700px; }
             .comparison-table th:first-child,
-            .comparison-table td:first-child { min-width: 140px; }
+            .comparison-table td:first-child { width: 170px; min-width: 170px; max-width: 170px; padding-right: 1rem; }
+            .comparison-table th:nth-child(2),
+            .comparison-table td:nth-child(2) { left: 170px; }
+
+            /* Install section - full width buttons */
+            .install-store-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
             /* Hide full search, show mobile search button */
             .nav-search { display: none; }
             .nav-search-mobile { display: flex; }
@@ -5504,6 +5648,7 @@
                 <p class="section-desc">Feature comparison across Roblox sync tools.</p>
             </div>
 
+            <div class="comparison-aurora-wrapper">
             <div class="comparison-table-wrapper">
                 <table class="comparison-table">
                     <thead>
@@ -5585,6 +5730,15 @@
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                         </tr>
                         <tr>
+                            <td><span class="feature-name"><span class="rbxjson-text">.rbxjson</span> format <span class="feature-tag">Only</span></span></td>
+                            <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                            <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
+                        </tr>
+                        <tr>
                             <td><span class="feature-name">One-click extract</span></td>
                             <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
                             <td><span class="status-icon partial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg></span></td>
@@ -5594,7 +5748,7 @@
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                         </tr>
                         <tr>
-                            <td><span class="feature-name">AI integration (MCP) <span class="feature-tag">Exclusive</span></span></td>
+                            <td><span class="feature-name">AI integration (MCP) <span class="feature-tag">Only</span></span></td>
                             <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
@@ -5603,7 +5757,7 @@
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                         </tr>
                         <tr>
-                            <td><span class="feature-name">E2E testing <span class="feature-tag">Exclusive</span></span></td>
+                            <td><span class="feature-name">E2E testing <span class="feature-tag">Only</span></span></td>
                             <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
@@ -5612,7 +5766,7 @@
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                         </tr>
                         <tr>
-                            <td><span class="feature-name">Console streaming <span class="feature-tag">Exclusive</span></span></td>
+                            <td><span class="feature-name">Console streaming <span class="feature-tag">Only</span></span></td>
                             <td class="col-rbxsync"><span class="status-icon yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
                             <td><span class="status-icon no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></span></td>
@@ -5631,6 +5785,7 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
             </div>
 
             <div class="comparison-legend">
@@ -6093,6 +6248,20 @@ Try: <code>help</code>, <code>init</code>, <code>serve</code>, <code>extract</co
             }
             updateNavHeight();
             window.addEventListener('resize', updateNavHeight);
+        })();
+
+        // Comparison table scroll detection for shadow effect
+        (function() {
+            const wrapper = document.querySelector('.comparison-table-wrapper');
+            if (wrapper) {
+                wrapper.addEventListener('scroll', function() {
+                    if (wrapper.scrollLeft > 5) {
+                        wrapper.classList.add('scrolled');
+                    } else {
+                        wrapper.classList.remove('scrolled');
+                    }
+                });
+            }
         })();
 
         // Fetch latest release from GitHub and update badge (via proxy to avoid rate limits)
