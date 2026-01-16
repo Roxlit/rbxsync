@@ -752,12 +752,8 @@ local function extractGame(config: {any})
             local instance = allInstances[i]
             local serialized = Serializer.serializeInstance(instance, apiDump)
             if serialized then
-                -- Store referenceId on instance for reliable lookup during sync
-                if serialized.referenceId then
-                    pcall(function()
-                        instance:SetAttribute("_rbxsync_ref", serialized.referenceId)
-                    end)
-                end
+                -- Note: We no longer store _rbxsync_ref on instances to avoid conflicts
+                -- with ScriptSync. Reference resolution uses in-memory caches only.
 
                 -- Special handling for UnionOperation: separate into component parts
                 if instance:IsA("UnionOperation") or instance:IsA("IntersectOperation") then
@@ -1259,6 +1255,9 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
     Sync.clearRecentlyCreated()
     Sync.clearPendingReferences()
 
+    -- Suppress outbound changes during inbound sync (prevents echo loops)
+    ChangeTracker.setSyncingFromServer(true)
+
     isSyncing = true
     setStatus("Checking " .. #operations .. " instances...", Colors.info, 0)
     local results = {}
@@ -1341,8 +1340,9 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
         end
     end)
 
-    -- ALWAYS reset isSyncing, even on error
+    -- ALWAYS reset flags, even on error
     isSyncing = false
+    ChangeTracker.setSyncingFromServer(false)
 
     -- If sync errored out, report it
     if not syncOk then
@@ -1394,12 +1394,23 @@ local function handleCommand(command: string, payload: any)
     if command == "extract:start" then
         extractGame(payload or {})
     elseif command == "sync:create" then
-        return syncCreate(payload or {})
+        -- Suppress outbound for individual sync operations
+        ChangeTracker.setSyncingFromServer(true)
+        local result = syncCreate(payload or {})
+        ChangeTracker.setSyncingFromServer(false)
+        return result
     elseif command == "sync:update" then
-        return syncUpdate(payload or {})
+        ChangeTracker.setSyncingFromServer(true)
+        local result = syncUpdate(payload or {})
+        ChangeTracker.setSyncingFromServer(false)
+        return result
     elseif command == "sync:delete" then
-        return syncDelete(payload or {})
+        ChangeTracker.setSyncingFromServer(true)
+        local result = syncDelete(payload or {})
+        ChangeTracker.setSyncingFromServer(false)
+        return result
     elseif command == "sync:batch" then
+        -- syncBatch handles its own flag management
         return syncBatch(payload or {})
     elseif command == "ping" then
         return { success = true }
