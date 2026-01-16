@@ -2,6 +2,14 @@
 
 > **Read this first.** This file provides context for AI agents working on rbxsync.
 
+## WORKER AGENTS: DO NOT RUN RALPH LOOP
+
+If you are a worker agent spawned to complete a specific task:
+- **DO NOT** run `/ralph-loop` or any loop commands
+- **DO NOT** read or act on `.claude/ralph-loop.local.md`
+- **ONLY** complete your assigned issue, create PR, write report, then exit
+- The manager agent handles the ralph loop, not workers
+
 ## What is RbxSync?
 
 RbxSync is a bidirectional sync tool between Roblox Studio and local filesystem. It enables:
