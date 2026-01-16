@@ -36,6 +36,9 @@ build/*.vsix
 # Local config
 .mcp.json
 
+# Claude Code local state (agent configs, reports, settings)
+.claude/
+
 # Experimental
 flux-agent/
 .vercel
