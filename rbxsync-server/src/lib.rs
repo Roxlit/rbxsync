@@ -88,6 +88,7 @@ fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
 }
 
 /// Apply reverse tree mapping to convert filesystem path to DataModel path
+#[allow(dead_code)]
 fn apply_reverse_tree_mapping(fs_path: &str, tree_mapping: &HashMap<String, String>) -> String {
     // Try to find longest matching prefix (reverse lookup)
     let mut best_match: Option<(&str, &str)> = None;
@@ -954,7 +955,7 @@ async fn handle_undo_extract(
     }
 
     // Restore from backup
-    if let Err(e) = std::fs::rename(&backup_src, &src_dir) {
+    if let Err(_) = std::fs::rename(&backup_src, &src_dir) {
         // If rename fails, try copy
         if let Err(e) = copy_dir_recursive(&backup_src, &src_dir) {
             return Json(serde_json::json!({
