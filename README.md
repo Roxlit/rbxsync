@@ -375,6 +375,65 @@ This enables AI agents to:
 
 See the [AI-Assisted E2E Testing Guide](https://docs.rbxsync.dev/ai-testing) for detailed workflows and examples.
 
+## Harness System (Multi-Session AI Development)
+
+The Harness System enables AI agents to build Roblox games incrementally across multiple sessions, maintaining context and tracking progress even when the AI has no memory of previous work.
+
+### The Problem
+
+When building a Roblox game with AI across multiple sessions:
+- Each new session starts with no memory of previous work
+- Design decisions, feature progress, and context are lost
+- Manual re-explaining slows development significantly
+
+### The Solution
+
+The Harness System provides structured persistence:
+
+```
+.rbxsync/harness/
+├── game.yaml           # Game definition and architecture
+├── features.yaml       # Feature registry with status tracking
+└── sessions/           # Development session logs
+    ├── abc123.yaml     # Session 1 logs
+    └── def456.yaml     # Session 2 logs
+```
+
+### Quick Start
+
+```bash
+# Initialize harness for your project
+curl -X POST http://localhost:44755/harness/init \
+  -H "Content-Type: application/json" \
+  -d '{"projectDir": "/path/to/game", "gameName": "My RPG", "template": "rpg"}'
+
+# Start a new session
+curl -X POST http://localhost:44755/harness/session/start \
+  -H "Content-Type: application/json" \
+  -d '{"projectDir": "/path/to/game", "initialGoals": "Implement combat system"}'
+
+# Track features
+curl -X POST http://localhost:44755/harness/feature/update \
+  -H "Content-Type: application/json" \
+  -d '{"projectDir": "/path/to/game", "name": "Combat System", "status": "in_progress"}'
+
+# Check status (useful for new sessions to get context)
+curl -X POST http://localhost:44755/harness/status \
+  -H "Content-Type: application/json" \
+  -d '{"projectDir": "/path/to/game"}'
+```
+
+### Available Templates
+
+Initialize with genre-specific feature sets:
+- `tycoon` - Resource management, upgrades, automation
+- `obby` - Checkpoints, stages, leaderboards
+- `simulator` - Pets, rebirth, currencies
+- `rpg` - Combat, inventory, quests, NPCs
+- `horror` - Atmosphere, AI, objectives
+
+See [docs/harness-system.md](docs/harness-system.md) for full API documentation.
+
 ## Architecture
 
 ```
