@@ -10,6 +10,7 @@ import { syncCommand } from './commands/sync';
 import { runPlayTest, disposeTestChannel } from './commands/test';
 import { openConsole, closeConsole, toggleE2EMode, initE2EMode, initConsole, disposeConsole, isE2EMode } from './commands/console';
 import { initTrashSystem, recoverDeletedFolder } from './commands/trash';
+import { RbxJsonDecorationProvider } from './icons';
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -36,6 +37,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Initialize console terminal tracking (handles terminal close events)
   initConsole(context);
+
+  // Prompt to enable RbxSync icon theme on first install
+  const iconThemePrompted = context.globalState.get<boolean>('iconThemePrompted');
+  if (!iconThemePrompted) {
+    const currentTheme = vscode.workspace.getConfiguration('workbench').get<string>('iconTheme');
+    if (currentTheme !== 'rbxsync-icons') {
+      vscode.window.showInformationMessage(
+        'RbxSync: Enable Roblox class icons for .luau and .rbxjson files?',
+        'Enable Icons',
+        'Not Now'
+      ).then(selection => {
+        if (selection === 'Enable Icons') {
+          vscode.workspace.getConfiguration('workbench').update('iconTheme', 'rbxsync-icons', vscode.ConfigurationTarget.Global);
+        }
+      });
+    }
+    context.globalState.update('iconThemePrompted', true);
+  }
 
   // Set project directory for multi-workspace support
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -302,6 +321,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Initialize trash system for folder recovery
   initTrashSystem(context);
+
+  // Register file decoration provider for .rbxjson files
+  const decorationProvider = new RbxJsonDecorationProvider();
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(decorationProvider),
+    decorationProvider
+  );
 
   // Add to subscriptions
   context.subscriptions.push(
