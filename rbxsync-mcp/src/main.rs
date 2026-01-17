@@ -284,6 +284,19 @@ pub struct ReadPropertiesParams {
     pub path: String,
 }
 
+/// Parameters for explore_hierarchy tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ExploreHierarchyParams {
+    /// Starting path in the hierarchy (e.g., "Workspace" or "ServerScriptService/MyFolder").
+    /// If not provided, returns top-level services.
+    #[schemars(description = "Starting path (e.g., 'Workspace'). Omit for top-level services.")]
+    pub path: Option<String>,
+    /// Maximum depth to traverse (1 = direct children only, 2 = children and grandchildren, etc.)
+    /// Default is 1. Maximum is 10.
+    #[schemars(description = "Depth limit (default: 1, max: 10)")]
+    pub depth: Option<u32>,
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -1023,6 +1036,78 @@ impl RbxSyncServer {
                     output.push(format!("Tags: {:?}", tags));
                 }
             }
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(output.join("\n"))]))
+    }
+
+    /// Explore the game hierarchy to discover instances.
+    /// Returns a tree of instances with their className, name, and childCount.
+    /// Use path to start from a specific location, or omit for top-level services.
+    /// Use depth to control how deep to traverse (default 1).
+    #[tool(description = "Explore game hierarchy - returns tree of instances with className and childCount")]
+    async fn explore_hierarchy(
+        &self,
+        Parameters(params): Parameters<ExploreHierarchyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let result = self.client
+            .explore_hierarchy(params.path.as_deref(), params.depth)
+            .await
+            .map_err(|e| mcp_error(e.to_string()))?;
+
+        if !result.success {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "Failed to explore hierarchy: {}",
+                result.error.unwrap_or_default()
+            ))]));
+        }
+
+        // Format the tree nicely
+        fn format_node(node: &serde_json::Value, indent: usize) -> String {
+            let mut lines = vec![];
+            let prefix = "  ".repeat(indent);
+
+            let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+            let class_name = node.get("className").and_then(|v| v.as_str()).unwrap_or("?");
+            let child_count = node.get("childCount").and_then(|v| v.as_u64()).unwrap_or(0);
+
+            let children = node.get("children").and_then(|v| v.as_array());
+
+            if let Some(children) = children {
+                if children.is_empty() {
+                    lines.push(format!("{}{} [{}]", prefix, name, class_name));
+                } else {
+                    lines.push(format!("{}{} [{}] ({} children)", prefix, name, class_name, child_count));
+                    for child in children {
+                        lines.push(format_node(child, indent + 1));
+                    }
+                }
+            } else if child_count > 0 {
+                // Has children but not expanded (depth limit reached)
+                lines.push(format!("{}{} [{}] ({} children...)", prefix, name, class_name, child_count));
+            } else {
+                lines.push(format!("{}{} [{}]", prefix, name, class_name));
+            }
+
+            lines.join("\n")
+        }
+
+        let mut output = vec![];
+
+        if let Some(data) = &result.data {
+            if let Some(tree) = data.as_array() {
+                // Multiple root nodes (services)
+                for node in tree {
+                    output.push(format_node(node, 0));
+                }
+            } else {
+                // Single root node
+                output.push(format_node(data, 0));
+            }
+        }
+
+        if output.is_empty() {
+            output.push("No instances found.".to_string());
         }
 
         Ok(CallToolResult::success(vec![Content::text(output.join("\n"))]))

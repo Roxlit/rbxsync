@@ -380,6 +380,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/run", post(handle_run_code))
         // Read instance properties (for MCP)
         .route("/read-properties", post(handle_read_properties))
+        // Explore game hierarchy (for MCP)
+        .route("/explore-hierarchy", post(handle_explore_hierarchy))
         // Health check
         .route("/health", get(handle_health))
         // Shutdown endpoint
@@ -4013,6 +4015,95 @@ async fn handle_read_properties(
                 "data": response.data,
                 "error": response.error
             })))
+        }
+        Ok(None) => {
+            state.response_channels.write().await.remove(&request_id);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "success": false,
+                    "data": null,
+                    "error": "Channel closed"
+                })),
+            )
+        }
+        Err(_) => {
+            state.response_channels.write().await.remove(&request_id);
+            (
+                StatusCode::REQUEST_TIMEOUT,
+                Json(serde_json::json!({
+                    "success": false,
+                    "data": null,
+                    "error": "Plugin response timeout"
+                })),
+            )
+        }
+    }
+}
+
+// ============================================================================
+// Explore Hierarchy Endpoint
+// ============================================================================
+
+/// Request structure for exploring game hierarchy
+#[derive(Debug, Deserialize)]
+struct ExploreHierarchyRequest {
+    path: Option<String>,
+    depth: Option<u32>,
+}
+
+/// Explore the game hierarchy (for MCP integration)
+async fn handle_explore_hierarchy(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ExploreHierarchyRequest>,
+) -> impl IntoResponse {
+    let request_id = Uuid::new_v4();
+    let depth = req.depth.unwrap_or(1).min(10);
+    tracing::info!(
+        "explore-hierarchy:get request {} - path: {:?}, depth: {}",
+        request_id,
+        req.path,
+        depth
+    );
+    let request = PluginRequest {
+        id: request_id,
+        command: "explore-hierarchy:get".to_string(),
+        payload: serde_json::json!({
+            "path": req.path,
+            "depth": depth
+        }),
+    };
+
+    // Create response channel
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    state.response_channels.write().await.insert(request_id, tx);
+
+    // Queue the request
+    let queue_len = {
+        let mut queue = state.request_queue.lock().await;
+        queue.push_back(request);
+        queue.len()
+    };
+    tracing::info!(
+        "explore-hierarchy:get request {} - queued (queue length: {})",
+        request_id,
+        queue_len
+    );
+    state.trigger.send(()).ok();
+
+    // Wait for response with timeout (longer for deep hierarchies)
+    let timeout = tokio::time::Duration::from_secs(60);
+    match tokio::time::timeout(timeout, rx.recv()).await {
+        Ok(Some(response)) => {
+            state.response_channels.write().await.remove(&request_id);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "success": response.success,
+                    "data": response.data,
+                    "error": response.error
+                })),
+            )
         }
         Ok(None) => {
             state.response_channels.write().await.remove(&request_id);
