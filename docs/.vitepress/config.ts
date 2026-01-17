@@ -32,6 +32,7 @@ export default defineConfig({
           { text: 'VS Code', link: '/vscode/' },
           { text: 'File Formats', link: '/file-formats/' },
           { text: 'MCP', link: '/mcp/' },
+          { text: 'Harness System', link: '/harness-system' },
         ]
       },
       { text: 'FAQ', link: '/faq' },
@@ -98,6 +99,7 @@ export default defineConfig({
             { text: 'Setup', link: '/mcp/setup' },
             { text: 'Tools', link: '/mcp/tools' },
             { text: 'AI Testing Workflow', link: '/ai-testing' },
+            { text: 'Harness System', link: '/harness-system' },
           ]
         }
       ],
