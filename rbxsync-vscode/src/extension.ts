@@ -39,21 +39,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   initConsole(context);
 
   // Prompt to enable RbxSync icon theme on first install
-  const iconThemePrompted = context.globalState.get<boolean>('iconThemePrompted');
-  if (!iconThemePrompted) {
-    const currentTheme = vscode.workspace.getConfiguration('workbench').get<string>('iconTheme');
-    if (currentTheme !== 'rbxsync-icons') {
-      vscode.window.showInformationMessage(
-        'RbxSync: Enable Roblox class icons for .luau and .rbxjson files?',
-        'Enable Icons',
-        'Not Now'
-      ).then(selection => {
-        if (selection === 'Enable Icons') {
-          vscode.workspace.getConfiguration('workbench').update('iconTheme', 'rbxsync-icons', vscode.ConfigurationTarget.Global);
-        }
-      });
+  const iconThemePromptShown = context.globalState.get('iconThemePromptShown');
+  if (!iconThemePromptShown) {
+    const result = await vscode.window.showInformationMessage(
+      'RbxSync: Enable custom Roblox file icons?',
+      'Yes',
+      'No'
+    );
+    if (result === 'Yes') {
+      await vscode.workspace.getConfiguration().update(
+        'workbench.iconTheme',
+        'rbxsync-icons',
+        vscode.ConfigurationTarget.Global
+      );
     }
-    context.globalState.update('iconThemePrompted', true);
+    await context.globalState.update('iconThemePromptShown', true);
   }
 
   // Set project directory for multi-workspace support
