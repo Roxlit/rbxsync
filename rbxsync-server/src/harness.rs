@@ -29,6 +29,7 @@ mod templates {
 /// Template definition structure matching the YAML format
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 struct GameTemplate {
     genre: String,
     description: String,
