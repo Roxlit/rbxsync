@@ -726,6 +726,28 @@ impl RbxSyncClient {
 
         Ok(resp)
     }
+
+    /// Explore the game hierarchy
+    pub async fn explore_hierarchy(
+        &self,
+        path: Option<&str>,
+        depth: Option<u32>,
+    ) -> anyhow::Result<ExploreHierarchyResponse> {
+        let resp = self
+            .client
+            .post(format!("{}/explore-hierarchy", self.base_url))
+            .json(&serde_json::json!({
+                "path": path,
+                "depth": depth.unwrap_or(1).min(10)
+            }))
+            .timeout(std::time::Duration::from_secs(60))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(resp)
+    }
 }
 
 // ============================================================================
@@ -821,6 +843,16 @@ pub struct HarnessStatusResponse {
 /// Response from read_properties
 #[derive(Debug, Deserialize)]
 pub struct ReadPropertiesResponse {
+    pub success: bool,
+    #[serde(default)]
+    pub error: Option<String>,
+    #[serde(default)]
+    pub data: Option<serde_json::Value>,
+}
+
+/// Response from explore_hierarchy
+#[derive(Debug, Deserialize)]
+pub struct ExploreHierarchyResponse {
     pub success: bool,
     #[serde(default)]
     pub error: Option<String>,

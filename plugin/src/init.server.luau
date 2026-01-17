@@ -1641,6 +1641,107 @@ local function handleCommand(command: string, payload: any)
 
         return { success = true, data = serialized }
 
+    elseif command == "explore-hierarchy:get" then
+        local path = payload and payload.path
+        local depth = (payload and payload.depth) or 1
+        depth = math.min(depth, 10) -- Cap at 10 to prevent infinite recursion
+
+        -- Helper function to build tree node
+        local function buildNode(instance, currentDepth, maxDepth)
+            local children = instance:GetChildren()
+            local childCount = #children
+
+            local node = {
+                name = instance.Name,
+                className = instance.ClassName,
+                childCount = childCount,
+            }
+
+            -- Only include children if we haven't reached depth limit
+            if currentDepth < maxDepth and childCount > 0 then
+                node.children = {}
+                for _, child in children do
+                    table.insert(node.children, buildNode(child, currentDepth + 1, maxDepth))
+                end
+            end
+
+            return node
+        end
+
+        if not path or path == "" then
+            -- Return top-level services
+            local trackedServices = {
+                "Workspace", "ReplicatedStorage", "ReplicatedFirst",
+                "ServerScriptService", "ServerStorage", "StarterGui",
+                "StarterPack", "StarterPlayer", "Lighting", "SoundService",
+                "Teams", "Chat", "LocalizationService", "TestService"
+            }
+
+            local result = {}
+            for _, serviceName in trackedServices do
+                local service = game:FindFirstChild(serviceName)
+                if service then
+                    table.insert(result, buildNode(service, 0, depth))
+                end
+            end
+
+            return { success = true, data = result }
+        else
+            -- Navigate to the specified path
+            local parts = string.split(path, "/")
+            if #parts == 0 then
+                return { success = false, error = "Invalid path" }
+            end
+
+            -- First part should be a service name
+            local serviceName = Serializer.unescapePathSegment(parts[1])
+            local ok, service = pcall(function()
+                return game:GetService(serviceName)
+            end)
+            if not ok or not service then
+                ok, service = pcall(function()
+                    return game:FindFirstChild(serviceName)
+                end)
+                if not ok or not service then
+                    return { success = false, error = "Service or root not found: " .. serviceName }
+                end
+            end
+
+            local instance = service
+
+            -- Navigate through the rest of the path
+            for i = 2, #parts do
+                local partName = Serializer.unescapePathSegment(parts[i])
+                -- Handle disambiguated names (e.g., "Part~abc123")
+                local baseName, debugIdSuffix = string.match(partName, "^(.+)~([^~]+)$")
+                if baseName then
+                    local found = false
+                    for _, child in instance:GetChildren() do
+                        if child.Name == baseName then
+                            local debugId = child:GetDebugId(0)
+                            if string.sub(debugId, 1, #debugIdSuffix) == debugIdSuffix then
+                                instance = child
+                                found = true
+                                break
+                            end
+                        end
+                    end
+                    if not found then
+                        return { success = false, error = "Instance not found at path segment: " .. partName }
+                    end
+                else
+                    local child = instance:FindFirstChild(partName)
+                    if not child then
+                        return { success = false, error = "Instance not found: " .. partName .. " in " .. instance:GetFullName() }
+                    end
+                    instance = child
+                end
+            end
+
+            -- Build and return the tree from this instance
+            return { success = true, data = buildNode(instance, 0, depth) }
+        end
+
     elseif command == "insert:model" then
         local assetId = payload and payload.assetId
         if not assetId then
