@@ -284,6 +284,24 @@ pub struct ReadPropertiesParams {
     pub path: String,
 }
 
+/// Parameters for find_instances tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct FindInstancesParams {
+    /// Filter by class name (e.g., "Part", "Script", "Model")
+    #[schemars(description = "Filter by ClassName (e.g., 'Part', 'Script')")]
+    #[serde(rename = "className")]
+    pub class_name: Option<String>,
+    /// Filter by instance name. Supports wildcards (* matches any characters)
+    #[schemars(description = "Filter by Name (supports * wildcard, e.g., 'Spawn*')")]
+    pub name: Option<String>,
+    /// Limit search to descendants of this path (e.g., "Workspace" or "ServerScriptService")
+    #[schemars(description = "Limit search to descendants of this path")]
+    pub parent: Option<String>,
+    /// Maximum number of results (default: 50)
+    #[schemars(description = "Maximum results (default: 50)")]
+    pub limit: Option<u32>,
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -1023,6 +1041,51 @@ impl RbxSyncServer {
                     output.push(format!("Tags: {:?}", tags));
                 }
             }
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(output.join("\n"))]))
+    }
+
+    /// Search for instances in the game hierarchy.
+    /// Filters by className, name (with wildcard support), and parent path.
+    /// Returns matching instances with their paths.
+    #[tool(description = "Search for instances by className, name (wildcard), or parent path")]
+    async fn find_instances(
+        &self,
+        Parameters(params): Parameters<FindInstancesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let result = self.client
+            .find_instances(
+                params.class_name.as_deref(),
+                params.name.as_deref(),
+                params.parent.as_deref(),
+                params.limit,
+            )
+            .await
+            .map_err(|e| mcp_error(e.to_string()))?;
+
+        if !result.success {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "Search failed: {}",
+                result.error.unwrap_or_default()
+            ))]));
+        }
+
+        let instances = result.instances;
+        if instances.is_empty() {
+            return Ok(CallToolResult::success(vec![Content::text(
+                "No instances found matching the criteria."
+            )]));
+        }
+
+        let mut output = vec![format!("Found {} instance(s):", instances.len())];
+        output.push(String::new());
+
+        for inst in &instances {
+            let class_name = inst.get("className").and_then(|v| v.as_str()).unwrap_or("?");
+            let name = inst.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+            let path = inst.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+            output.push(format!("  {} ({}) - {}", name, class_name, path));
         }
 
         Ok(CallToolResult::success(vec![Content::text(output.join("\n"))]))

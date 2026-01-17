@@ -726,6 +726,32 @@ impl RbxSyncClient {
 
         Ok(resp)
     }
+
+    /// Search for instances matching the given criteria
+    pub async fn find_instances(
+        &self,
+        class_name: Option<&str>,
+        name: Option<&str>,
+        parent: Option<&str>,
+        limit: Option<u32>,
+    ) -> anyhow::Result<FindInstancesResponse> {
+        let resp = self
+            .client
+            .post(format!("{}/find-instances", self.base_url))
+            .json(&serde_json::json!({
+                "className": class_name,
+                "name": name,
+                "parent": parent,
+                "limit": limit.unwrap_or(50)
+            }))
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(resp)
+    }
 }
 
 // ============================================================================
@@ -826,4 +852,16 @@ pub struct ReadPropertiesResponse {
     pub error: Option<String>,
     #[serde(default)]
     pub data: Option<serde_json::Value>,
+}
+
+/// Response from find_instances
+#[derive(Debug, Deserialize)]
+pub struct FindInstancesResponse {
+    pub success: bool,
+    #[serde(default)]
+    pub error: Option<String>,
+    #[serde(default)]
+    pub instances: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub count: usize,
 }

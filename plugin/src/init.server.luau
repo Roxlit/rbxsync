@@ -1641,6 +1641,110 @@ local function handleCommand(command: string, payload: any)
 
         return { success = true, data = serialized }
 
+    elseif command == "find-instances:search" then
+        -- Search for instances matching criteria
+        local className = payload and payload.className
+        local name = payload and payload.name
+        local parent = payload and payload.parent
+        local limit = (payload and payload.limit) or 50
+
+        -- Define services to search
+        local searchRoots = {}
+        if parent then
+            -- Search in specific parent path
+            local parts = string.split(parent, "/")
+            if #parts > 0 then
+                local serviceName = Serializer.unescapePathSegment(parts[1])
+                local ok, service = pcall(function()
+                    return game:GetService(serviceName)
+                end)
+                if ok and service then
+                    local current = service
+                    for i = 2, #parts do
+                        local partName = Serializer.unescapePathSegment(parts[i])
+                        local child = current:FindFirstChild(partName)
+                        if child then
+                            current = child
+                        else
+                            break
+                        end
+                    end
+                    table.insert(searchRoots, current)
+                end
+            end
+        else
+            -- Search all tracked services
+            local trackedServices = {
+                "Workspace", "ReplicatedStorage", "ReplicatedFirst",
+                "ServerScriptService", "ServerStorage", "StarterGui",
+                "StarterPack", "StarterPlayer", "Lighting", "SoundService",
+                "Teams", "Chat", "LocalizationService", "TestService"
+            }
+            for _, serviceName in trackedServices do
+                local service = game:FindFirstChild(serviceName)
+                if service then
+                    table.insert(searchRoots, service)
+                end
+            end
+        end
+
+        -- Convert wildcard pattern to Lua pattern
+        local function wildcardToPattern(pattern)
+            if not pattern then return nil end
+            -- Escape special Lua pattern characters except *
+            local escaped = pattern:gsub("([%.%+%-%?%[%]%^%$%(%)%%])", "%%%1")
+            -- Convert * to .* for matching any characters
+            escaped = escaped:gsub("%*", ".*")
+            return "^" .. escaped .. "$"
+        end
+
+        local namePattern = wildcardToPattern(name)
+
+        -- Collect matching instances
+        local results = {}
+        local count = 0
+
+        for _, root in searchRoots do
+            if count >= limit then break end
+
+            local descendants = root:GetDescendants()
+            for _, desc in descendants do
+                if count >= limit then break end
+
+                -- Check className filter
+                local classMatch = true
+                if className then
+                    classMatch = desc.ClassName == className
+                end
+
+                -- Check name filter (with wildcard support)
+                local nameMatch = true
+                if namePattern then
+                    nameMatch = string.match(desc.Name, namePattern) ~= nil
+                end
+
+                if classMatch and nameMatch then
+                    -- Build path
+                    local pathParts = {}
+                    local current = desc
+                    while current and current ~= game do
+                        table.insert(pathParts, 1, current.Name)
+                        current = current.Parent
+                    end
+                    local path = table.concat(pathParts, "/")
+
+                    table.insert(results, {
+                        className = desc.ClassName,
+                        name = desc.Name,
+                        path = path
+                    })
+                    count = count + 1
+                end
+            end
+        end
+
+        return { success = true, data = { instances = results, count = count } }
+
     elseif command == "insert:model" then
         local assetId = payload and payload.assetId
         if not assetId then
