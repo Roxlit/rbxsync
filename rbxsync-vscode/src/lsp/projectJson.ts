@@ -192,3 +192,120 @@ export async function addToGitignore(projectDir: string): Promise<void> {
     console.log('[projectJson] Could not update .gitignore:', e);
   }
 }
+
+/**
+ * Generate selene.toml for Selene linter (RBXSYNC-83)
+ *
+ * @param projectDir - Root directory of the rbxsync project
+ * @returns Path to the generated file, or undefined if file already exists
+ */
+export async function generateSeleneToml(
+  projectDir: string
+): Promise<string | undefined> {
+  const seleneTomlPath = path.join(projectDir, 'selene.toml');
+
+  // Don't overwrite existing file
+  if (fs.existsSync(seleneTomlPath)) {
+    console.log('[seleneToml] selene.toml already exists, skipping generation');
+    return undefined;
+  }
+
+  const content = `std = "roblox"
+`;
+
+  try {
+    fs.writeFileSync(seleneTomlPath, content);
+    console.log(`[seleneToml] Generated ${seleneTomlPath}`);
+    return seleneTomlPath;
+  } catch (e) {
+    console.error('[seleneToml] Failed to write selene.toml:', e);
+    return undefined;
+  }
+}
+
+/**
+ * Generate wally.toml for Wally package manager (RBXSYNC-83)
+ *
+ * @param projectDir - Root directory of the rbxsync project
+ * @param projectName - Name for the package (from rbxsync.json or fallback)
+ * @returns Path to the generated file, or undefined if file already exists
+ */
+export async function generateWallyToml(
+  projectDir: string,
+  projectName?: string
+): Promise<string | undefined> {
+  const wallyTomlPath = path.join(projectDir, 'wally.toml');
+
+  // Don't overwrite existing file
+  if (fs.existsSync(wallyTomlPath)) {
+    console.log('[wallyToml] wally.toml already exists, skipping generation');
+    return undefined;
+  }
+
+  // Read rbxsync.json for project name if not provided
+  if (!projectName) {
+    const rbxsyncJsonPath = path.join(projectDir, 'rbxsync.json');
+    if (fs.existsSync(rbxsyncJsonPath)) {
+      try {
+        const rbxsyncJson = JSON.parse(fs.readFileSync(rbxsyncJsonPath, 'utf-8'));
+        projectName = rbxsyncJson.name;
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+    projectName = projectName || path.basename(projectDir);
+  }
+
+  // Sanitize project name for Wally (lowercase, alphanumeric + hyphens only)
+  const sanitizedName = projectName
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-');
+
+  const content = `[package]
+name = "your-username/${sanitizedName}"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+`;
+
+  try {
+    fs.writeFileSync(wallyTomlPath, content);
+    console.log(`[wallyToml] Generated ${wallyTomlPath}`);
+    return wallyTomlPath;
+  } catch (e) {
+    console.error('[wallyToml] Failed to write wally.toml:', e);
+    return undefined;
+  }
+}
+
+/**
+ * Generate all tooling config files (RBXSYNC-83)
+ *
+ * Generates:
+ * - default.project.json (Rojo-compatible for Luau LSP)
+ * - selene.toml (Selene linter config)
+ * - wally.toml (Wally package manager config)
+ *
+ * Only generates files if they don't already exist.
+ *
+ * @param projectDir - Root directory of the rbxsync project
+ * @returns Object with paths to generated files
+ */
+export async function generateToolingFiles(
+  projectDir: string
+): Promise<{ projectJson?: string; seleneToml?: string; wallyToml?: string }> {
+  const result: { projectJson?: string; seleneToml?: string; wallyToml?: string } = {};
+
+  // Generate project.json
+  result.projectJson = await generateProjectJson(projectDir);
+
+  // Generate selene.toml
+  result.seleneToml = await generateSeleneToml(projectDir);
+
+  // Generate wally.toml
+  result.wallyToml = await generateWallyToml(projectDir);
+
+  return result;
+}

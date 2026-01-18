@@ -149,7 +149,7 @@ fn strip_disambiguation_suffix(segment: &str) -> String {
 /// e.g., "Workspace/Part_a1b2c3d4/Child" -> "Workspace/Part/Child"
 fn normalize_path_for_comparison(path: &str) -> String {
     path.split('/')
-        .map(|s| strip_disambiguation_suffix(s))
+        .map(strip_disambiguation_suffix)
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -1524,6 +1524,184 @@ async fn handle_extract_export(
     }
 }
 
+/// Known Roblox services for project.json generation
+const KNOWN_SERVICES: &[(&str, &str)] = &[
+    ("Workspace", "Workspace"),
+    ("ServerScriptService", "ServerScriptService"),
+    ("ServerStorage", "ServerStorage"),
+    ("ReplicatedStorage", "ReplicatedStorage"),
+    ("ReplicatedFirst", "ReplicatedFirst"),
+    ("StarterGui", "StarterGui"),
+    ("StarterPack", "StarterPack"),
+    ("StarterPlayer", "StarterPlayer"),
+    ("StarterPlayerScripts", "StarterPlayerScripts"),
+    ("StarterCharacterScripts", "StarterCharacterScripts"),
+    ("Players", "Players"),
+    ("Lighting", "Lighting"),
+    ("SoundService", "SoundService"),
+    ("Chat", "Chat"),
+    ("LocalizationService", "LocalizationService"),
+    ("TestService", "TestService"),
+    ("Teams", "Teams"),
+    ("TextChatService", "TextChatService"),
+    ("VoiceChatService", "VoiceChatService"),
+];
+
+/// Generate tooling config files after extraction (RBXSYNC-83)
+///
+/// Generates:
+/// - default.project.json (Rojo-compatible for Luau LSP)
+/// - selene.toml (Selene linter config)
+/// - wally.toml (Wally package manager config)
+///
+/// Only generates files if they don't already exist.
+fn generate_tooling_files(project_dir: &str, service_folders: &HashSet<String>, config: &Option<serde_json::Value>) {
+    // Check if generation is disabled in config
+    let generate_enabled = config
+        .as_ref()
+        .and_then(|c| c.get("config"))
+        .and_then(|c| c.get("generateToolingFiles"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true); // Default to true
+
+    if !generate_enabled {
+        tracing::info!("Tooling file generation disabled in config");
+        return;
+    }
+
+    let project_path = PathBuf::from(project_dir);
+    let src_dir = project_path.join("src");
+
+    // Get project name from config or directory name
+    let project_name = config
+        .as_ref()
+        .and_then(|c| c.get("name"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            project_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("MyGame")
+                .to_string()
+        });
+
+    // Generate default.project.json
+    let project_json_path = project_path.join("default.project.json");
+    if !project_json_path.exists() && src_dir.exists() {
+        if let Ok(project_json) = generate_project_json(&project_name, &src_dir, service_folders) {
+            match std::fs::write(&project_json_path, project_json) {
+                Ok(_) => tracing::info!("Generated default.project.json"),
+                Err(e) => tracing::warn!("Failed to write default.project.json: {}", e),
+            }
+        }
+    }
+
+    // Generate selene.toml
+    let selene_toml_path = project_path.join("selene.toml");
+    if !selene_toml_path.exists() {
+        let selene_content = r#"std = "roblox"
+"#;
+        match std::fs::write(&selene_toml_path, selene_content) {
+            Ok(_) => tracing::info!("Generated selene.toml"),
+            Err(e) => tracing::warn!("Failed to write selene.toml: {}", e),
+        }
+    }
+
+    // Generate wally.toml
+    let wally_toml_path = project_path.join("wally.toml");
+    if !wally_toml_path.exists() {
+        // Sanitize project name for Wally (lowercase, alphanumeric + hyphens only)
+        let sanitized_name: String = project_name
+            .to_lowercase()
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '-' })
+            .collect();
+        let wally_content = format!(
+            r#"[package]
+name = "your-username/{}"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+"#,
+            sanitized_name
+        );
+        match std::fs::write(&wally_toml_path, wally_content) {
+            Ok(_) => tracing::info!("Generated wally.toml"),
+            Err(e) => tracing::warn!("Failed to write wally.toml: {}", e),
+        }
+    }
+}
+
+/// Generate Rojo-compatible project.json content
+fn generate_project_json(project_name: &str, src_dir: &std::path::Path, service_folders: &HashSet<String>) -> Result<String, serde_json::Error> {
+    let mut tree = serde_json::json!({
+        "$className": "DataModel"
+    });
+
+    // Build service mapping from KNOWN_SERVICES
+    let service_map: HashMap<&str, &str> = KNOWN_SERVICES.iter().cloned().collect();
+
+    // Add each service folder to the tree
+    for service_name in service_folders {
+        let class_name = service_map.get(service_name.as_str());
+
+        // Handle StarterPlayer special case - check for child folders
+        if service_name == "StarterPlayer" {
+            let starter_player_dir = src_dir.join("StarterPlayer");
+            if starter_player_dir.exists() {
+                let mut sp_node = serde_json::json!({
+                    "$className": "StarterPlayer"
+                });
+
+                if let Ok(entries) = std::fs::read_dir(&starter_player_dir) {
+                    for entry in entries.flatten() {
+                        if entry.path().is_dir() {
+                            let child_name = entry.file_name().to_string_lossy().to_string();
+                            let child_class = service_map.get(child_name.as_str());
+                            if let Some(class) = child_class {
+                                sp_node[&child_name] = serde_json::json!({
+                                    "$className": class,
+                                    "$path": format!("src/StarterPlayer/{}", child_name)
+                                });
+                            } else {
+                                sp_node[&child_name] = serde_json::json!({
+                                    "$path": format!("src/StarterPlayer/{}", child_name)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                tree[service_name] = sp_node;
+                continue;
+            }
+        }
+
+        // Regular service
+        if let Some(class) = class_name {
+            tree[service_name] = serde_json::json!({
+                "$className": class,
+                "$path": format!("src/{}", service_name)
+            });
+        } else {
+            tree[service_name] = serde_json::json!({
+                "$path": format!("src/{}", service_name)
+            });
+        }
+    }
+
+    let project = serde_json::json!({
+        "name": project_name,
+        "tree": tree,
+        "globIgnorePaths": ["**/node_modules"]
+    });
+
+    serde_json::to_string_pretty(&project)
+}
+
 /// Finalize extraction - build proper file tree from chunks
 #[derive(Debug, Deserialize)]
 pub struct FinalizeRequest {
@@ -1948,6 +2126,9 @@ async fn handle_extract_finalize(
         service_folders.len(),
         if packages_preserved { ", packages preserved" } else { "" }
     );
+
+    // Generate tooling config files (RBXSYNC-83)
+    generate_tooling_files(&req.project_dir, &service_folders, &config);
 
     // Clear any file change events that accumulated during extraction (from the files we just wrote)
     // This prevents them from being synced back to Studio after extraction
