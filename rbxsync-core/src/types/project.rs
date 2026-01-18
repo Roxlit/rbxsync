@@ -101,6 +101,10 @@ pub struct ExtractionConfig {
     /// Maximum instances per extraction chunk (for memory management)
     #[serde(default = "default_chunk_size")]
     pub chunk_size: usize,
+
+    /// Generate tooling config files on extraction (default.project.json, selene.toml, wally.toml)
+    #[serde(default = "default_true")]
+    pub generate_tooling_files: bool,
 }
 
 fn default_true() -> bool {
@@ -136,6 +140,7 @@ impl Default for ExtractionConfig {
             terrain_mode: TerrainMode::default(),
             csg_mode: CsgMode::default(),
             chunk_size: default_chunk_size(),
+            generate_tooling_files: true,
         }
     }
 }

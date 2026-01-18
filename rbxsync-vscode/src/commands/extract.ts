@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { RbxSyncClient } from '../server/client';
 import { StatusBarManager } from '../views/statusBar';
 import { SidebarWebviewProvider } from '../views/sidebarWebview';
-import { generateProjectJson, addToGitignore } from '../lsp/projectJson';
+import { generateToolingFiles, addToGitignore } from '../lsp/projectJson';
 
 export async function extractCommand(
   client: RbxSyncClient,
@@ -72,16 +72,16 @@ export async function extractCommand(
       const totalFiles = (result.filesWritten || 0) + (result.scriptsWritten || 0);
       sidebarView.logExtract(totalFiles, placeId, sessionId);
 
-      // Generate default.project.json for Luau LSP compatibility (RBXSYNC-19)
+      // Generate tooling config files for LSP, linting, and package management (RBXSYNC-19, RBXSYNC-83)
       const config = vscode.workspace.getConfiguration('rbxsync');
       if (config.get('generateProjectJson', true)) {
         try {
-          const projectJsonPath = await generateProjectJson(projectDir);
-          if (projectJsonPath) {
+          const generated = await generateToolingFiles(projectDir);
+          if (generated.projectJson) {
             await addToGitignore(projectDir);
           }
         } catch (e) {
-          console.error('Failed to generate project.json:', e);
+          console.error('Failed to generate tooling files:', e);
         }
       }
 
