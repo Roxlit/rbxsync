@@ -190,6 +190,26 @@ pub struct ConsoleMessage {
 /// Max console messages to keep in buffer
 const CONSOLE_BUFFER_SIZE: usize = 1000;
 
+/// Operation type for status tracking (RBXSYNC-77)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OperationType {
+    Extract,
+    Sync,
+    Test,
+}
+
+/// Current operation info for VS Code UI sync (RBXSYNC-77)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationInfo {
+    #[serde(rename = "type")]
+    pub op_type: OperationType,
+    pub project_dir: String,
+    #[serde(rename = "startTime")]
+    pub start_time: u64,  // Unix timestamp in millis
+    pub progress: Option<String>,  // Optional progress message
+}
+
 /// Shared application state
 pub struct AppState {
     /// Queue of pending requests to send to the plugin (legacy/fallback)
@@ -263,6 +283,10 @@ pub struct AppState {
 
     /// When playtest was explicitly ended (via goodbye event)
     pub playtest_ended: RwLock<Option<std::time::Instant>>,
+
+    /// Current operation state per project (RBXSYNC-77)
+    /// Allows VS Code to display server-initiated operations (CLI/MCP)
+    pub operation_state: RwLock<HashMap<String, OperationInfo>>,
 }
 
 impl AppState {
@@ -295,6 +319,7 @@ impl AppState {
             last_bot_heartbeat: RwLock::new(None),
             playtest_started: RwLock::new(None),
             playtest_ended: RwLock::new(None),
+            operation_state: RwLock::new(HashMap::new()),
         })
     }
 }
@@ -358,6 +383,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/rbxsync/places", get(handle_list_places))
         .route("/rbxsync/workspaces", get(handle_list_workspaces))
         .route("/rbxsync/server-info", get(handle_server_info))
+        .route("/rbxsync/status", get(handle_operation_status))
         // New extraction endpoints
         .route("/extract/start", post(handle_extract_start))
         .route("/extract/chunk", post(handle_extract_chunk))
@@ -1062,6 +1088,39 @@ async fn handle_server_info(
     }))
 }
 
+/// Query params for operation status (RBXSYNC-77)
+#[derive(Debug, Deserialize)]
+pub struct OperationStatusQuery {
+    #[serde(rename = "projectDir")]
+    pub project_dir: Option<String>,
+}
+
+/// Handle operation status request - returns current operation state for VS Code UI sync (RBXSYNC-77)
+async fn handle_operation_status(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<OperationStatusQuery>,
+) -> impl IntoResponse {
+    let operations = state.operation_state.read().await;
+
+    if let Some(ref project_dir) = params.project_dir {
+        // Return operation for specific project
+        if let Some(op) = operations.get(project_dir) {
+            return Json(serde_json::json!({
+                "operation": op,
+            }));
+        }
+        return Json(serde_json::json!({
+            "operation": null,
+        }));
+    }
+
+    // Return all operations
+    let ops: Vec<&OperationInfo> = operations.values().collect();
+    Json(serde_json::json!({
+        "operations": ops,
+    }))
+}
+
 /// Query params for request polling
 #[derive(Debug, Deserialize)]
 pub struct RequestPollQuery {
@@ -1176,6 +1235,22 @@ async fn handle_extract_start(
             data: Vec::new(),
             finalized: false,
         });
+    }
+
+    // Set operation state for VS Code UI (RBXSYNC-77)
+    if let Some(ref project_dir) = req.project_dir {
+        if !project_dir.is_empty() {
+            let mut ops = state.operation_state.write().await;
+            ops.insert(project_dir.clone(), OperationInfo {
+                op_type: OperationType::Extract,
+                project_dir: project_dir.clone(),
+                start_time: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0),
+                progress: Some("Starting extraction...".to_string()),
+            });
+        }
     }
 
     // Pause live sync during extraction to avoid syncing back files we just extracted
@@ -1910,6 +1985,12 @@ async fn handle_extract_finalize(
         }
     }
 
+    // Clear operation state for VS Code UI (RBXSYNC-77)
+    {
+        let mut ops = state.operation_state.write().await;
+        ops.remove(&req.project_dir);
+    }
+
     (
         StatusCode::OK,
         Json(serde_json::json!({
@@ -2093,6 +2174,9 @@ async fn handle_sync_command(
 #[derive(Debug, Deserialize)]
 pub struct SyncBatchRequest {
     pub operations: Vec<serde_json::Value>,
+    /// Optional project directory for operation tracking (RBXSYNC-77)
+    #[serde(rename = "projectDir")]
+    pub project_dir: Option<String>,
 }
 
 /// Handle sync batch - sends batch of operations to plugin
@@ -2101,6 +2185,22 @@ async fn handle_sync_batch(
     Json(req): Json<SyncBatchRequest>,
 ) -> impl IntoResponse {
     let request_id = Uuid::new_v4();
+
+    // Set operation state for VS Code UI (RBXSYNC-77)
+    if let Some(ref project_dir) = req.project_dir {
+        if !project_dir.is_empty() {
+            let mut ops = state.operation_state.write().await;
+            ops.insert(project_dir.clone(), OperationInfo {
+                op_type: OperationType::Sync,
+                project_dir: project_dir.clone(),
+                start_time: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0),
+                progress: Some(format!("Syncing {} operations...", req.operations.len())),
+            });
+        }
+    }
 
     // Create response channel
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -2134,6 +2234,12 @@ async fn handle_sync_batch(
     {
         let mut channels = state.response_channels.write().await;
         channels.remove(&request_id);
+    }
+
+    // Clear operation state for VS Code UI (RBXSYNC-77)
+    if let Some(ref project_dir) = req.project_dir {
+        let mut ops = state.operation_state.write().await;
+        ops.remove(project_dir);
     }
 
     match result {

@@ -147,6 +147,21 @@ export interface PlacesResponse {
   places: PlaceInfo[];
 }
 
+// Operation status for VS Code UI sync (RBXSYNC-77)
+export type OperationType = 'extract' | 'sync' | 'test';
+
+export interface OperationInfo {
+  type: OperationType;
+  project_dir: string;
+  startTime: number;  // Unix timestamp in millis
+  progress?: string;  // Optional progress message
+}
+
+export interface OperationStatusResponse {
+  operation?: OperationInfo | null;
+  operations?: OperationInfo[];
+}
+
 // Test Runner Types
 export interface ConsoleMessage {
   message: string;

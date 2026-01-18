@@ -285,6 +285,61 @@ export class SidebarWebviewProvider implements vscode.WebviewViewProvider {
     this._setResult(message, false);
   }
 
+  // Handle server-initiated operation status updates (RBXSYNC-77)
+  // This is called when CLI/MCP starts/stops operations
+  public handleServerOperation(operation: { type: 'extract' | 'sync' | 'test'; project_dir: string; progress?: string } | null): void {
+    if (operation) {
+      // Find the linked place for this project_dir
+      const linkedPlace = this.state.places.find(p => p.project_dir === operation.project_dir);
+      if (linkedPlace) {
+        const placeId = linkedPlace.place_id;
+        const sessionId = linkedPlace.session_id;
+
+        // Check if we already have a running operation for this place
+        const studioKey = getStudioKey({ place_id: placeId, session_id: sessionId });
+        const existingOp = this.state.studioOperations[studioKey];
+        if (!existingOp || existingOp.status !== 'running') {
+          this.startStudioOperation(placeId, operation.type, sessionId);
+        }
+      }
+
+      // Update cat mood
+      this.state.catMood = 'syncing';
+      this.state.catOperationType = operation.type;
+      this.state.currentOperation = operation.progress || (operation.type === 'extract' ? 'Extracting...' :
+                                    operation.type === 'sync' ? 'Syncing...' : 'Testing...');
+      this._updateWebview();
+    } else {
+      // Operation completed - find any running operations and complete them
+      for (const studioKey in this.state.studioOperations) {
+        const op = this.state.studioOperations[studioKey];
+        if (op.status === 'running') {
+          op.status = 'success';
+          op.endTime = Date.now();
+          op.message = op.type === 'extract' ? 'Extraction complete' :
+                       op.type === 'sync' ? 'Sync complete' : 'Test complete';
+        }
+      }
+      this.state.catMood = 'success';
+      this.state.currentOperation = null;
+      this._updateWebview();
+
+      // Reset to idle after delay
+      setTimeout(() => {
+        this.state.catMood = 'idle';
+        this.state.catOperationType = null;
+        // Clear completed operations
+        for (const studioKey in this.state.studioOperations) {
+          const op = this.state.studioOperations[studioKey];
+          if (op.status !== 'running') {
+            delete this.state.studioOperations[studioKey];
+          }
+        }
+        this._updateWebview();
+      }, 3000);
+    }
+  }
+
   private _setResult(label: string, success: boolean): void {
     this.state.lastResult = { label, success, time: Date.now() };
     this._updateWebview();

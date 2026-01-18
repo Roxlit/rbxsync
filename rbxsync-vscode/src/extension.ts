@@ -113,6 +113,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     sidebarView.updatePlaces(places, projectDir);
   });
 
+  // Listen for server-initiated operation status changes (RBXSYNC-77)
+  // This makes the UI react to CLI/MCP commands
+  statusBar.onOperationStatusChange((operation) => {
+    sidebarView.handleServerOperation(operation);
+  });
+
   // Register commands
   const commands = [
     vscode.commands.registerCommand('rbxsync.connect', async () => {
