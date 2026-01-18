@@ -410,10 +410,12 @@ fn check_duplicate_installations() {
     let current_version = env!("CARGO_PKG_VERSION");
 
     // Common installation paths to check
+    let home = std::env::var("HOME").unwrap_or_default();
     let paths_to_check = [
-        "/usr/local/bin/rbxsync",
-        "/usr/bin/rbxsync",
-        &format!("{}/.cargo/bin/rbxsync", std::env::var("HOME").unwrap_or_default()),
+        "/usr/local/bin/rbxsync".to_string(),
+        "/usr/bin/rbxsync".to_string(),
+        format!("{}/.cargo/bin/rbxsync", home),
+        format!("{}/.local/bin/rbxsync", home),
     ];
 
     for path_str in &paths_to_check {

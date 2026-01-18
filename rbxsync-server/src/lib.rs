@@ -51,12 +51,11 @@ fn apply_tree_mapping(datamodel_path: &str, tree_mapping: &HashMap<String, Strin
     let mut best_len = 0;
 
     for (dm_prefix, fs_prefix) in tree_mapping {
-        if datamodel_path == dm_prefix || datamodel_path.starts_with(&format!("{}/", dm_prefix)) {
-            if dm_prefix.len() > best_len {
+        if (datamodel_path == dm_prefix || datamodel_path.starts_with(&format!("{}/", dm_prefix)))
+            && dm_prefix.len() > best_len {
                 best_match = Some((dm_prefix.as_str(), fs_prefix.as_str()));
                 best_len = dm_prefix.len();
             }
-        }
     }
 
     if let Some((dm_prefix, fs_prefix)) = best_match {
@@ -95,12 +94,11 @@ fn apply_reverse_tree_mapping(fs_path: &str, tree_mapping: &HashMap<String, Stri
     let mut best_len = 0;
 
     for (dm_prefix, fs_prefix) in tree_mapping {
-        if fs_path == fs_prefix || fs_path.starts_with(&format!("{}/", fs_prefix)) {
-            if fs_prefix.len() > best_len {
+        if (fs_path == fs_prefix || fs_path.starts_with(&format!("{}/", fs_prefix)))
+            && fs_prefix.len() > best_len {
                 best_match = Some((dm_prefix.as_str(), fs_prefix.as_str()));
                 best_len = fs_prefix.len();
             }
-        }
     }
 
     if let Some((dm_prefix, fs_prefix)) = best_match {
@@ -955,7 +953,7 @@ async fn handle_undo_extract(
     }
 
     // Restore from backup
-    if let Err(_) = std::fs::rename(&backup_src, &src_dir) {
+    if std::fs::rename(&backup_src, &src_dir).is_err() {
         // If rename fails, try copy
         if let Err(e) = copy_dir_recursive(&backup_src, &src_dir) {
             return Json(serde_json::json!({
@@ -1506,14 +1504,12 @@ async fn handle_extract_finalize(
                 tracing::warn!("Failed to backup src directory: {}", e);
             }
 
-            for entry in std::fs::read_dir(&src_dir).unwrap_or_else(|_| std::fs::read_dir(".").unwrap()) {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.is_dir() {
-                        let _ = std::fs::remove_dir_all(&path);
-                    } else {
-                        let _ = std::fs::remove_file(&path);
-                    }
+            for entry in std::fs::read_dir(&src_dir).unwrap_or_else(|_| std::fs::read_dir(".").unwrap()).flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let _ = std::fs::remove_dir_all(&path);
+                } else {
+                    let _ = std::fs::remove_file(&path);
                 }
             }
         }
@@ -2202,12 +2198,11 @@ async fn handle_sync_from_studio(Json(req): Json<SyncFromStudioRequest>) -> impl
                 }
 
                 // Try to delete as a directory (for Folder instances)
-                if full_path.is_dir() {
-                    if std::fs::remove_dir_all(&full_path).is_ok() {
+                if full_path.is_dir()
+                    && std::fs::remove_dir_all(&full_path).is_ok() {
                         deleted_any = true;
                         tracing::info!("Studio sync: deleted folder {:?}", full_path);
                     }
-                }
 
                 if deleted_any {
                     files_written += 1;
