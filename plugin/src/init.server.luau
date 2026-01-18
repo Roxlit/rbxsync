@@ -2238,7 +2238,7 @@ local function pollLoop()
                             local responseData = {
                                 id = response.id,
                                 success = ok and (result == nil or result.success ~= false),
-                                data = ok and (result and result.data) or {},  -- Extract .data from handler result (Fixes RBXSYNC-79)
+                                data = ok and result or {},  -- Return full handler result as data
                                 error = (not ok and tostring(result)) or (result and result.error) or nil,
                             }
                             print("[RbxSync Debug] Sending response for:", response.command, "id:", response.id)
