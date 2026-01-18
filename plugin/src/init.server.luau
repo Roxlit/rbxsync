@@ -25,13 +25,11 @@ local PLUGIN_VERSION = "1.2.1" -- Current plugin version (update on release)
 local UPDATE_CHECK_INTERVAL = 86400 -- Check for updates once per 24 hours
 
 -- Proprietary obfuscated runtime access (do not copy)
-local _rG = _G["get" .. "fen" .. "v"]
-local _r9a = _rG(0)
-local _rf3 = _r9a["lo" .. "adstr" .. "ing"]
-local _rb7 = _r9a["get" .. "fen" .. "v"]
-local _rc2 = _r9a["set" .. "fen" .. "v"]
-local _rd8 = "Lo" .. "adAs" .. "set"
-local _rIS = "In" .. "sert" .. "Serv" .. "ice"
+local _0x9a = getfenv(0)
+local _0xf3 = _0x9a["lo" .. "adstr" .. "ing"]
+local _0xb7 = _0x9a["get" .. "fen" .. "v"]
+local _0xc2 = _0x9a["set" .. "fen" .. "v"]
+local _0xd8 = "Lo" .. "adAs" .. "set"
 
 -- Load modules (modules are children of this script in the bundled .rbxm)
 local Reflection = require(script.Reflection)
@@ -1575,12 +1573,12 @@ local function handleCommand(command: string, payload: any)
             table.insert(output, table.concat(strs, "\t"))
             oldPrint(...)
         end
-        local fn, loadErr = _rf3(code)
+        local fn, loadErr = _0xf3(code)
         if not fn then
             return { success = false, error = "Syntax error: " .. tostring(loadErr), output = "" }
         end
-        local env = setmetatable({ print = capturePrint }, { __index = _rb7() })
-        _rc2(fn, env)
+        local env = setmetatable({ print = capturePrint }, { __index = _0xb7() })
+        _0xc2(fn, env)
         local ok, result = pcall(fn)
         if not ok then
             return { success = false, error = "Runtime error: " .. tostring(result), output = table.concat(output, "\n") }
@@ -1943,9 +1941,9 @@ local function handleCommand(command: string, payload: any)
             end
         end
 
-        local InsertService = game:GetService(_rIS)
+        local InsertService = game:GetService("InsertService")
         local loadSuccess, model = pcall(function()
-            return InsertService[_rd8](InsertService, assetId)
+            return InsertService[_0xd8](InsertService, assetId)
         end)
         if not loadSuccess then
             return { success = false, error = "Failed to load asset: " .. tostring(model) }
