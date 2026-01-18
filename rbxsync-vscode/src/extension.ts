@@ -29,6 +29,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const port = config.get<number>('serverPort') || 44755;
   const autoConnect = config.get<boolean>('autoConnect') ?? true;
 
+  // Initialize context variable for command enablement (RBXSYNC-72)
+  vscode.commands.executeCommand('setContext', 'rbxsync.connected', false);
+
   // Initialize components
   client = new RbxSyncClient(port);
 
@@ -86,6 +89,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Listen for connection changes and fetch all places
   client.onConnectionChange(async (state) => {
     if (state.connected) {
+      // Set context variable for command enablement
+      vscode.commands.executeCommand('setContext', 'rbxsync.connected', true);
+
       // Fetch all connected places
       const places = await client.getConnectedPlaces();
       const projectDir = client.projectDir;
@@ -94,6 +100,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       statusBar.updatePlaces(places, projectDir);
       sidebarView.setConnectionStatus('connected', places, projectDir);
     } else {
+      // Clear context variable when disconnected
+      vscode.commands.executeCommand('setContext', 'rbxsync.connected', false);
+
       statusBar.updatePlaces([], '');
       sidebarView.setConnectionStatus('disconnected', [], '');
     }

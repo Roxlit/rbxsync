@@ -71,7 +71,8 @@
       },
       {
         "command": "rbxsync.extract",
-        "title": "RbxSync: Extract"
+        "title": "RbxSync: Extract",
+        "enablement": "rbxsync.connected"
       },
       {
         "command": "rbxsync.undoExtract",
@@ -79,12 +80,14 @@
       },
       {
         "command": "rbxsync.sync",
-        "title": "RbxSync: Sync"
+        "title": "RbxSync: Sync",
+        "enablement": "rbxsync.connected"
       },
       {
         "command": "rbxsync.runTest",
         "title": "RbxSync: Play Test",
-        "icon": "$(play)"
+        "icon": "$(play)",
+        "enablement": "rbxsync.connected"
       },
       {
         "command": "rbxsync.toggleMetadataFiles",
@@ -102,7 +105,8 @@
       {
         "command": "rbxsync.openConsole",
         "title": "RbxSync: Open Console",
-        "icon": "$(terminal)"
+        "icon": "$(terminal)",
+        "enablement": "rbxsync.connected"
       },
       {
         "command": "rbxsync.closeConsole",
