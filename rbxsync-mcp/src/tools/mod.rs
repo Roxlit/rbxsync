@@ -339,12 +339,13 @@ impl RbxSyncClient {
         Ok(())
     }
 
-    pub async fn sync_batch(&self, operations: &[serde_json::Value]) -> anyhow::Result<SyncBatchResponse> {
+    pub async fn sync_batch(&self, operations: &[serde_json::Value], project_dir: Option<&str>) -> anyhow::Result<SyncBatchResponse> {
         let resp = self
             .client
             .post(format!("{}/sync/batch", self.base_url))
             .json(&serde_json::json!({
-                "operations": operations
+                "operations": operations,
+                "projectDir": project_dir
             }))
             .send()
             .await?

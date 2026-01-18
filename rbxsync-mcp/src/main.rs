@@ -417,8 +417,8 @@ impl RbxSyncServer {
             return Ok(CallToolResult::success(vec![Content::text("No changes to sync.")]));
         }
 
-        // Apply changes
-        let result = self.client.sync_batch(&operations).await.map_err(|e| mcp_error(e.to_string()))?;
+        // Apply changes (pass project_dir for operation tracking - RBXSYNC-77)
+        let result = self.client.sync_batch(&operations, Some(&params.project_dir)).await.map_err(|e| mcp_error(e.to_string()))?;
 
         // Check if sync was skipped (disabled or extraction in progress)
         if let Some(ref data) = result.data {

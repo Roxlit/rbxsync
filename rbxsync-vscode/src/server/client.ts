@@ -167,6 +167,17 @@ export class RbxSyncClient {
     return places.find(p => p.project_dir === this._projectDir);
   }
 
+  // Get current operation status from server (RBXSYNC-77)
+  async getOperationStatus(projectDir?: string): Promise<import('./types').OperationInfo | null> {
+    try {
+      const params = projectDir ? `?projectDir=${encodeURIComponent(projectDir)}` : '';
+      const response = await this.client.get<import('./types').OperationStatusResponse>(`/rbxsync/status${params}`);
+      return response.data.operation || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Link a specific Studio place to this workspace
   async linkStudio(placeId: number): Promise<boolean> {
     if (!this._projectDir) {

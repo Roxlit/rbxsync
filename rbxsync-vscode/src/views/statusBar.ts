@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { RbxSyncClient } from '../server/client';
-import { ConnectionState, PlaceInfo } from '../server/types';
+import { ConnectionState, PlaceInfo, OperationInfo } from '../server/types';
 
 export class StatusBarManager {
   private statusBarItem: vscode.StatusBarItem;
@@ -9,6 +9,8 @@ export class StatusBarManager {
   private allPlaces: PlaceInfo[] = [];
   private currentProjectDir: string = '';
   private onPlacesChangeCallback?: (places: PlaceInfo[], projectDir: string) => void;
+  private onOperationStatusChangeCallback?: (operation: OperationInfo | null) => void;
+  private lastOperationStatus: OperationInfo | null = null;
 
   constructor(private client: RbxSyncClient) {
     this.statusBarItem = vscode.window.createStatusBarItem(
@@ -39,6 +41,11 @@ export class StatusBarManager {
 
   onPlacesChange(callback: (places: PlaceInfo[], projectDir: string) => void): void {
     this.onPlacesChangeCallback = callback;
+  }
+
+  // Callback for operation status changes (RBXSYNC-77)
+  onOperationStatusChange(callback: (operation: OperationInfo | null) => void): void {
+    this.onOperationStatusChangeCallback = callback;
   }
 
   private updateStatus(state: ConnectionState): void {
@@ -116,6 +123,37 @@ export class StatusBarManager {
 
   startPolling(intervalMs: number = 5000): void {
     this.stopPolling();
+
+    // Poll for operation status more frequently (500ms) when connected (RBXSYNC-77)
+    const operationPollInterval = setInterval(async () => {
+      if (this.client.connectionState.connected && this.currentProjectDir) {
+        const operation = await this.client.getOperationStatus(this.currentProjectDir);
+
+        // Check if operation status changed
+        const changed = (operation === null && this.lastOperationStatus !== null) ||
+                       (operation !== null && this.lastOperationStatus === null) ||
+                       (operation?.type !== this.lastOperationStatus?.type) ||
+                       (operation?.startTime !== this.lastOperationStatus?.startTime);
+
+        if (changed) {
+          this.lastOperationStatus = operation;
+          this.onOperationStatusChangeCallback?.(operation);
+
+          // Update busy status based on operation
+          if (operation) {
+            const opName = operation.type === 'extract' ? 'Extracting' :
+                          operation.type === 'sync' ? 'Syncing' : 'Testing';
+            this.setBusy(operation.progress || opName);
+          } else {
+            this.clearBusy();
+          }
+        }
+      }
+    }, 500);
+
+    // Store operation poll interval for cleanup
+    (this as unknown as { operationPollInterval: NodeJS.Timeout }).operationPollInterval = operationPollInterval;
+
     this.pollingInterval = setInterval(async () => {
       await this.client.checkHealth();
       // Re-register workspace as heartbeat
@@ -134,6 +172,12 @@ export class StatusBarManager {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
+    }
+    // Clear operation poll interval (RBXSYNC-77)
+    const operationInterval = (this as unknown as { operationPollInterval?: NodeJS.Timeout }).operationPollInterval;
+    if (operationInterval) {
+      clearInterval(operationInterval);
+      (this as unknown as { operationPollInterval?: NodeJS.Timeout }).operationPollInterval = undefined;
     }
   }
 
