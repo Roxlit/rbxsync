@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { RbxSyncClient } from './server/client';
 import { StatusBarManager } from './views/statusBar';
 import { SidebarWebviewProvider } from './views/sidebarWebview';
-import { connectCommand, disconnectCommand } from './commands/connect';
+import { connectCommand, disconnectCommand, initServerTerminal, disposeServerTerminal } from './commands/connect';
 import { extractCommand } from './commands/extract';
 import { syncCommand } from './commands/sync';
 import { runPlayTest, disposeTestChannel } from './commands/test';
@@ -37,6 +37,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Initialize console terminal tracking (handles terminal close events)
   initConsole(context);
+
+  // Initialize server terminal tracking (reuses terminal instead of spawning new ones - RBXSYNC-71)
+  const serverTerminalDisposable = initServerTerminal();
+  context.subscriptions.push(serverTerminalDisposable);
 
   // Prompt to enable RbxSync icon theme on first install
   const iconThemePromptShown = context.globalState.get('iconThemePromptShown');
@@ -413,6 +417,7 @@ async function startLanguageServer(context: vscode.ExtensionContext): Promise<vo
 export async function deactivate(): Promise<void> {
   disposeTestChannel();
   disposeConsole();
+  disposeServerTerminal();
 
   // Stop the language server
   if (languageClient) {
