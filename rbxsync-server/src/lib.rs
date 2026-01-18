@@ -127,6 +127,33 @@ fn get_tree_mapping(config: &Option<serde_json::Value>) -> HashMap<String, Strin
         .unwrap_or_default()
 }
 
+/// Strip disambiguation suffix from a path segment (RBXSYNC-68)
+/// Extraction adds `_{8 hex chars}` suffix for duplicates
+/// e.g., "Part_a1b2c3d4" -> "Part", "MyModel" -> "MyModel"
+fn strip_disambiguation_suffix(segment: &str) -> String {
+    // Check if segment ends with _XXXXXXXX (underscore + 8 hex chars)
+    if segment.len() > 9 {
+        let suffix_start = segment.len() - 9;
+        if segment.as_bytes()[suffix_start] == b'_' {
+            let suffix = &segment[suffix_start + 1..];
+            // Verify all 8 chars are hex digits
+            if suffix.len() == 8 && suffix.chars().all(|c| c.is_ascii_hexdigit()) {
+                return segment[..suffix_start].to_string();
+            }
+        }
+    }
+    segment.to_string()
+}
+
+/// Strip disambiguation suffixes from all path segments (RBXSYNC-68)
+/// e.g., "Workspace/Part_a1b2c3d4/Child" -> "Workspace/Part/Child"
+fn normalize_path_for_comparison(path: &str) -> String {
+    path.split('/')
+        .map(|s| strip_disambiguation_suffix(s))
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 /// Server configuration
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
@@ -2458,13 +2485,16 @@ async fn handle_sync_read_tree(Json(req): Json<ReadTreeRequest>) -> impl IntoRes
                                 }
 
                                 // Set path from file location (used for tracking, not naming)
+                                // Normalize path to strip disambiguation suffixes (RBXSYNC-68)
+                                // e.g., "Workspace/Part_a1b2c3d4" -> "Workspace/Part"
+                                let normalized_inst_path = normalize_path_for_comparison(&inst_path);
                                 if let Some(obj) = inst.as_object_mut() {
-                                    // Always set path from file location
-                                    obj.insert("path".to_string(), serde_json::Value::String(inst_path.clone()));
+                                    // Always set path from file location (normalized)
+                                    obj.insert("path".to_string(), serde_json::Value::String(normalized_inst_path.clone()));
 
                                     // Only set name if not provided in JSON
                                     if !obj.contains_key("name") {
-                                        if let Some(name) = inst_path.rsplit('/').next() {
+                                        if let Some(name) = normalized_inst_path.rsplit('/').next() {
                                             obj.insert("name".to_string(), serde_json::Value::String(name.to_string()));
                                         }
                                     }
@@ -2491,8 +2521,10 @@ async fn handle_sync_read_tree(Json(req): Json<ReadTreeRequest>) -> impl IntoRes
                             format!("{}/{}", path_prefix, rel_inst_path)
                         };
 
+                        // Normalize path to strip disambiguation suffixes (RBXSYNC-68)
+                        let normalized_inst_path = normalize_path_for_comparison(&inst_path);
                         if let Ok(source) = std::fs::read_to_string(&path) {
-                            scripts.insert(inst_path, source);
+                            scripts.insert(normalized_inst_path, source);
                         }
                     }
                 }
@@ -2997,9 +3029,12 @@ async fn handle_diff(
                                 };
                                 // Normalize path separators
                                 let inst_path = inst_path.replace('\\', "/");
-                                paths.insert(inst_path.clone());
+                                // Strip disambiguation suffixes for comparison with Studio paths
+                                // (RBXSYNC-68: extract adds _refId suffixes, Studio paths don't have them)
+                                let normalized_path = normalize_path_for_comparison(&inst_path);
+                                paths.insert(normalized_path.clone());
                                 if let Some(class) = inst.get("className").and_then(|v| v.as_str()) {
-                                    classes.insert(inst_path, class.to_string());
+                                    classes.insert(normalized_path, class.to_string());
                                 }
                             }
                         }
