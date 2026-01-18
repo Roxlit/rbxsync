@@ -88,6 +88,10 @@ pub struct RunTestParams {
     /// Test mode: "Play" for solo play, "Run" for server simulation (default: "Play")
     #[schemars(description = "Test mode: Play or Run (default: Play)")]
     pub mode: Option<String>,
+    /// If true, start the test and return immediately without waiting for completion.
+    /// Use this for interactive bot testing with bot_observe/bot_move/bot_action.
+    #[schemars(description = "Run in background mode - start test and return immediately (default: false)")]
+    pub background: Option<bool>,
 }
 
 /// Parameters for insert_model tool
@@ -533,7 +537,9 @@ impl RbxSyncServer {
 
     /// Run an automated play test in Roblox Studio and capture console output.
     /// Starts a play session, captures all prints/warnings/errors, then stops and returns output.
-    #[tool(description = "Run automated play test in Studio and return console output")]
+    /// For interactive bot testing, use background: true to start the test and return immediately,
+    /// then use bot_observe/bot_move/bot_action while the test runs.
+    #[tool(description = "Run automated play test in Studio and return console output. For interactive bot testing, use background: true to start test and return immediately, then use bot_observe/bot_move/bot_action while test runs.")]
     async fn run_test(
         &self,
         Parameters(params): Parameters<RunTestParams>,
@@ -549,6 +555,17 @@ impl RbxSyncServer {
                 "Failed to start test: {}",
                 start_result.message.unwrap_or_default()
             ))]));
+        }
+
+        // Background mode: return immediately after starting the test
+        if params.background.unwrap_or(false) {
+            return Ok(CallToolResult::success(vec![Content::text(
+                serde_json::json!({
+                    "started": true,
+                    "mode": params.mode.as_deref().unwrap_or("Play"),
+                    "message": "Test started in background. Use bot_observe/bot_move/bot_action to interact."
+                }).to_string()
+            )]));
         }
 
         // Wait for test to complete (poll status)
