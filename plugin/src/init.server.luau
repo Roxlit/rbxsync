@@ -766,74 +766,19 @@ local function extractGame(config: {any})
                 -- Note: We no longer store _rbxsync_ref on instances to avoid conflicts
                 -- with ScriptSync. Reference resolution uses in-memory caches only.
 
-                -- Special handling for UnionOperation: separate into component parts
+                -- Special handling for UnionOperation/IntersectOperation (RBXSYNC-38)
+                -- We do NOT call Plugin:Separate() during extraction because:
+                -- 1. Plugin:Separate() destroys the original union, causing DescendantRemoving floods
+                -- 2. With many unions (1000+), this causes CSG error code -6 failures
+                -- 3. Eventually crashes the plugin from event/memory pressure
+                -- Instead, unions are preserved as binary data in the serialization.
+                -- They will round-trip correctly without needing component part breakdown.
                 if instance:IsA("UnionOperation") or instance:IsA("IntersectOperation") then
-                    -- Clone the union before separating to preserve the original (RBXSYNC-38)
-                    -- Plugin:Separate() destroys its input, so we operate on a clone
-                    local unionClone = instance:Clone()
-                    unionClone.Parent = instance.Parent
-                    local separated = CSGHandler.separate(plugin, unionClone :: BasePart)
-                    if separated.success and (#separated.addParts > 0 or #separated.subtractParts > 0) then
-                        -- Build CSG metadata
-                        local operations = {}
-                        local partIndex = 1
-
-                        -- Serialize and add the component parts
-                        for _, part in separated.addParts do
-                            local partName = "CSGPart_" .. partIndex
-                            local partPath = serialized.path .. "/_csg/" .. partName
-                            local partSerialized = Serializer.serializeInstance(part, apiDump)
-                            if partSerialized then
-                                partSerialized.path = partPath
-                                partSerialized.name = partName
-                                table.insert(chunkInstances, partSerialized)
-                                table.insert(operations, {
-                                    type = "add",
-                                    partRef = partName,
-                                })
-                            end
-                            -- Clean up the separated part
-                            part:Destroy()
-                            partIndex += 1
-                        end
-
-                        -- Serialize subtracted parts (NegateOperations)
-                        for _, part in separated.subtractParts do
-                            local partName = "CSGNegate_" .. partIndex
-                            local partPath = serialized.path .. "/_csg/" .. partName
-                            local partSerialized = Serializer.serializeInstance(part, apiDump)
-                            if partSerialized then
-                                partSerialized.path = partPath
-                                partSerialized.name = partName
-                                table.insert(chunkInstances, partSerialized)
-                                table.insert(operations, {
-                                    type = "subtract",
-                                    partRef = partName,
-                                })
-                            end
-                            -- Clean up the separated part
-                            part:Destroy()
-                            partIndex += 1
-                        end
-
-                        -- Add CSG metadata to the union
-                        if #operations > 0 then
-                            serialized.csg = {
-                                version = 1,
-                                separable = true,
-                                operations = operations,
-                            }
-                            print(string.format("[RbxSync] Separated union '%s' into %d parts", serialized.name, #operations))
-                        end
-                    elseif separated.error then
-                        -- Mark as non-separable with error
-                        serialized.csg = {
-                            version = 1,
-                            separable = false,
-                            error = separated.error,
-                        }
-                        warn(string.format("[RbxSync] Could not separate union '%s': %s", serialized.name, separated.error))
-                    end
+                    serialized.csg = {
+                        version = 1,
+                        separable = false,
+                        preservedAsBinary = true,
+                    }
                 end
 
                 table.insert(chunkInstances, serialized)
