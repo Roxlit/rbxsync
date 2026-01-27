@@ -411,6 +411,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/test/start", post(handle_test_start))
         .route("/test/status", get(handle_test_status))
         .route("/test/stop", post(handle_test_stop))
+        .route("/test/playtest-status", get(handle_test_playtest_status))
         // Bot controller endpoints (AI-powered automated gameplay testing)
         .route("/bot/command", post(handle_bot_command))
         .route("/bot/state", get(handle_bot_state).post(handle_bot_state_update))
@@ -3588,8 +3589,37 @@ pub struct TestStatusResponse {
     pub total_messages: usize,
 }
 
+/// Check if playtest has stale state (heartbeat timeout) and clear it
+/// Returns true if state was cleared
+async fn clear_stale_playtest_state(state: &Arc<AppState>) -> bool {
+    let heartbeat = state.last_bot_heartbeat.read().await;
+    let is_active = state.playtest_active.load(std::sync::atomic::Ordering::Relaxed);
+
+    // Consider stale if no heartbeat in 5 seconds
+    let stale = if let Some(last) = *heartbeat {
+        last.elapsed().as_secs_f64() > 5.0
+    } else {
+        // No heartbeat recorded - not stale (never started)
+        false
+    };
+    drop(heartbeat);
+
+    if stale && is_active {
+        tracing::info!("Clearing stale playtest state (heartbeat timeout)");
+        state.playtest_active.store(false, std::sync::atomic::Ordering::Relaxed);
+        *state.playtest_ended.write().await = Some(std::time::Instant::now());
+        *state.bot_state.write().await = None;
+        return true;
+    }
+
+    false
+}
+
 /// Start test capture - tells plugin to start capturing console output
 async fn handle_test_start(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // Auto-clear stale playtest state before starting new test
+    clear_stale_playtest_state(&state).await;
+
     // Send command to plugin to start capture
     let request_id = Uuid::new_v4();
     let request = PluginRequest {
@@ -3744,6 +3774,41 @@ async fn handle_test_stop(State(state): State<Arc<AppState>>) -> impl IntoRespon
             )
         }
     }
+}
+
+/// Get playtest status based on heartbeat detection (GET /test/playtest-status)
+/// This endpoint checks if a playtest is actually running by detecting stale heartbeats
+async fn handle_test_playtest_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // Auto-clear stale state first
+    let cleared = clear_stale_playtest_state(&state).await;
+
+    let is_active = state.playtest_active.load(std::sync::atomic::Ordering::Relaxed);
+    let heartbeat = state.last_bot_heartbeat.read().await;
+    let started = state.playtest_started.read().await;
+    let ended = state.playtest_ended.read().await;
+
+    // Calculate staleness
+    let last_heartbeat_ago = heartbeat.map(|h| h.elapsed().as_secs_f64());
+    let stale = last_heartbeat_ago.map(|t| t > 5.0).unwrap_or(false);
+
+    Json(serde_json::json!({
+        "success": true,
+        "active": is_active && !stale,
+        "stale": stale,
+        "cleared_stale_state": cleared,
+        "last_heartbeat_ago": last_heartbeat_ago,
+        "started_at": started.map(|s| s.elapsed().as_secs_f64()),
+        "ended_at": ended.map(|e| e.elapsed().as_secs_f64()),
+        "message": if is_active && !stale {
+            "Playtest is active"
+        } else if cleared {
+            "Cleared stale playtest state"
+        } else if ended.is_some() {
+            "Playtest has ended"
+        } else {
+            "No active playtest"
+        }
+    }))
 }
 
 // ============================================================================
