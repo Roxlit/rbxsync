@@ -33,6 +33,17 @@ local captureStartTime: number = 0
 -- Start capturing console output
 -- Call this before triggering a play session to capture all output
 function TestRunner.startCapture(): { success: boolean, message: string }
+	-- Auto-recover from stale state: if capturing but game isn't running, reset
+	if isCapturing and not RunService:IsRunning() then
+		warn("[TestRunner] Recovering from stale capture state")
+		isCapturing = false
+		if logConnection then
+			logConnection:Disconnect()
+			logConnection = nil
+		end
+		capturedOutput = {}
+	end
+
 	if isCapturing then
 		return { success = false, message = "Capture already in progress" }
 	end
@@ -421,8 +432,28 @@ function TestRunner.getTestStatus(): {
 	error: string?,
 	result: any?,
 	output: { ConsoleMessage },
-	totalMessages: number
+	totalMessages: number,
+	staleRecovered: boolean?
 }
+	-- Auto-recover from stale state: if test was in progress but game stopped
+	local staleRecovered = false
+	if testInProgress and not RunService:IsRunning() then
+		warn("[TestRunner] Recovering from stale test state in getTestStatus")
+		testInProgress = false
+		testComplete = true
+		testError = testError or "Playtest ended unexpectedly"
+		staleRecovered = true
+		-- Also clean up capture state
+		if isCapturing then
+			isCapturing = false
+			if logConnection then
+				logConnection:Disconnect()
+				logConnection = nil
+			end
+		end
+		cleanupBotScripts()
+	end
+
 	return {
 		inProgress = testInProgress,
 		complete = testComplete,
@@ -430,6 +461,7 @@ function TestRunner.getTestStatus(): {
 		result = testResult,
 		output = capturedOutput,
 		totalMessages = #capturedOutput,
+		staleRecovered = staleRecovered,
 	}
 end
 
