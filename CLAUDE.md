@@ -139,28 +139,12 @@ Multiple Claude agents work on this project simultaneously. **You MUST follow th
 2. **Update Linear:**
    - Move to "In Review" or "Done"
    - Add comment with summary of changes
-3. **Write completion report** to `.claude/reports/worker-RBXSYNC-XX.md`:
-   ```markdown
-   # Worker Report: RBXSYNC-XX
-   **Date:** [timestamp]
-   **Status:** Complete | Blocked | Partial
-
-   ## Summary
-   [1-2 sentence summary]
-
-   ## Changes Made
-   - [file]: [what changed]
-
-   ## PR
-   - Number: #XX
-   - Branch: fix/rbxsync-XX-description
-
-   ## Issues Encountered
-   [any blockers or surprises]
-
-   ## Notes for Manager
-   [anything the manager should know]
-   ```
+3. **Write completion report** using the TPS template:
+   - Copy `.claude/templates/tps-report.md` to `.claude/reports/TPS-RBXSYNC-XX.md`
+   - Fill in all sections (cover sheet, executive summary, work performed, deliverables, risk assessment, sign-off)
+   - See `.claude/reports/TPS-RBXSYNC-110.md` for a reference example
+   - Optionally generate a PDF: `./scripts/generate-tps-report.sh .claude/reports/TPS-RBXSYNC-XX.md`
+   - **All workers must use the TPS template for completion reports**
 4. **Print completion signal:** `DONE: RBXSYNC-XX - [summary]`
 
 ### Conflict Resolution
