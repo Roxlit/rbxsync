@@ -37,7 +37,11 @@ build/*.vsix
 .mcp.json
 
 # Claude Code local state (agent configs, reports, settings)
-.claude/
+.claude/*
+!.claude/templates/
+!.claude/reports/
+.claude/reports/*
+!.claude/reports/TPS-*.md
 
 # Experimental
 flux-agent/
