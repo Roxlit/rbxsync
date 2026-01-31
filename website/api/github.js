@@ -34,7 +34,7 @@ export default async function handler(request) {
         return new Response(JSON.stringify(cache.release), { headers });
       }
 
-      const res = await fetch('https://api.github.com/repos/devmarissa/rbxsync/releases/latest', {
+      const res = await fetch('https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest', {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'rbxsync-website',
@@ -60,7 +60,7 @@ export default async function handler(request) {
         return new Response(JSON.stringify(cache.repo), { headers });
       }
 
-      const res = await fetch('https://api.github.com/repos/devmarissa/rbxsync', {
+      const res = await fetch('https://api.github.com/repos/Smokestack-Games/rbxsync', {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'rbxsync-website',

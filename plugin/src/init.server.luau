@@ -145,7 +145,7 @@ local function checkForUpdates()
 
     -- Check GitHub releases API (runs in background)
     task.spawn(function()
-        local url = "https://api.github.com/repos/devmarissa/rbxsync/releases/latest"
+        local url = "https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest"
         local success, response = pcall(function()
             return HttpService:GetAsync(url)
         end)
@@ -161,7 +161,7 @@ local function checkForUpdates()
                     updateAvailableVersion = latestVersion
                     Config.setUpdateAvailable(latestVersion)
                     print("[RbxSync] Update available: v" .. latestVersion .. " (current: v" .. PLUGIN_VERSION .. ")")
-                    print("[RbxSync] Download at: https://github.com/devmarissa/rbxsync/releases")
+                    print("[RbxSync] Download at: https://github.com/Smokestack-Games/rbxsync/releases")
                 else
                     updateAvailableVersion = nil
                     Config.setUpdateAvailable(nil)

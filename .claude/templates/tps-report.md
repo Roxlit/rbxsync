@@ -1,7 +1,7 @@
 ```
- _____ __  __  ___  _  _______ ____  _____  _    ____ _  __
+ _____ __  __  ___  _  _______  ____  _____  _    ____ _  __
 / ____|  \/  |/ _ \| |/ / ____|/ ___||_   _|/ \  / ___| |/ /
-\__ \| |\/| | | | | ' /|  _|  \___ \  | | / _ \| |   | ' /
+\__  \| |\/| | | | | ' /|  _|  \___ \  | | / _ \| |   | ' /
  ___) | |  | | |_| | . \| |___  ___) | | |/ ___ \ |___| . \
 |____/|_|  |_|\___/|_|\_\_____||____/  |_/_/   \_\____|_|\_\
                  G  A  M  E  S
@@ -13,11 +13,11 @@
 
 | Field                | Value                                    |
 |----------------------|------------------------------------------|
-| **Report ID**        | TPS-RBXSYNC-{XX}                         |
+| **Report ID**        | TPS-PROJECTNAME-{XX}                     |
 | **Date Filed**       | {YYYY-MM-DD}                             |
 | **Agent ID**         | {worker-name / session-id}               |
-| **Department**       | {core / server / cli / mcp / vscode / plugin} |
-| **Priority**         | {P0 Critical / P1 Urgent / P2 High / P3 Medium / P4 Low} |
+| **Department**       | {core/server/cli/mcp/vscode/plugin}      |
+| **Priority**         | {P0 Critical/P1 Urgent/P2 High}          |
 | **Status**           | {Complete / Partial / Blocked}           |
 | **Reviewed By**      | Manager Agent                            |
 
@@ -25,7 +25,7 @@
 
 ## SECTION 1 -- EXECUTIVE SUMMARY
 
-**Issue Reference:** RBXSYNC-{XX}
+**Issue Reference:** PROJECTNAME-{XX}
 
 **Summary:** {One-line description of what was done}
 
@@ -39,7 +39,7 @@
 
 | File Path | Change Description |
 |-----------|--------------------|
-| `{path/to/file}` | {What was changed and why} |
+| `{path/to/file}` | {What/why}  |
 
 ### Metrics
 
@@ -56,7 +56,7 @@
 | `cargo build`  | {Pass / Fail}  | {any notes}    |
 | `cargo test`   | {Pass / Fail}  | {any notes}    |
 | `cargo clippy` | {Pass / Fail}  | {any notes}    |
-| Manual Testing | {Pass / Fail / N/A} | {any notes} |
+| Manual Testing | {Pass / Fail / N/A} | {notes}   |
 
 ---
 
@@ -65,7 +65,7 @@
 | Deliverable      | Value                                         |
 |------------------|-----------------------------------------------|
 | **PR Number**    | #{N}                                          |
-| **PR Link**      | https://github.com/devmarissa/rbxsync/pull/{N}|
+| **PR Link**      | https://github.com/sourcename/PROJECTNAME/pull/{N}|
 | **Branch**       | {branch-name}                                 |
 | **Build Status** | {Verified / Pending / Failed}                 |
 

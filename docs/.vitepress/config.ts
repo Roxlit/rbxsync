@@ -122,7 +122,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/devmarissa/rbxsync/edit/master/docs/:path',
+      pattern: 'https://github.com/Smokestack-Games/rbxsync/edit/master/docs/:path',
       text: 'Edit this page on GitHub',
     },
 

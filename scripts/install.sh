@@ -23,7 +23,7 @@ echo ""
 if [[ "$(uname)" != "Darwin" ]]; then
     echo -e "${RED}Error: This installer is for macOS only.${NC}"
     echo "For Windows, use the PowerShell installer:"
-    echo "  irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex"
+    echo "  irm https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.ps1 | iex"
     exit 1
 fi
 
@@ -49,7 +49,7 @@ echo ""
 
 # Get latest version from GitHub API
 echo -e "${BLUE}Fetching latest version...${NC}"
-VERSION=$(curl -s https://api.github.com/repos/devmarissa/rbxsync/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+VERSION=$(curl -s https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
 
 if [ -z "$VERSION" ]; then
     echo -e "${RED}Error: Could not fetch latest version from GitHub.${NC}"
@@ -61,7 +61,7 @@ echo -e "Latest version: ${GREEN}$VERSION${NC}"
 echo ""
 
 # Download URL
-DOWNLOAD_URL="https://github.com/devmarissa/rbxsync/releases/download/$VERSION/$BINARY"
+DOWNLOAD_URL="https://github.com/Smokestack-Games/rbxsync/releases/download/$VERSION/$BINARY"
 
 # Install location
 INSTALL_DIR="/usr/local/bin"

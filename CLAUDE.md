@@ -91,7 +91,7 @@ rbxsync/
 
 ## Linear Integration
 
-All tasks are tracked in Linear (linear.app/rbxsync).
+All tasks are tracked in Linear (linear.app/smokestack-games).
 
 - **Labels:** Bug, Feature, Improvement, Chore, Documentation + component labels (core, server, cli, mcp, vscode, plugin)
 - **Projects:** Bug Bash, v1.2 Release, AI Integration, Org
@@ -202,8 +202,8 @@ When running with `rbxsync serve`, these MCP tools are available:
 
 ## Contact
 
-- **Linear:** linear.app/rbxsync
-- **GitHub:** github.com/devmarissa/rbxsync
+- **Linear:** linear.app/smokestack-games
+- **GitHub:** github.com/Smokestack-Games/rbxsync
 - **Manager Agent:** The main Claude session coordinating work
 
 ---

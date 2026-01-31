@@ -77,7 +77,7 @@ export default {
       observer.observe(document.body, { childList: true, subtree: true })
 
       // Fetch GitHub stars
-      fetch('https://api.github.com/repos/devmarissa/rbxsync')
+      fetch('https://api.github.com/repos/Smokestack-Games/rbxsync')
         .then(res => res.json())
         .then(data => {
           const updateStars = () => {

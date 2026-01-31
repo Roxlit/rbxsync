@@ -1,5 +1,5 @@
 # RbxSync Installer for Windows
-# Run with: irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+# Run with: irm https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
@@ -19,14 +19,14 @@ Write-Host ""
 if ($env:OS -ne "Windows_NT") {
     Write-Host "Error: This installer is for Windows only." -ForegroundColor Red
     Write-Host "For macOS, use:"
-    Write-Host "  curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh"
+    Write-Host "  curl -fsSL https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.sh | sh"
     exit 1
 }
 
 # Get latest version from GitHub
 Write-Host "Fetching latest version..." -ForegroundColor Blue
 try {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/devmarissa/rbxsync/releases/latest"
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest"
     $VERSION = $release.tag_name
 } catch {
     Write-Host "Error: Could not fetch latest version from GitHub." -ForegroundColor Red
@@ -39,7 +39,7 @@ Write-Host ""
 
 # Download URL
 $BINARY = "rbxsync-windows-x86_64.exe"
-$DOWNLOAD_URL = "https://github.com/devmarissa/rbxsync/releases/download/$VERSION/$BINARY"
+$DOWNLOAD_URL = "https://github.com/Smokestack-Games/rbxsync/releases/download/$VERSION/$BINARY"
 
 # Install directory
 $INSTALL_DIR = "$env:LOCALAPPDATA\rbxsync"

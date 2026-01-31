@@ -142,12 +142,12 @@ jobs:
 
           **macOS:**
           ```bash
-          curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh
+          curl -fsSL https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.sh | sh
           ```
 
           **Windows (PowerShell):**
           ```powershell
-          irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+          irm https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.ps1 | iex
           ```
 
           ### Other Downloads

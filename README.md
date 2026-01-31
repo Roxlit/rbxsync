@@ -48,18 +48,18 @@ The CLI runs the sync server that connects Studio and VS Code.
 
 **macOS (one command):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.ps1 | iex
 ```
 
 <details>
 <summary><strong>Alternative: Manual Download</strong></summary>
 
-Download pre-built binaries from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases):
+Download pre-built binaries from [GitHub Releases](https://github.com/Smokestack-Games/rbxsync/releases):
 
 | Platform | Binary |
 |----------|--------|
@@ -82,7 +82,7 @@ Download pre-built binaries from [GitHub Releases](https://github.com/devmarissa
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/devmarissa/rbxsync
+git clone https://github.com/Smokestack-Games/rbxsync
 cd rbxsync
 cargo build --release
 
@@ -98,7 +98,7 @@ rbxsync version
 2. Install Rust from [rustup.rs](https://rustup.rs)
 3. Build:
 ```powershell
-git clone https://github.com/devmarissa/rbxsync
+git clone https://github.com/Smokestack-Games/rbxsync
 cd rbxsync
 cargo build --release
 ```
@@ -110,7 +110,7 @@ cargo build --release
 
 **Option A: Roblox Creator Store (recommended)** - [Install from Creator Store](https://create.roblox.com/store/asset/89280418878393/RbxSync)
 
-**Option B: Download from GitHub** - Get `RbxSync.rbxm` from [Releases](https://github.com/devmarissa/rbxsync/releases), copy to:
+**Option B: Download from GitHub** - Get `RbxSync.rbxm` from [Releases](https://github.com/Smokestack-Games/rbxsync/releases), copy to:
 - macOS: `~/Documents/Roblox/Plugins/`
 - Windows: `%LOCALAPPDATA%\Roblox\Plugins\` (press `Win+R`, paste this path)
 

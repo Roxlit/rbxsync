@@ -107,13 +107,13 @@ RbxSync uses Rojo-compatible conventions:
 ## Documentation
 
 - Website: https://rbxsync.dev
-- GitHub: https://github.com/devmarissa/rbxsync
+- GitHub: https://github.com/Smokestack-Games/rbxsync
 - MCP Guide: https://rbxsync.dev/mcp/
 - CLI Reference: https://rbxsync.dev/cli/
 
 ## Installation Links
 
-- CLI: https://github.com/devmarissa/rbxsync/releases
+- CLI: https://github.com/Smokestack-Games/rbxsync/releases
 - Studio Plugin: https://create.roblox.com/store/asset/89280418878393/RbxSync
 - VS Code Extension: https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync
 

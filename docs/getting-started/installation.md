@@ -15,12 +15,12 @@ The CLI runs the sync server that bridges Studio and your filesystem.
 
 **macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/devmarissa/rbxsync/master/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/Smokestack-Games/rbxsync/master/scripts/install.ps1 | iex
 ```
 
 Then restart your terminal and verify:
@@ -30,7 +30,7 @@ rbxsync version
 
 ### Alternative: Manual Download
 
-Download pre-built binaries from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases):
+Download pre-built binaries from [GitHub Releases](https://github.com/Smokestack-Games/rbxsync/releases):
 
 | Platform | Binary |
 |----------|--------|
@@ -50,7 +50,7 @@ Download pre-built binaries from [GitHub Releases](https://github.com/devmarissa
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Restart terminal, then clone and build
-git clone https://github.com/devmarissa/rbxsync
+git clone https://github.com/Smokestack-Games/rbxsync
 cd rbxsync
 cargo build --release
 
@@ -63,7 +63,7 @@ sudo cp target/release/rbxsync /usr/local/bin/
 2. Install Rust from [rustup.rs](https://rustup.rs)
 3. Restart terminal, then:
 ```powershell
-git clone https://github.com/devmarissa/rbxsync
+git clone https://github.com/Smokestack-Games/rbxsync
 cd rbxsync
 cargo build --release
 ```
@@ -78,7 +78,7 @@ Choose one option:
 
 **Option A: Download from GitHub (Recommended)**
 
-1. Download `RbxSync.rbxm` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
+1. Download `RbxSync.rbxm` from [GitHub Releases](https://github.com/Smokestack-Games/rbxsync/releases)
 2. Copy to your plugins folder:
    - **macOS:** `~/Documents/Roblox/Plugins/`
    - **Windows:** `%LOCALAPPDATA%\Roblox\Plugins\`
@@ -116,7 +116,7 @@ If you're using a VS Code fork like VSCodium, Cursor, Antigravity, or Windsurf, 
 
 **Option C: Download from GitHub**
 
-1. Download `rbxsync-*.vsix` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
+1. Download `rbxsync-*.vsix` from [GitHub Releases](https://github.com/Smokestack-Games/rbxsync/releases)
 2. In VS Code: `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac)
 3. Type "Extensions: Install from VSIX"
 4. Select the downloaded `.vsix` file
@@ -144,7 +144,7 @@ rbxsync plugin install
 This downloads the latest plugin from GitHub releases and installs it. Then restart Studio.
 
 **Manually:**
-1. Download the latest `RbxSync.rbxm` from [GitHub Releases](https://github.com/devmarissa/rbxsync/releases)
+1. Download the latest `RbxSync.rbxm` from [GitHub Releases](https://github.com/Smokestack-Games/rbxsync/releases)
 2. Copy to your plugins folder (same as installation)
 3. Restart Studio
 

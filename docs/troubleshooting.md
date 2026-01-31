@@ -132,7 +132,7 @@ Common issues and solutions.
 
 If you're still stuck:
 
-1. Check the [GitHub Issues](https://github.com/devmarissa/rbxsync/issues)
+1. Check the [GitHub Issues](https://github.com/Smokestack-Games/rbxsync/issues)
 2. Join the [Discord server](https://discord.gg/dURVrFVAEs)
 3. Run with debug logging:
    ```bash

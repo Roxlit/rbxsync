@@ -13,7 +13,7 @@ version = "1.3.0"
 edition = "2021"
 license = "LicenseRef-Proprietary"
 authors = ["RbxSync Team"]
-repository = "https://github.com/devmarissa/rbxsync"
+repository = "https://github.com/Smokestack-Games/rbxsync"
 
 [workspace.dependencies]
 # Serialization

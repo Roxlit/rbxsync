@@ -2623,7 +2623,7 @@ async fn download_plugin_from_github() -> Result<PathBuf> {
     // Fetch latest release info
     print!("Fetching latest release... ");
     let response = client
-        .get("https://api.github.com/repos/devmarissa/rbxsync/releases/latest")
+        .get("https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest")
         .header("User-Agent", "rbxsync-cli")
         .send()
         .await
@@ -2696,7 +2696,7 @@ async fn cmd_update(from_source: bool, vscode: bool, yes: bool) -> Result<()> {
         .build()?;
 
     let response = client
-        .get("https://api.github.com/repos/devmarissa/rbxsync/releases/latest")
+        .get("https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest")
         .header("User-Agent", "rbxsync-cli")
         .send()
         .await
@@ -2930,7 +2930,7 @@ fn cmd_update_from_source(vscode: bool) -> Result<()> {
                     .context("Failed to create ~/.rbxsync directory")?;
 
                 let status = std::process::Command::new("git")
-                    .args(["clone", "https://github.com/devmarissa/rbxsync.git", managed_repo.to_str().unwrap()])
+                    .args(["clone", "https://github.com/Smokestack-Games/rbxsync.git", managed_repo.to_str().unwrap()])
                     .status()
                     .context("Failed to clone repository")?;
 
@@ -3096,7 +3096,7 @@ async fn cmd_version() -> Result<()> {
         .build()?;
 
     match client
-        .get("https://api.github.com/repos/devmarissa/rbxsync/releases/latest")
+        .get("https://api.github.com/repos/Smokestack-Games/rbxsync/releases/latest")
         .header("User-Agent", "rbxsync-cli")
         .send()
         .await
@@ -3108,7 +3108,7 @@ async fn cmd_version() -> Result<()> {
                     if is_newer_version(latest, version) {
                         println!("\x1b[33mUpdate available: v{}\x1b[0m", latest);
                         println!("  Run: rbxsync update");
-                        println!("  Or download: https://github.com/devmarissa/rbxsync/releases/latest");
+                        println!("  Or download: https://github.com/Smokestack-Games/rbxsync/releases/latest");
                     } else {
                         println!("\x1b[32mUp to date!\x1b[0m");
                     }
@@ -3318,7 +3318,7 @@ fn cmd_uninstall(vscode: bool, keep_repo: bool, yes: bool) -> Result<()> {
         println!("RbxSync has been uninstalled successfully!");
         println!();
         println!("Thanks for using RbxSync! If you have feedback, please share at:");
-        println!("  https://github.com/devmarissa/rbxsync/issues");
+        println!("  https://github.com/Smokestack-Games/rbxsync/issues");
     } else {
         println!("Uninstall completed with some issues:");
         for err in &errors {

@@ -66,7 +66,7 @@
 | Deliverable      | Value                                                        |
 |------------------|--------------------------------------------------------------|
 | **PR Number**    | #110                                                         |
-| **PR Link**      | https://github.com/devmarissa/rbxsync/pull/110               |
+| **PR Link**      | https://github.com/Smokestack-Games/rbxsync/pull/110               |
 | **Branch**       | fix/rbxsync-110-remove-obfuscation                           |
 | **Build Status** | Verified                                                     |
 

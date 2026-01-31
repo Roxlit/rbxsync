@@ -61,7 +61,7 @@ New `rbxsync diff` command to compare local files against what's in Studio.
 
 | Resource | Link |
 |----------|------|
-| GitHub | github.com/devmarissa/rbxsync |
+| GitHub | github.com/Smokestack-Games/rbxsync |
 | Documentation | docs.rbxsync.dev |
 
 ---

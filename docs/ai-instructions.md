@@ -336,7 +336,7 @@ This documentation applies to RbxSync v1.3.0 and later.
 
 ## Links
 
-- GitHub: https://github.com/devmarissa/rbxsync
+- GitHub: https://github.com/Smokestack-Games/rbxsync
 - Documentation: https://rbxsync.dev/docs
 - VS Code Extension: https://marketplace.visualstudio.com/items?itemName=rbxsync.rbxsync
 - Studio Plugin: https://create.roblox.com/store/asset/89280418878393/RbxSync

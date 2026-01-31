@@ -28,7 +28,7 @@ The workflow will:
 - Generate changelog from commits since last tag
 - Create GitHub release with plugin attached
 
-Watch progress: https://github.com/devmarissa/rbxsync/actions
+Watch progress: https://github.com/Smokestack-Games/rbxsync/actions
 
 ### 4. Deploy website and docs (manual for now)
 

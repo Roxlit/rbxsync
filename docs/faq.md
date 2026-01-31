@@ -183,4 +183,4 @@ Then restart VS Code.
 1. Check the [Troubleshooting](/troubleshooting) guide
 2. Run with debug logging: `RUST_LOG=debug rbxsync serve`
 3. Join our Discord for help
-4. [Open an issue on GitHub](https://github.com/devmarissa/rbxsync/issues)
+4. [Open an issue on GitHub](https://github.com/Smokestack-Games/rbxsync/issues)

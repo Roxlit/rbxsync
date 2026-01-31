@@ -6,7 +6,7 @@ Thanks for your interest in contributing!
 
 ```bash
 # Clone the repo
-git clone https://github.com/devmarissa/rbxsync
+git clone https://github.com/Smokestack-Games/rbxsync
 cd rbxsync
 
 # Build all components
