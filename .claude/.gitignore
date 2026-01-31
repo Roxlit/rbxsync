@@ -1,0 +1,9 @@
+# Local settings (permissions, MCP config)
+settings.local.json
+settings.json
+
+# Internal reports (marketing, strategy, worker reports)
+reports/
+
+# OS files
+.DS_Store

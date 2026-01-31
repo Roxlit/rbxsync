@@ -36,12 +36,18 @@ build/*.vsix
 # Local config
 .mcp.json
 
-# Claude Code local state (agent configs, reports, settings)
+# Claude Code local state
 .claude/*
+!.claude/MANAGER-GUIDE.md
+!.claude/MANAGER-PROMPT.md
 !.claude/templates/
+!.claude/state/
+!.claude/.gitignore
 !.claude/reports/
 .claude/reports/*
 !.claude/reports/TPS-*.md
+.claude/settings.local.json
+.claude/ralph-loop.local.md
 
 # Experimental
 flux-agent/
