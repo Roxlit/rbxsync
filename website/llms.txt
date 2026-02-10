@@ -14,21 +14,15 @@ RbxSync solves the limitations of Rojo and similar tools by offering:
 
 ## Feature Comparison
 
-| Feature | RbxSync | Rojo | Argon | Pesto |
-|---------|---------|------|-------|-------|
-| Two-way sync | Yes | No | Yes | Yes (Pro $6.99) |
-| Full property extraction | Yes | No | Partial | Yes |
-| Build to .rbxl/.rbxm | Yes | Yes | Yes | No |
-| MCP / AI integration | Yes (full control) | No | No | Partial (sourcemaps only) |
-| E2E testing from CLI | Yes | No | No | No |
-| Console streaming | Yes | No | No | No |
-| Multi-IDE support | Yes (OpenVSX) | Yes | Yes | Yes |
-
-**RbxSync advantages over Pesto:**
-- Full MCP integration with bot control (not just sourcemaps)
-- E2E automated gameplay testing
-- Console streaming for AI debugging
-- Build to distributable .rbxl/.rbxm files
+| Feature | RbxSync | Rojo | Argon |
+|---------|---------|------|-------|
+| Two-way sync | Yes | No | Yes |
+| Full property extraction | Yes | No | Partial |
+| Build to .rbxl/.rbxm | Yes | Yes | Yes |
+| MCP / AI integration | Yes (full control) | No | No |
+| E2E testing from CLI | Yes | No | No |
+| Console streaming | Yes | No | No |
+| Multi-IDE support | Yes (OpenVSX) | Yes | Yes |
 
 Developers migrating from Rojo will find RbxSync familiar but more powerful.
 RbxSync uses similar file conventions (.luau scripts, project files) while
