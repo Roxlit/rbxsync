@@ -349,9 +349,12 @@ pub struct ExtractionSession {
     pub id: String,
     pub chunks_received: usize,
     pub total_chunks: Option<usize>,
-    pub data: Vec<serde_json::Value>,
+    /// Directory where chunk files are stored on disk (e.g., .rbxsync/chunks_{session_id})
+    pub chunks_dir: String,
     /// Whether finalize has been called (extraction complete even if 0 chunks)
     pub finalized: bool,
+    /// Number of chunk writes currently in progress (for backpressure)
+    pub active_writes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 /// Connected Studio place information
@@ -1227,6 +1230,20 @@ async fn handle_extract_start(
     let session_uuid = Uuid::new_v4();
     let session_id = session_uuid.to_string();
 
+    // Determine chunks directory (outside src so it survives src clear)
+    let chunks_dir = if let Some(ref project_dir) = req.project_dir {
+        if !project_dir.is_empty() {
+            format!("{}/.rbxsync/chunks_{}", project_dir, &session_id)
+        } else {
+            format!(".rbxsync/chunks_{}", &session_id)
+        }
+    } else {
+        format!(".rbxsync/chunks_{}", &session_id)
+    };
+
+    // Create chunks directory
+    let _ = tokio::fs::create_dir_all(&chunks_dir).await;
+
     // Create extraction session
     {
         let mut session = state.extraction_session.write().await;
@@ -1234,8 +1251,9 @@ async fn handle_extract_start(
             id: session_id.clone(),
             chunks_received: 0,
             total_chunks: None,
-            data: Vec::new(),
+            chunks_dir: chunks_dir.clone(),
             finalized: false,
+            active_writes: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         });
     }
 
@@ -1369,74 +1387,100 @@ async fn handle_extract_chunk(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ExtractChunkRequest>,
 ) -> impl IntoResponse {
-    let mut session_guard = state.extraction_session.write().await;
-
-    // Determine output directory: use project_dir/src if provided, otherwise fallback
-    let output_dir = if let Some(ref project_dir) = req.project_dir {
+    // Determine chunks directory
+    let chunks_dir_fallback = if let Some(ref project_dir) = req.project_dir {
         if !project_dir.is_empty() {
-            format!("{}/src", project_dir)
+            format!("{}/.rbxsync/chunks_{}", project_dir, &req.session_id)
         } else {
-            format!(".rbxsync/extract_{}", &req.session_id)
+            format!(".rbxsync/chunks_{}", &req.session_id)
         }
     } else {
-        format!(".rbxsync/extract_{}", &req.session_id)
+        format!(".rbxsync/chunks_{}", &req.session_id)
     };
 
-    // Auto-create session if plugin started extraction directly
-    if session_guard.is_none() {
-        tracing::info!("Auto-created extraction session: {} -> {}", &req.session_id, &output_dir);
+    // Only hold the write lock long enough to update session metadata
+    let (chunk_path, chunk_num, active_writes) = {
+        let mut session_guard = state.extraction_session.write().await;
 
-        // Create output directory for this session
-        let _ = std::fs::create_dir_all(&output_dir);
+        // Auto-create session if plugin started extraction directly
+        if session_guard.is_none() {
+            tracing::info!("Auto-created extraction session: {} -> {}", &req.session_id, &chunks_dir_fallback);
 
-        *session_guard = Some(ExtractionSession {
-            id: req.session_id.clone(),
-            chunks_received: 0,
-            total_chunks: None,
-            data: Vec::new(),
-            finalized: false,
-        });
+            // Create chunks directory for this session
+            let _ = tokio::fs::create_dir_all(&chunks_dir_fallback).await;
+
+            *session_guard = Some(ExtractionSession {
+                id: req.session_id.clone(),
+                chunks_received: 0,
+                total_chunks: None,
+                chunks_dir: chunks_dir_fallback.clone(),
+                finalized: false,
+                active_writes: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            });
+        }
+
+        if let Some(ref mut session) = *session_guard {
+            // Accept chunks from any session (plugin may have restarted)
+            if session.id != req.session_id {
+                tracing::info!("Session ID changed from {} to {}, resetting", session.id, &req.session_id);
+                session.id = req.session_id.clone();
+                session.chunks_received = 0;
+                session.chunks_dir = chunks_dir_fallback.clone();
+
+                // Create new chunks directory
+                let _ = tokio::fs::create_dir_all(&chunks_dir_fallback).await;
+            }
+
+            session.total_chunks = Some(req.total_chunks);
+            session.chunks_received += 1;
+
+            let chunk_num = session.chunks_received;
+            let chunk_path = format!("{}/chunk_{:06}.json", session.chunks_dir, chunk_num);
+            let active_writes = session.active_writes.clone();
+
+            tracing::info!("Received chunk {}/{}", chunk_num, req.total_chunks);
+
+            (chunk_path, chunk_num, active_writes)
+        } else {
+            return (
+                StatusCode::BAD_REQUEST,
+                [(axum::http::header::HeaderName::from_static("x-rbxsync-backoff"), axum::http::HeaderValue::from_static("0"))],
+                Json(serde_json::json!({"error": "No active extraction session"})),
+            );
+        }
+        // Write lock is dropped here
+    };
+
+    // Perform file I/O outside the lock using async write
+    active_writes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let chunk_data = serde_json::to_string(&req.data).unwrap_or_default();
+    if let Err(e) = tokio::fs::write(&chunk_path, &chunk_data).await {
+        tracing::warn!("Failed to save chunk to disk: {}", e);
     }
+    let current_writes = active_writes.fetch_sub(1, std::sync::atomic::Ordering::Relaxed) - 1;
 
-    if let Some(ref mut session) = *session_guard {
-        // Accept chunks from any session (plugin may have restarted)
-        if session.id != req.session_id {
-            tracing::info!("Session ID changed from {} to {}, resetting -> {}", session.id, &req.session_id, &output_dir);
-            session.id = req.session_id.clone();
-            session.chunks_received = 0;
-            session.data.clear();
-
-            // Create new output directory
-            let _ = std::fs::create_dir_all(&output_dir);
-        }
-
-        session.total_chunks = Some(req.total_chunks);
-        session.chunks_received += 1;
-
-        // Save chunk to disk immediately
-        let chunk_path = format!("{}/chunk_{:06}.json", output_dir, session.chunks_received);
-        if let Err(e) = std::fs::write(&chunk_path, serde_json::to_string(&req.data).unwrap_or_default()) {
-            tracing::warn!("Failed to save chunk to disk: {}", e);
-        }
-
-        // Also keep in memory for quick access
-        session.data.push(req.data);
-
-        tracing::info!("Received chunk {}/{}", session.chunks_received, req.total_chunks);
-
-        (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "received": session.chunks_received,
-                "total": req.total_chunks
-            })),
-        )
+    // Calculate backpressure: suggest delay if many concurrent writes
+    let backoff_ms = if current_writes > 8 {
+        // Heavy load: suggest 100ms backoff
+        100
+    } else if current_writes > 4 {
+        // Moderate load: suggest 50ms backoff
+        50
     } else {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "No active extraction session"})),
-        )
-    }
+        0
+    };
+
+    let backoff_value = axum::http::HeaderValue::from_str(&backoff_ms.to_string())
+        .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0"));
+
+    (
+        StatusCode::OK,
+        [(axum::http::header::HeaderName::from_static("x-rbxsync-backoff"), backoff_value)],
+        Json(serde_json::json!({
+            "received": chunk_num,
+            "total": req.total_chunks
+        })),
+    )
 }
 
 /// Get extraction status
@@ -1474,11 +1518,28 @@ async fn handle_extract_export(
     let session = state.extraction_session.read().await;
 
     if let Some(ref s) = *session {
-        // Flatten all chunks into a single array of instances
+        // Read chunks from disk instead of memory
         let mut all_instances = Vec::new();
-        for chunk in &s.data {
-            if let Some(instances) = chunk.as_array() {
-                all_instances.extend(instances.iter().cloned());
+        if let Ok(mut entries) = tokio::fs::read_dir(&s.chunks_dir).await {
+            let mut chunk_paths = Vec::new();
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with("chunk_") && name.ends_with(".json") {
+                        chunk_paths.push(path);
+                    }
+                }
+            }
+            chunk_paths.sort(); // Ensure consistent ordering
+
+            for chunk_path in chunk_paths {
+                if let Ok(content) = tokio::fs::read_to_string(&chunk_path).await {
+                    if let Ok(chunk) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(instances) = chunk.as_array() {
+                            all_instances.extend(instances.iter().cloned());
+                        }
+                    }
+                }
             }
         }
 
@@ -1491,7 +1552,7 @@ async fn handle_extract_export(
             "instances": all_instances,
         });
 
-        match std::fs::write(&req.output_path, serde_json::to_string_pretty(&output).unwrap()) {
+        match tokio::fs::write(&req.output_path, serde_json::to_string_pretty(&output).unwrap()).await {
             Ok(_) => {
                 tracing::info!("Export complete: {}", req.output_path);
                 (
@@ -1798,15 +1859,40 @@ async fn handle_extract_finalize(
         tracing::info!("Backed up src to .rbxsync-backup/src");
     }
 
-    // Flatten all chunks into a single array of instances
+    // Read chunks from disk instead of memory to support large games (60k+ instances)
+    let chunks_dir = session.chunks_dir.clone();
     let mut all_instances: Vec<serde_json::Value> = Vec::new();
-    for chunk in &session.data {
-        if let Some(instances) = chunk.as_array() {
-            all_instances.extend(instances.iter().cloned());
+    {
+        let mut chunk_paths: Vec<PathBuf> = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&chunks_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with("chunk_") && name.ends_with(".json") {
+                        chunk_paths.push(path);
+                    }
+                }
+            }
+        }
+        chunk_paths.sort(); // Ensure consistent ordering by chunk number
+
+        for chunk_path in &chunk_paths {
+            match std::fs::read_to_string(chunk_path) {
+                Ok(content) => {
+                    if let Ok(chunk) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(instances) = chunk.as_array() {
+                            all_instances.extend(instances.iter().cloned());
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to read chunk file {:?}: {}", chunk_path, e);
+                }
+            }
         }
     }
 
-    tracing::info!("Finalizing {} instances to {}", all_instances.len(), src_dir.display());
+    tracing::info!("Finalizing {} instances from {} chunk files to {}", all_instances.len(), session.chunks_received, src_dir.display());
 
     // Create src directory
     let _ = std::fs::create_dir_all(&src_dir);
@@ -2063,17 +2149,8 @@ async fn handle_extract_finalize(
         );
     }
 
-    // Clean up chunk files
-    if let Ok(entries) = std::fs::read_dir(&src_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with("chunk_") && name.ends_with(".json") {
-                    let _ = std::fs::remove_file(path);
-                }
-            }
-        }
-    }
+    // Clean up chunk files from chunks_dir (no longer stored in src_dir)
+    let _ = std::fs::remove_dir_all(chunks_dir);
 
     // Create service folders even if they're empty
     for service in &service_folders {
