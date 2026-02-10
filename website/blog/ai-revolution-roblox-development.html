@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function() {
+            var theme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The AI Revolution in Roblox Development: Where RbxSync Fits – RbxSync Blog</title>
+    <meta name="description" content="AI tooling for Roblox has gone from niche experiment to ecosystem shift. Here's what's happening and where RbxSync fits in.">
+
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://rbxsync.dev/blog/ai-revolution-roblox-development">
+    <meta property="og:title" content="The AI Revolution in Roblox Development: Where RbxSync Fits">
+    <meta property="og:description" content="AI tooling for Roblox has gone from niche experiment to ecosystem shift. Here's what's happening and where RbxSync fits in.">
+    <meta property="og:image" content="https://rbxsync.dev/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The AI Revolution in Roblox Development: Where RbxSync Fits">
+    <meta name="twitter:description" content="AI tooling for Roblox has gone from niche experiment to ecosystem shift. Here's what's happening and where RbxSync fits in.">
+
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+
+    <style>
+        :root {
+            font-family: 'Inter', sans-serif;
+            font-feature-settings: 'liga' 1, 'calt' 1;
+        }
+        @supports (font-variation-settings: normal) {
+            :root { font-family: 'Inter var', sans-serif; }
+        }
+
+        :root {
+            --bg-primary: #08080a;
+            --bg-secondary: #0c0c0e;
+            --bg-tertiary: #111113;
+            --bg-elevated: #161618;
+            --rbx-red: #c23c40;
+            --rbx-red-light: #dc4a4f;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8fa;
+            --bg-tertiary: #f0f0f2;
+            --bg-elevated: #e8e8ec;
+            --text-primary: #18181b;
+            --text-secondary: #52525b;
+            --text-muted: #a1a1aa;
+            --border: rgba(0, 0, 0, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { -webkit-font-smoothing: antialiased; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        a { color: var(--rbx-red); text-decoration: none; }
+        a:hover { color: var(--rbx-red-light); }
+
+        /* Nav */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(8, 8, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            height: 56px;
+            display: flex;
+            align-items: center;
+        }
+        [data-theme="light"] nav { background: rgba(255, 255, 255, 0.85); }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 1.125rem;
+        }
+        .logo img { width: 24px; height: 24px; }
+
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+        .nav-links a.active { color: var(--text-primary); }
+
+        .nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            transition: color 0.15s;
+        }
+        .theme-toggle:hover { color: var(--text-primary); }
+        .theme-toggle svg { width: 18px; height: 18px; display: block; }
+        .moon-icon { display: block; }
+        .sun-icon { display: none; }
+        [data-theme="light"] .moon-icon { display: none; }
+        [data-theme="light"] .sun-icon { display: block; }
+
+        /* Article */
+        article {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 120px 2rem 4rem;
+        }
+
+        .article-meta {
+            margin-bottom: 2rem;
+        }
+
+        .article-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            transition: color 0.15s;
+        }
+        .article-back:hover { color: var(--text-primary); }
+        .article-back svg { width: 14px; height: 14px; }
+
+        .article-date {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .article-title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            line-height: 1.2;
+        }
+
+        .article-byline {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+        }
+
+        /* Prose */
+        .prose { margin-top: 2.5rem; }
+
+        .prose p {
+            color: var(--text-secondary);
+            font-size: 1.0625rem;
+            line-height: 1.75;
+            margin-bottom: 1.25rem;
+        }
+
+        .prose h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        .prose strong { color: var(--text-primary); font-weight: 600; }
+
+        .prose ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        .prose ul li {
+            position: relative;
+            padding-left: 1.25rem;
+            color: var(--text-secondary);
+            font-size: 1.0625rem;
+            line-height: 1.75;
+            margin-bottom: 0.5rem;
+        }
+
+        .prose ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.75em;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--rbx-red);
+        }
+
+        .prose a { text-decoration: underline; text-underline-offset: 2px; }
+
+        .prose code {
+            background: var(--bg-elevated);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        .prose hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2.5rem 0;
+        }
+
+        /* CTA */
+        .article-cta {
+            margin-top: 2.5rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-secondary);
+        }
+
+        .article-cta h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .article-cta ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .article-cta li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-cta a {
+            font-size: 0.9375rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .footer-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+        .footer-logo img { width: 24px; height: 24px; }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.15s;
+        }
+        .footer-links a:hover { color: var(--text-primary); }
+
+        .footer-copy {
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+        }
+        .footer-copy a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+            .article-title { font-size: 1.625rem; }
+            .nav-links { display: none; }
+            article { padding: 100px 1.25rem 3rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="RbxSync">
+                RbxSync
+            </a>
+            <div class="nav-links">
+                <a href="/#features">Features</a>
+                <a href="https://docs.rbxsync.dev" target="_blank">Docs</a>
+                <a href="/blog" class="active">Blog</a>
+                <a href="/#install">Install</a>
+            </div>
+            <div class="nav-right">
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <article>
+        <div class="article-meta">
+            <a href="/blog" class="article-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                Back to Blog
+            </a>
+            <div class="article-date">February 10, 2026</div>
+            <h1 class="article-title">The AI Revolution in Roblox Development: Where RbxSync Fits</h1>
+            <div class="article-byline">By the RbxSync team</div>
+        </div>
+
+        <div class="prose">
+            <p>Something big is happening in Roblox development. AI tooling has gone from a niche experiment to a full ecosystem shift in a matter of months. Roblox is making major moves. Community developers are shipping tools at a breakneck pace. Developers have more options than ever.</p>
+
+            <p>We want to break down what's out there and where RbxSync fits.</p>
+
+            <h2>Roblox Goes All-In on AI</h2>
+
+            <p>Roblox has made it clear: AI is central to their platform strategy. The announcements keep coming.</p>
+
+            <p>The biggest move for external tooling is their open-source <a href="https://github.com/Roblox/studio-rust-mcp-server">Studio MCP Server</a>. It's a reference implementation of Model Context Protocol (MCP) that lets AI clients like Claude Desktop and Cursor talk directly to Roblox Studio. This signals something important. Roblox isn't only building AI into Studio. They're opening the door for the entire ecosystem to build on top of it.</p>
+
+            <p>On the creation side, Roblox launched <strong>4D AI creation tools</strong> in open beta. Their "Cube Foundation Model" generates interactive objects from text prompts. These aren't static 3D meshes. They're functional objects with behaviors and physics properties baked in.</p>
+
+            <p><strong>Code Assist</strong> hit full release. AI-powered code completion now lives directly in the Studio script editor. Internally, Roblox doubled their AI code acceptance rate from 30% to 60%. They did it by training models to think like Roblox engineers &mdash; understanding platform-specific patterns, APIs, and conventions that general-purpose models miss.</p>
+
+            <p>Real-time voice chat translation now works across multiple languages. International teams can collaborate inside experiences without a language barrier.</p>
+
+            <p>The pattern is clear. Roblox sees AI not as a feature, but as infrastructure.</p>
+
+            <h2>The Community Tool Explosion</h2>
+
+            <p>The official announcements are matched by a wave of community-built tools. The DevForum has seen a surge of AI-powered plugins and platforms in early 2026:</p>
+
+            <ul>
+                <li><strong>Developer Intelligence</strong> &mdash; an AI-powered Studio plugin that launched days ago. It offers in-editor assistance for scripting and game design.</li>
+                <li><strong>RoCode</strong> &mdash; an AI assistant trained specifically for Luau. It addresses the well-known problem that general models struggle with Roblox APIs.</li>
+                <li><strong>Ropanion AI</strong> &mdash; a free Studio plugin with intelligent coding assistance.</li>
+                <li><strong>RoPilot</strong> &mdash; a coding agent that takes natural language requests and writes Roblox code.</li>
+                <li><strong>SuperbulletAI</strong> &mdash; an AI game builder giving everyone 1 million free tokens per month.</li>
+                <li><strong>Lemonade.gg</strong> &mdash; another platform entering the Roblox AI space.</li>
+            </ul>
+
+            <p>Multiple community members have also built their own MCP servers connecting Studio to various AI clients. Developers want AI that understands Roblox. When it doesn't exist, they build it themselves.</p>
+
+            <h2>Where RbxSync Fits</h2>
+
+            <p>With all these tools emerging, a reasonable question: where does RbxSync fit?</p>
+
+            <p>RbxSync does something different from most of what's listed above.</p>
+
+            <p>Most of these new tools are <strong>code completion or chat assistants</strong>. They help you write code faster inside Studio. That's valuable. But it's one piece of a much larger puzzle. RbxSync enables <strong>agentic development</strong> &mdash; AI that doesn't suggest code, but operates autonomously across the full development loop.</p>
+
+            <p>RbxSync has had native MCP integration since v1.2. That's months before Roblox released their official MCP server. Through RbxSync's MCP tools, an AI agent can:</p>
+
+            <ul>
+                <li><strong>Extract an entire game</strong> from Studio to your local filesystem (<code>extract_game</code>)</li>
+                <li><strong>Read and modify</strong> any script, property, or instance in the game tree</li>
+                <li><strong>Push changes back</strong> to Studio in real time (<code>sync_to_studio</code>)</li>
+                <li><strong>Start a playtest</strong> and observe game state (<code>run_test</code>, <code>bot_observe</code>)</li>
+                <li><strong>Control characters</strong> &mdash; move, interact with objects, test gameplay (<code>bot_move</code>, <code>bot_action</code>)</li>
+                <li><strong>Execute arbitrary Luau code</strong> inside Studio (<code>run_code</code>)</li>
+            </ul>
+
+            <p>This isn't code completion. It's a full development loop. An AI agent connected through RbxSync can build a feature, push it to Studio, playtest it, observe what happens, and iterate. No human intervention required.</p>
+
+            <p>RbxSync uses the open MCP standard. It works with <strong>any MCP-compatible client</strong>: Claude Code, Cursor, Claude Desktop, or anything else that speaks MCP. You're not locked into a single AI provider or editor.</p>
+
+            <p>The filesystem bridge matters too. RbxSync syncs Studio's instance tree to real files on disk. You can use any editor &mdash; VS Code, Cursor, Neovim, whatever fits your workflow. Two-way sync means your AI edits appear in Studio instantly. Changes made in Studio sync back to files automatically. No copy-pasting. No manual extract steps.</p>
+
+            <p>For teams pushing the boundaries, RbxSync's <strong>harness system</strong> supports multiple AI agents working on different parts of a game at once. A lead agent coordinates teammates who each work on separate features in isolated git worktrees, all syncing to the same Studio session. Multi-agent game development. It works today.</p>
+
+            <h2>What This Means for Developers</h2>
+
+            <p>The barrier to entry for Roblox development is dropping fast. Tools that would have seemed like science fiction a year ago are now free plugins and open-source projects.</p>
+
+            <p>But more tools doesn't mean better outcomes. Look carefully at what each tool enables. A code completion assistant that saves keystrokes is useful. An agent that builds, tests, and iterates on game features autonomously is a different category.</p>
+
+            <p>The future of Roblox development is agentic. AI that understands game state, tests its own work, and iterates toward working software. RbxSync is built for that future. We've been building toward it for a while.</p>
+
+            <p>Ready to move beyond chat-based AI assistance? Give RbxSync a try.</p>
+
+            <hr>
+
+            <div class="article-cta">
+                <h2>Get Started</h2>
+                <ul>
+                    <li><a href="https://docs.rbxsync.dev">Documentation</a> &mdash; Full setup and usage guides</li>
+                    <li><a href="https://docs.rbxsync.dev/mcp/setup">MCP Setup Guide</a> &mdash; Connect AI to Studio</li>
+                    <li><a href="https://github.com/Smokestack-Games/rbxsync">GitHub</a> &mdash; Source code and releases</li>
+                </ul>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <div class="footer-logo">
+            <img src="/logo.png" alt="RbxSync">
+            RbxSync
+        </div>
+        <div class="footer-links">
+            <a href="https://github.com/Smokestack-Games/rbxsync">GitHub</a>
+            <a href="https://docs.rbxsync.dev">Documentation</a>
+            <a href="https://github.com/Smokestack-Games/rbxsync/issues">Issues</a>
+            <a href="https://github.com/Smokestack-Games/rbxsync/releases">Releases</a>
+        </div>
+        <p class="footer-copy">&copy; 2026 <a href="https://smokestackgames.com/" target="_blank" rel="noopener noreferrer">Smokestack Games</a></p>
+    </footer>
+
+    <script>
+        const toggle = document.getElementById('theme-toggle');
+        toggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+    </script>
+</body>
+</html>

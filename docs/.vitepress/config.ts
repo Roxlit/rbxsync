@@ -36,7 +36,6 @@ export default defineConfig({
         ]
       },
       { text: 'FAQ', link: '/faq' },
-      { text: 'Blog', link: '/blog/' },
     ],
 
     sidebar: {
@@ -101,15 +100,6 @@ export default defineConfig({
             { text: 'Tools', link: '/mcp/tools' },
             { text: 'AI Testing Workflow', link: '/ai-testing' },
             { text: 'Harness System', link: '/harness-system' },
-          ]
-        }
-      ],
-      '/blog/': [
-        {
-          text: 'Blog',
-          items: [
-            { text: 'All Posts', link: '/blog/' },
-            { text: 'The AI Revolution in Roblox Development', link: '/blog/ai-revolution-roblox-development' },
           ]
         }
       ],
