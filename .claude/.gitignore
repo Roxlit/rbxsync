@@ -7,3 +7,6 @@ reports/
 
 # OS files
 .DS_Store
+
+# Whitelist hooks so they're tracked in git (teammates in worktrees need them)
+!hooks/

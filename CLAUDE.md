@@ -2,14 +2,6 @@
 
 > **Read this first.** This file provides context for AI agents working on rbxsync.
 
-## WORKER AGENTS: DO NOT RUN RALPH LOOP
-
-If you are a worker agent spawned to complete a specific task:
-- **DO NOT** run `/ralph-loop` or any loop commands
-- **DO NOT** read or act on `.claude/ralph-loop.local.md`
-- **ONLY** complete your assigned issue, create PR, write report, then exit
-- The manager agent handles the ralph loop, not workers
-
 ## What is RbxSync?
 
 RbxSync is a bidirectional sync tool between Roblox Studio and local filesystem. It enables:
@@ -18,7 +10,7 @@ RbxSync is a bidirectional sync tool between Roblox Studio and local filesystem.
 - AI-assisted development via MCP
 
 **Current Version:** v1.3.0
-**Status:** Active development, some critical bugs
+**Status:** Active development
 
 ---
 
@@ -26,7 +18,7 @@ RbxSync is a bidirectional sync tool between Roblox Studio and local filesystem.
 
 ### Current Priority: BUG BASH
 
-**Recently fixed (this session):**
+**Recently fixed:**
 - ~~RBXSYNC-24~~ - Data loss with ScriptSync
 - ~~RBXSYNC-25~~ - Script timeout on large games
 - ~~RBXSYNC-26~~ - Large game extraction slow
@@ -38,11 +30,11 @@ RbxSync is a bidirectional sync tool between Roblox Studio and local filesystem.
 - ~~RBXSYNC-34~~ - Echo prevention flag
 - ~~RBXSYNC-35~~ - 50ms deduplication window
 - ~~RBXSYNC-36~~ - GetDebugId for instance IDs
+- ~~RBXSYNC-38~~ - Union deletion during extract
 
 **Active bugs:**
 | Issue | Priority | Problem |
 |-------|----------|---------|
-| RBXSYNC-38 | P1 Urgent | Union deletion during extract |
 | RBXSYNC-5 | - | Instance renames not handled |
 | RBXSYNC-18 | - | Multiple terminal windows in VS Code |
 | RBXSYNC-19 | - | Luau LSP can't find project.json |
@@ -59,7 +51,7 @@ rbxsync/
 ├── rbxsync-mcp/      # MCP server for AI tools (Rust)
 ├── rbxsync-vscode/   # VS Code extension (TypeScript)
 ├── plugin/           # Roblox Studio plugin (Luau)
-└── .claude/          # AI agent configs and state
+└── .claude/          # AI agent configs and hooks
 ```
 
 ---
@@ -100,77 +92,49 @@ When completing work, reference the issue: `Fixes RBXSYNC-XX`
 
 ---
 
-## CRITICAL: Multi-Agent Coordination
+## Agent Teams
 
-Multiple Claude agents work on this project simultaneously. **You MUST follow these rules to avoid conflicts.**
+RbxSync uses Claude Code **Agent Teams** for multi-agent development. A team lead coordinates teammates who work in git worktrees.
 
-### Before Starting ANY Work
+### How It Works
 
-1. **Check `.claude/state/workers.json`** - See who's working on what
-2. **Check Linear issue status** - If it's "In Progress", someone else has it
-3. **If the issue is taken**, pick a different one or ask the manager
+1. **Team lead** creates an agent team and enables delegate mode
+2. For each task, the lead creates a **git worktree** and spawns a **teammate** pointed at it
+3. **Quality gate hooks** (`.claude/hooks/`) automatically enforce `cargo build`, `cargo test`, and `cargo clippy` before task completion
+4. The lead **auto-merges PRs** after quality gates pass and updates Linear
 
-### When You Start Work
+### Teammate Instructions
 
-1. **Update Linear immediately:**
-   - Move issue to "In Progress"
-   - Add a comment: "Agent starting work on this issue"
+If you are a teammate working on a task:
 
-2. **Use Linear's branch name:**
-   ```bash
-   # Get branch name from Linear issue
-   git checkout -b marissacheves/rbxsync-XX-description
-   ```
+1. **Work in your assigned worktree** (path provided in your task)
+2. Read relevant source files before modifying code
+3. Commit with descriptive messages referencing the issue: `Fixes RBXSYNC-XX`
+4. Push your branch and create a PR
+5. **Mark your task complete** and message the lead with the PR URL
+6. Quality gates will run automatically — fix any build/test/clippy failures before marking complete
 
-3. **Update `.claude/state/workers.json`** if you can (manager will help)
+### Branch Naming
 
-### While Working
-
-1. **Add Linear comments for major progress:**
-   - "Found the bug in server.rs:450"
-   - "Implementing fix, testing now"
-   - "Tests passing, preparing PR"
-
-2. **If you get stuck**, add comment: "Blocked: [reason]"
-
-### When You Finish
-
-1. **Create PR** with `Fixes RBXSYNC-XX` in description
-2. **Update Linear:**
-   - Move to "In Review" or "Done"
-   - Add comment with summary of changes
-3. **Write completion report** using the TPS template:
-   - Copy `.claude/templates/tps-report.md` to `.claude/reports/TPS-RBXSYNC-XX.md`
-   - Fill in all sections (cover sheet, executive summary, work performed, deliverables, risk assessment, sign-off)
-   - See `.claude/reports/TPS-RBXSYNC-110.md` for a reference example
-   - Optionally generate a PDF: `./scripts/generate-tps-report.sh .claude/reports/TPS-RBXSYNC-XX.md`
-   - **All workers must use the TPS template for completion reports**
-4. **Print completion signal:** `DONE: RBXSYNC-XX - [summary]`
-
-### Conflict Resolution
-
-If you discover another agent is working on your issue:
-1. **STOP immediately**
-2. **Do NOT commit**
-3. **Report the conflict** to manager
-4. **Pick a different issue**
+| Type | Format | Example |
+|------|--------|---------|
+| Bug fix | `fix/rbxsync-XX-description` | `fix/rbxsync-71-terminal-reuse` |
+| Feature | `feat/rbxsync-XX-description` | `feat/rbxsync-46-harness-tools` |
+| Docs | `docs/rbxsync-XX-description` | `docs/rbxsync-63-mcp-reference` |
+| Chore | `chore/rbxsync-XX-description` | `chore/rbxsync-67-warnings` |
 
 ---
 
 ## Before You Start
 
-1. Run `cargo build` to verify the project compiles
-2. Check `git status` for any uncommitted changes
-3. Create a branch for your work
-4. Read relevant files before modifying
+1. Read relevant files before modifying code
+2. Create a branch for your work (or verify you're in an assigned worktree)
 
 ## After You Finish
 
-1. Run `cargo build` - fix any errors
-2. Run `cargo test` - fix any failures
-3. Run `cargo clippy` - fix any warnings
-4. Commit with descriptive message
-5. Create PR if ready for review
+1. Commit with descriptive message
+2. Push and create PR if ready for review
+3. Quality gates handle build/test/clippy validation automatically
 
 ---
 
@@ -204,8 +168,8 @@ When running with `rbxsync serve`, these MCP tools are available:
 
 - **Linear:** linear.app/smokestack-games
 - **GitHub:** github.com/Smokestack-Games/rbxsync
-- **Manager Agent:** The main Claude session coordinating work
+- **Team Lead:** The main Claude session coordinating work via Agent Teams
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2026-02-10*

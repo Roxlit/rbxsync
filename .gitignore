@@ -38,16 +38,15 @@ build/*.vsix
 
 # Claude Code local state
 .claude/*
-!.claude/MANAGER-GUIDE.md
-!.claude/MANAGER-PROMPT.md
+!.claude/TEAM-LEAD-GUIDE.md
+!.claude/TEAM-LEAD-PROMPT.md
+!.claude/hooks/
 !.claude/templates/
-!.claude/state/
 !.claude/.gitignore
 !.claude/reports/
 .claude/reports/*
 !.claude/reports/TPS-*.md
 .claude/settings.local.json
-.claude/ralph-loop.local.md
 
 # Experimental
 flux-agent/
