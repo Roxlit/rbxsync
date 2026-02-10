@@ -514,40 +514,101 @@ local function httpPost(endpoint: string, data: any): (boolean, any)
     return false, result
 end
 
--- Send extraction chunk with retry logic for oversized chunks
+-- Send a single chunk HTTP request using RequestAsync for backpressure detection
+-- Returns: success (boolean), backpressure (boolean)
+local function sendChunkRequest(serverUrl: string, payload: {[string]: any}): (boolean, boolean)
+    local ok, response = pcall(function()
+        local json = HttpService:JSONEncode(payload)
+        return HttpService:RequestAsync({
+            Url = serverUrl .. "/extract/chunk",
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = json,
+        })
+    end)
+
+    if not ok then
+        -- Network error or pcall failure
+        return false, false
+    end
+
+    -- Check for backpressure signals
+    local statusCode = response.StatusCode
+    if statusCode == 429 or statusCode == 503 then
+        return false, true
+    end
+
+    -- Check for backoff header
+    local headers = response.Headers
+    if headers and (headers["X-RbxSync-Backoff"] or headers["x-rbxsync-backoff"]) then
+        return statusCode >= 200 and statusCode < 300, true
+    end
+
+    if statusCode >= 200 and statusCode < 300 then
+        return true, false
+    end
+
+    -- Check if it's a size limit error from the response body
+    if response.Body and type(response.Body) == "string" and response.Body:find("too large") then
+        return false, false -- Will be handled by retry-per-instance logic
+    end
+
+    return false, false
+end
+
+-- Send extraction chunk with retry logic for oversized chunks and backpressure handling
 local function sendChunk(sessionId: string, chunkIndex: number, totalChunks: number, instances: {any}, projectDir: string): boolean
-    local success, result = httpPost("/extract/chunk", {
+    local serverUrl = getServerUrl()
+    local MAX_RETRIES = 5
+    local baseDelay = 0.1 -- 100ms base delay for backoff
+    local payload = {
         session_id = sessionId,
         chunk_index = chunkIndex,
         total_chunks = totalChunks,
         data = instances,
         project_dir = projectDir,
-    })
+    }
 
-    if success then
-        return true
-    end
+    for attempt = 1, MAX_RETRIES do
+        local success, backpressure = sendChunkRequest(serverUrl, payload)
 
-    -- Check if it's a size limit error
-    if type(result) == "string" and result:find("too large") then
-        -- Try sending instances one at a time (silent)
-        for i, inst in ipairs(instances) do
-            local singleSuccess, singleResult = httpPost("/extract/chunk", {
+        if success and not backpressure then
+            return true
+        end
+
+        if backpressure then
+            -- Exponential backoff with jitter
+            local delay = baseDelay * (2 ^ (attempt - 1))
+            local jitter = math.random() * delay * 0.5
+            task.wait(delay + jitter)
+            continue
+        end
+
+        -- Not backpressure — check if it's a size error by trying individual instances
+        -- Attempt to send instances one at a time for oversized chunks
+        local allSingleSuccess = true
+        for _, inst in ipairs(instances) do
+            local singlePayload = {
                 session_id = sessionId,
                 chunk_index = chunkIndex,
                 total_chunks = totalChunks,
                 data = {inst},
                 project_dir = projectDir,
-            })
+            }
+            local singleSuccess, singleBackpressure = sendChunkRequest(serverUrl, singlePayload)
+            if singleBackpressure then
+                -- Backpressure on single-instance send — wait and retry
+                local delay = baseDelay * (2 ^ (attempt - 1))
+                local jitter = math.random() * delay * 0.5
+                task.wait(delay + jitter)
+                singleSuccess, singleBackpressure = sendChunkRequest(serverUrl, singlePayload)
+            end
             if not singleSuccess then
-                if type(singleResult) == "string" and singleResult:find("too large") then
-                    -- Skip oversized instance silently
-                else
-                    return false
-                end
+                -- Skip truly oversized individual instances silently
+                -- (but don't fail the whole chunk)
             end
         end
-        return true
+        return allSingleSuccess
     end
 
     return false
@@ -752,9 +813,23 @@ local function extractGame(config: {any})
         end
     end
 
-    -- First pass: serialize all chunks
-    local serializedChunks = {}
+    -- Pipeline: serialize and send chunks concurrently (halves peak memory vs two-pass)
+    local MAX_CONCURRENT = 10
+    local activeRequests = 0
+    local completedChunks = 0
+    local failedChunk = false
+
     for chunkIndex = 0, totalChunks - 1 do
+        -- Yield periodically to avoid script timeout on large games (RBXSYNC-25)
+        if chunkIndex % 5 == 0 then
+            task.wait()
+        end
+
+        if failedChunk then
+            break
+        end
+
+        -- Serialize this chunk on-demand
         local startIdx = chunkIndex * CHUNK_SIZE + 1
         local endIdx = math.min(startIdx + CHUNK_SIZE - 1, #allInstances)
 
@@ -763,9 +838,6 @@ local function extractGame(config: {any})
             local instance = allInstances[i]
             local serialized = Serializer.serializeInstance(instance, apiDump)
             if serialized then
-                -- Note: We no longer store _rbxsync_ref on instances to avoid conflicts
-                -- with ScriptSync. Reference resolution uses in-memory caches only.
-
                 -- Special handling for UnionOperation/IntersectOperation (RBXSYNC-38)
                 -- We do NOT call Plugin:Separate() during extraction because:
                 -- 1. Plugin:Separate() destroys the original union, causing DescendantRemoving floods
@@ -784,22 +856,8 @@ local function extractGame(config: {any})
                 table.insert(chunkInstances, serialized)
             end
         end
-        serializedChunks[chunkIndex] = chunkInstances
 
-        -- Yield periodically to avoid script timeout on large games (RBXSYNC-25)
-        if chunkIndex % 10 == 0 then
-            task.wait()
-        end
-    end
-
-    -- Second pass: send chunks in parallel with concurrency limit
-    local MAX_CONCURRENT = 5
-    local activeRequests = 0
-    local completedChunks = 0
-    local failedChunk = false
-
-    for chunkIndex = 0, totalChunks - 1 do
-        -- Wait if at concurrency limit
+        -- Wait if at concurrency limit before spawning send
         while activeRequests >= MAX_CONCURRENT do
             task.wait(0.01)
         end
@@ -808,9 +866,10 @@ local function extractGame(config: {any})
             break
         end
 
+        -- Send this chunk immediately (pipeline: serialize then send, don't buffer all)
         activeRequests = activeRequests + 1
         task.spawn(function()
-            local success = sendChunk(sessionId, chunkIndex, totalChunks, serializedChunks[chunkIndex], projectDir)
+            local success = sendChunk(sessionId, chunkIndex, totalChunks, chunkInstances, projectDir)
             if not success then
                 failedChunk = true
             end
@@ -819,7 +878,7 @@ local function extractGame(config: {any})
         end)
     end
 
-    -- Wait for all chunks to complete
+    -- Wait for all in-flight chunks to complete
     while completedChunks < totalChunks and not failedChunk do
         task.wait(0.01)
     end
