@@ -451,6 +451,10 @@
 
             <p>The biggest move for external tooling is their open-source <a href="https://github.com/Roblox/studio-rust-mcp-server">Studio MCP Server</a>. It's a reference implementation of Model Context Protocol (MCP) that lets AI clients talk directly to Roblox Studio. Claude Desktop, Cursor, and anything else that speaks MCP can connect. Roblox is actively inviting the ecosystem to build on top of it.</p>
 
+            <p>Roblox's built-in Studio Assistant now supports MCP natively. It can handle multi-step tasks, search the data model, and modify games from natural language. Third-party MCP server support is coming too (Figma, Blockade Labs, and others). This signals that Roblox is fully committed to MCP as the standard protocol for AI integration.</p>
+
+            <p>They also released <a href="https://github.com/Roblox/open-game-eval">OpenGameEval</a>, an open-source benchmark with 47 test cases for evaluating AI assistants on Roblox Studio tasks. It includes an LLM leaderboard. Standardized evaluation means the entire ecosystem can measure progress against the same bar.</p>
+
             <p>On the creation side, Roblox launched <strong>4D AI creation tools</strong> in open beta. Their "Cube Foundation Model" generates interactive objects from text prompts, complete with behaviors and physics properties.</p>
 
             <p><strong>Code Assist</strong> hit full release. AI code completion now lives inside the Studio script editor. Roblox doubled their code acceptance rate from 30% to 60%. The key: training models on platform-specific patterns, APIs, and conventions that general-purpose models get wrong.</p>
@@ -462,15 +466,17 @@
             <p>Official announcements are only part of the story. The DevForum and Twitter have been flooded with community-built AI tools in early 2026:</p>
 
             <ul>
-                <li><strong>Developer Intelligence</strong> launched days ago as an AI-powered Studio plugin for in-editor scripting and game design assistance.</li>
-                <li><strong>RoCode</strong> is an AI assistant trained specifically for Luau, since general models often struggle with Roblox APIs.</li>
+                <li><strong>Developer Intelligence</strong> is an AI-powered Studio plugin for in-editor scripting and game design assistance, launching later this month.</li>
+                <li><strong>RoCode</strong> is a web-based AI assistant trained specifically for Luau, since general models often struggle with Roblox APIs.</li>
                 <li><strong>Ropanion AI</strong> offers free coding assistance as a Studio plugin.</li>
                 <li><strong>RoPilot</strong> takes natural language requests and writes Roblox code as a coding agent.</li>
                 <li><strong>SuperbulletAI</strong> provides an AI game builder with 1 million free tokens per month.</li>
-                <li><strong><a href="https://bloxbot.ai">BloxBot.ai</a></strong> is a free, open-source desktop app that wraps 37 MCP tools with an AI coding backend, letting agents control Roblox Studio from natural language.</li>
+                <li><strong><a href="https://bloxbot.ai">BloxBot.ai</a></strong> is a free, open-source desktop app built on boshyxd's <a href="https://github.com/boshyxd/robloxstudio-mcp">robloxstudio-mcp</a> (37+ tools), letting agents control Studio from natural language.</li>
+                <li><strong>Lux</strong> is a free Studio plugin that acts as an autonomous coding agent: multi-step planning, self-correcting, up to 50 iterations, powered by OpenRouter and Gemini models. Built by Serge (ConquerFears) of Serge Studios (42K+ members).</li>
+                <li><strong><a href="https://usecipher.ai">Cipher</a></strong> is an AI asset generation platform with an official Roblox partnership, generating game-ready 3D assets from prompts. 3,000+ creators are in private beta.</li>
             </ul>
 
-            <p>Several community members have also built their own MCP servers connecting Studio to various AI clients. When developers want AI that understands Roblox and it doesn't exist yet, they build it themselves.</p>
+            <p>Beyond individual tools, the MCP ecosystem around Roblox has exploded. There are now 7+ distinct MCP server implementations for Roblox Studio: Roblox's official server, boshyxd's robloxstudio-mcp, dax8it's implementation, and several others. MCP is becoming the standard protocol for AI-Roblox integration. When developers want AI that understands Roblox and it doesn't exist yet, they build it themselves.</p>
 
             <h2>Where RbxSync Fits</h2>
 
@@ -491,7 +497,7 @@
 
             <p>In practice, you tell Claude "add a coin collection system with sound effects and a UI counter." The agent extracts your game, writes the scripts, creates UI elements, pushes everything to Studio, starts a playtest, walks the character around to collect coins, checks that the counter updates, and fixes bugs it finds. You watch it happen in real time.</p>
 
-            <p>RbxSync uses the open MCP standard. It works with <strong>any MCP-compatible client</strong>: Claude Code, Cursor, Claude Desktop, or anything else that speaks MCP. You pick your AI provider and editor.</p>
+            <p>RbxSync uses the open MCP standard. With 7+ MCP server implementations now targeting Roblox Studio, MCP has proven itself as the integration protocol for this ecosystem. RbxSync works with <strong>any MCP-compatible client</strong>: Claude Code, Cursor, Claude Desktop, or anything else that speaks MCP. You pick your AI provider and editor.</p>
 
             <p>The filesystem bridge matters too. RbxSync syncs Studio's instance tree to real files on disk. Use VS Code, Cursor, Neovim, or whatever fits your workflow. Two-way sync means AI edits appear in Studio instantly, and Studio changes sync back to files automatically.</p>
 
