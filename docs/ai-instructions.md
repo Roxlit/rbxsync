@@ -4,7 +4,7 @@ This guide explains how AI coding assistants can use RbxSync to develop, test, a
 
 ## Overview
 
-RbxSync is the only Roblox sync tool with native AI integration. Unlike other tools (Rojo, Argon, Pesto), RbxSync includes:
+RbxSync is the only Roblox sync tool with native AI integration. Unlike other tools (Rojo, Argon), RbxSync includes:
 
 - **MCP (Model Context Protocol)** tools for direct Studio control
 - **Bot testing** capabilities for automated gameplay testing
