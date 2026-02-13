@@ -2752,6 +2752,12 @@ async fn handle_sync_read_tree(Json(req): Json<ReadTreeRequest>) -> impl IntoRes
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
+                // Skip system directories (RBXSYNC-141)
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with(".rbxsync") || name == ".git" {
+                        continue;
+                    }
+                }
                 if path.is_dir() {
                     walk_dir(&path, base, path_prefix, instances, scripts);
                 } else if let Some(ext) = path.extension() {
@@ -3037,6 +3043,12 @@ async fn handle_sync_incremental(
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
+                // Skip system directories (RBXSYNC-141)
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with(".rbxsync") || name == ".git" {
+                        continue;
+                    }
+                }
                 if path.is_dir() {
                     walk_dir_incremental(&path, base, instances, scripts, last_sync, files_checked, files_modified);
                 } else if let Some(ext) = path.extension() {
