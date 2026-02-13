@@ -323,6 +323,112 @@ pub struct FindInstancesParams {
     pub limit: Option<u32>,
 }
 
+/// Parameters for create_instance tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateInstanceParams {
+    /// ClassName to create (e.g., "Part", "Script", "Folder")
+    #[schemars(description = "ClassName (e.g., 'Part', 'Script', 'Folder', 'Model')")]
+    #[serde(rename = "className")]
+    pub class_name: String,
+    /// Parent path (e.g., "Workspace", "ServerScriptService")
+    #[schemars(description = "Parent path (e.g., 'Workspace', 'ServerStorage/Items')")]
+    pub parent: String,
+    /// Optional name for the instance
+    #[schemars(description = "Instance name (optional, defaults to ClassName)")]
+    pub name: Option<String>,
+    /// Optional properties to set as key-value pairs
+    #[schemars(description = "Optional initial properties as {\"Anchored\": true, \"Color\": {\"R\":255,\"G\":0,\"B\":0}}")]
+    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+/// Parameters for delete_instance tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteInstanceParams {
+    /// Path to the instance to delete
+    #[schemars(description = "Instance path to delete (e.g., 'Workspace/OldPart')")]
+    pub path: String,
+}
+
+/// Parameters for duplicate_instance tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DuplicateInstanceParams {
+    /// Path to the instance to duplicate
+    #[schemars(description = "Instance path to duplicate (e.g., 'Workspace/TemplatePart')")]
+    pub path: String,
+    /// Optional new parent path (defaults to same parent)
+    #[schemars(description = "New parent path (optional, defaults to same parent)")]
+    pub new_parent: Option<String>,
+    /// Optional new name for the duplicate
+    #[schemars(description = "Name for the duplicate (optional)")]
+    pub new_name: Option<String>,
+}
+
+/// Escape a string for use inside a Luau string literal.
+fn escape_luau_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// Generate Luau code to navigate to an instance by path.
+fn luau_navigate_snippet() -> &'static str {
+    r#"local function navigate(path)
+    local parts = string.split(path, "/")
+    local current = game:GetService(parts[1])
+    for i = 2, #parts do
+        current = current:FindFirstChild(parts[i])
+        if not current then return nil end
+    end
+    return current
+end"#
+}
+
+/// Convert a JSON value to a Luau literal for property assignment.
+fn json_value_to_luau(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Bool(b) => format!("{}", b),
+        serde_json::Value::Number(n) => format!("{}", n),
+        serde_json::Value::String(s) => {
+            if s.starts_with("Enum.") || s.starts_with("Color3")
+                || s.starts_with("Vector3") || s.starts_with("CFrame")
+                || s.starts_with("UDim") || s.starts_with("BrickColor")
+            {
+                s.clone()
+            } else {
+                format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+            }
+        }
+        serde_json::Value::Object(map) => {
+            let has_r = map.contains_key("R") || map.contains_key("r");
+            let has_g = map.contains_key("G") || map.contains_key("g");
+            let has_x = map.contains_key("X") || map.contains_key("x");
+            let has_y = map.contains_key("Y") || map.contains_key("y");
+            let has_z = map.contains_key("Z") || map.contains_key("z");
+
+            if has_r && has_g {
+                let r = map.get("R").or(map.get("r")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let g = map.get("G").or(map.get("g")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let b = map.get("B").or(map.get("b")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                if r > 1.0 || g > 1.0 || b > 1.0 {
+                    format!("Color3.fromRGB({}, {}, {})", r as u8, g as u8, b as u8)
+                } else {
+                    format!("Color3.new({}, {}, {})", r, g, b)
+                }
+            } else if has_x && has_y && has_z {
+                let x = map.get("X").or(map.get("x")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let y = map.get("Y").or(map.get("y")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let z = map.get("Z").or(map.get("z")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                format!("Vector3.new({}, {}, {})", x, y, z)
+            } else if has_x && has_y {
+                let x = map.get("X").or(map.get("x")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let y = map.get("Y").or(map.get("y")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                format!("Vector2.new({}, {})", x, y)
+            } else {
+                format!("\"{}\"", value)
+            }
+        }
+        _ => "nil".to_string(),
+    }
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -901,6 +1007,116 @@ impl RbxSyncServer {
                 result.data
             ))]))
         }
+    }
+
+    // ========================================================================
+    // Instance Creation & Deletion Tools (Issue #130)
+    // ========================================================================
+
+    /// Create a new instance with a given ClassName and parent.
+    /// Optionally set initial properties.
+    #[tool(description = "Create a new instance in Studio (e.g., Part, Script, Folder)")]
+    async fn create_instance(
+        &self,
+        Parameters(params): Parameters<CreateInstanceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let parent_escaped = escape_luau_string(&params.parent);
+        let class_escaped = escape_luau_string(&params.class_name);
+        let name_lua = match &params.name {
+            Some(n) => format!("\"{}\"", escape_luau_string(n)),
+            None => format!("\"{}\"", class_escaped),
+        };
+
+        let mut props_code = String::new();
+        if let Some(props) = &params.properties {
+            for (key, val) in props {
+                let val_lua = json_value_to_luau(val);
+                props_code.push_str(&format!(
+                    "pcall(function() inst[\"{}\"] = {} end)\n",
+                    escape_luau_string(key),
+                    val_lua
+                ));
+            }
+        }
+
+        let code = format!(
+            r#"{navigate}
+local parent = navigate("{parent}")
+if not parent then return "Error: Parent not found at path: {parent}" end
+local inst = Instance.new("{class_name}")
+inst.Name = {name}
+{props}inst.Parent = parent
+return "Created " .. inst.ClassName .. " '" .. inst.Name .. "' at " .. inst:GetFullName()"#,
+            navigate = luau_navigate_snippet(),
+            parent = parent_escaped,
+            class_name = class_escaped,
+            name = name_lua,
+            props = props_code,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Delete an instance by path. This is irreversible.
+    #[tool(description = "Delete an instance by path (irreversible)")]
+    async fn delete_instance(
+        &self,
+        Parameters(params): Parameters<DeleteInstanceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let path_escaped = escape_luau_string(&params.path);
+
+        let code = format!(
+            r#"{navigate}
+local inst = navigate("{path}")
+if not inst then return "Error: Instance not found at path: {path}" end
+local fullName = inst:GetFullName()
+local className = inst.ClassName
+inst:Destroy()
+return "Deleted " .. className .. " at " .. fullName"#,
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Duplicate an instance. Optionally move to a new parent and rename.
+    #[tool(description = "Duplicate an instance with optional new parent and name")]
+    async fn duplicate_instance(
+        &self,
+        Parameters(params): Parameters<DuplicateInstanceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let path_escaped = escape_luau_string(&params.path);
+        let new_parent_lua = match &params.new_parent {
+            Some(p) => format!("navigate(\"{}\")", escape_luau_string(p)),
+            None => "inst.Parent".to_string(),
+        };
+        let rename_lua = match &params.new_name {
+            Some(n) => format!("clone.Name = \"{}\"", escape_luau_string(n)),
+            None => String::new(),
+        };
+
+        let code = format!(
+            r#"{navigate}
+local inst = navigate("{path}")
+if not inst then return "Error: Instance not found at path: {path}" end
+local clone = inst:Clone()
+if not clone then return "Error: Cannot clone this instance" end
+{rename}
+local newParent = {new_parent}
+if not newParent then return "Error: New parent not found" end
+clone.Parent = newParent
+return "Duplicated to " .. clone:GetFullName()"#,
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+            rename = rename_lua,
+            new_parent = new_parent_lua,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ========================================================================
