@@ -323,6 +323,69 @@ pub struct FindInstancesParams {
     pub limit: Option<u32>,
 }
 
+/// Parameters for get_attributes tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetAttributesParams {
+    /// Instance path (e.g., "Workspace/MyPart")
+    #[schemars(description = "Instance path (e.g., 'Workspace/MyPart')")]
+    pub path: String,
+}
+
+/// Parameters for set_attribute tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SetAttributeParams {
+    /// Instance path (e.g., "Workspace/MyPart")
+    #[schemars(description = "Instance path (e.g., 'Workspace/MyPart')")]
+    pub path: String,
+    /// Attribute name
+    #[schemars(description = "Attribute name to set")]
+    pub name: String,
+    /// Attribute value (string, number, boolean)
+    #[schemars(description = "Attribute value (string, number, or boolean)")]
+    pub value: serde_json::Value,
+}
+
+/// Parameters for delete_attribute tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteAttributeParams {
+    /// Instance path (e.g., "Workspace/MyPart")
+    #[schemars(description = "Instance path (e.g., 'Workspace/MyPart')")]
+    pub path: String,
+    /// Attribute name to remove
+    #[schemars(description = "Attribute name to remove")]
+    pub name: String,
+}
+
+/// Escape a string for use inside a Luau string literal.
+fn escape_luau_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// Generate Luau code to navigate to an instance by path.
+fn luau_navigate_snippet() -> &'static str {
+    r#"local function navigate(path)
+    local parts = string.split(path, "/")
+    local current = game:GetService(parts[1])
+    for i = 2, #parts do
+        current = current:FindFirstChild(parts[i])
+        if not current then return nil end
+    end
+    return current
+end"#
+}
+
+/// Convert a JSON value to a Luau literal for attribute assignment.
+fn json_value_to_luau(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Bool(b) => format!("{}", b),
+        serde_json::Value::Number(n) => format!("{}", n),
+        serde_json::Value::String(s) => {
+            format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+        }
+        _ => "nil".to_string(),
+    }
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -901,6 +964,97 @@ impl RbxSyncServer {
                 result.data
             ))]))
         }
+    }
+
+    // ========================================================================
+    // Attribute Management Tools (Issue #132)
+    // ========================================================================
+
+    /// Get all attributes on an instance.
+    /// Returns a JSON object with attribute name-value pairs.
+    #[tool(description = "Get all attributes on an instance by path")]
+    async fn get_attributes(
+        &self,
+        Parameters(params): Parameters<GetAttributesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let path_escaped = escape_luau_string(&params.path);
+
+        let code = format!(
+            "{navigate}\n\
+            local inst = navigate(\"{path}\")\n\
+            if not inst then return \"Error: Instance not found at path: {path}\" end\n\
+            local attrs = inst:GetAttributes()\n\
+            local parts = {{}}\n\
+            for name, value in pairs(attrs) do\n\
+                local valStr = tostring(value)\n\
+                if type(value) == \"string\" then valStr = '\"' .. value .. '\"' end\n\
+                table.insert(parts, '\"' .. name .. '\": ' .. valStr)\n\
+            end\n\
+            if #parts == 0 then return \"No attributes on \" .. inst:GetFullName() end\n\
+            return \"Attributes on \" .. inst:GetFullName() .. \":\\n{{\" .. table.concat(parts, \", \") .. \"}}\"",
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Set an attribute on an instance.
+    /// Creates the attribute if it doesn't exist.
+    #[tool(description = "Set an attribute on an instance (creates if new)")]
+    async fn set_attribute(
+        &self,
+        Parameters(params): Parameters<SetAttributeParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let path_escaped = escape_luau_string(&params.path);
+        let name_escaped = escape_luau_string(&params.name);
+        let value_lua = json_value_to_luau(&params.value);
+
+        let code = format!(
+            "{navigate}\n\
+            local inst = navigate(\"{path}\")\n\
+            if not inst then return \"Error: Instance not found at path: {path}\" end\n\
+            local ok, err = pcall(function()\n\
+                inst:SetAttribute(\"{name}\", {value})\n\
+            end)\n\
+            if not ok then return \"Error: \" .. tostring(err) end\n\
+            return \"Set attribute '\" .. \"{name}\" .. \"' = \" .. tostring(inst:GetAttribute(\"{name}\")) .. \" on \" .. inst:GetFullName()",
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+            name = name_escaped,
+            value = value_lua,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Delete an attribute from an instance.
+    /// Sets the attribute to nil, which removes it.
+    #[tool(description = "Delete an attribute from an instance")]
+    async fn delete_attribute(
+        &self,
+        Parameters(params): Parameters<DeleteAttributeParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let path_escaped = escape_luau_string(&params.path);
+        let name_escaped = escape_luau_string(&params.name);
+
+        let code = format!(
+            "{navigate}\n\
+            local inst = navigate(\"{path}\")\n\
+            if not inst then return \"Error: Instance not found at path: {path}\" end\n\
+            local oldVal = inst:GetAttribute(\"{name}\")\n\
+            if oldVal == nil then return \"Attribute '{name}' does not exist on \" .. inst:GetFullName() end\n\
+            inst:SetAttribute(\"{name}\", nil)\n\
+            return \"Deleted attribute '{name}' (was \" .. tostring(oldVal) .. \") from \" .. inst:GetFullName()",
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+            name = name_escaped,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ========================================================================
