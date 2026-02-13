@@ -281,6 +281,15 @@ pub struct InsertModelResponse {
     pub error: Option<String>,
 }
 
+/// A single commit from git log
+#[derive(Debug, Deserialize)]
+pub struct GitLogCommit {
+    pub hash: String,
+    pub message: String,
+    pub author: String,
+    pub date: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct DiffEntry {
     pub path: String,
@@ -507,6 +516,33 @@ impl RbxSyncClient {
             .await?;
 
         Ok(resp)
+    }
+
+    pub async fn get_git_log(
+        &self,
+        project_dir: &str,
+        limit: Option<usize>,
+    ) -> anyhow::Result<Vec<GitLogCommit>> {
+        let resp: CommandResponse<Vec<GitLogCommit>> = self
+            .client
+            .post(format!("{}/git/log", self.base_url))
+            .json(&serde_json::json!({
+                "project_dir": project_dir,
+                "limit": limit.unwrap_or(20)
+            }))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        if !resp.success {
+            return Err(anyhow::anyhow!(
+                "Git log failed: {}",
+                resp.error.unwrap_or_else(|| "Unknown error".to_string())
+            ));
+        }
+
+        Ok(resp.data.unwrap_or_default())
     }
 
     pub async fn run_code(&self, code: &str) -> anyhow::Result<String> {

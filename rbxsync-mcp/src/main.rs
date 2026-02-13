@@ -71,6 +71,17 @@ pub struct GitStatusParams {
     pub project_dir: String,
 }
 
+/// Parameters for git_log tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GitLogParams {
+    /// The project directory
+    #[schemars(description = "The project directory")]
+    pub project_dir: String,
+    /// Maximum number of commits to return (default: 20)
+    #[schemars(description = "Max commits to return (default: 20)")]
+    pub limit: Option<usize>,
+}
+
 /// Parameters for run_code tool
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct RunCodeParams {
@@ -523,6 +534,32 @@ impl RbxSyncServer {
                 result.error.unwrap_or_default()
             ))]))
         }
+    }
+
+    /// View git commit history for the project.
+    #[tool(description = "View git commit history (hash, message, author, date)")]
+    async fn git_log(
+        &self,
+        Parameters(params): Parameters<GitLogParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let commits = self.client
+            .get_git_log(&params.project_dir, params.limit)
+            .await
+            .map_err(|e| mcp_error(e.to_string()))?;
+
+        if commits.is_empty() {
+            return Ok(CallToolResult::success(vec![Content::text("No commits found.")]));
+        }
+
+        let mut lines = vec![format!("Showing {} commits:", commits.len())];
+        for commit in &commits {
+            lines.push(format!(
+                "  {} {} ({}, {})",
+                commit.hash, commit.message, commit.author, commit.date
+            ));
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(lines.join("\n"))]))
     }
 
     /// Execute Luau code in Roblox Studio.
