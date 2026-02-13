@@ -382,10 +382,9 @@ fn json_value_to_luau(value: &serde_json::Value, _property: &str) -> String {
         serde_json::Value::Bool(b) => format!("{}", b),
         serde_json::Value::Number(n) => format!("{}", n),
         serde_json::Value::String(s) => {
-            // Check for enum-style values like "Enum.Material.Plastic"
-            if s.starts_with("Enum.") {
-                s.clone()
-            } else if s.starts_with("Color3") || s.starts_with("Vector3")
+            // Pass through Roblox constructor expressions and enum values as raw Luau
+            if s.starts_with("Enum.")
+                || s.starts_with("Color3") || s.starts_with("Vector3")
                 || s.starts_with("CFrame") || s.starts_with("UDim")
                 || s.starts_with("BrickColor")
             {
@@ -1043,6 +1042,131 @@ impl RbxSyncServer {
                 result.data
             ))]))
         }
+    }
+
+    // ========================================================================
+    // Property Manipulation Tools (Issue #129)
+    // ========================================================================
+
+    /// Set a single property on an instance by path.
+    /// Supports booleans, numbers, strings, enums, Vector3, Color3, etc.
+    /// For Vector3: use {"X":1,"Y":2,"Z":3}. For Color3: use {"R":255,"G":0,"B":0}.
+    /// For enums: use "Enum.Material.Plastic". For BrickColor: use "BrickColor.new(\"Bright red\")".
+    #[tool(description = "Set a property on an instance by path (e.g., set Workspace/Part.Anchored to true)")]
+    async fn set_property(
+        &self,
+        Parameters(params): Parameters<SetPropertyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let value_lua = json_value_to_luau(&params.value, &params.property);
+        let path_escaped = escape_luau_string(&params.path);
+        let code = format!(
+            "{navigate}\n\
+            local inst = navigate(\"{path}\")\n\
+            if not inst then return \"Error: Instance not found at path: {path}\" end\n\
+            local ok, err = pcall(function()\n\
+                inst.{property} = {value}\n\
+            end)\n\
+            if not ok then return \"Error setting property: \" .. tostring(err) end\n\
+            return \"Set \" .. inst:GetFullName() .. \".{property} = \" .. tostring(inst.{property})",
+            navigate = luau_navigate_snippet(),
+            path = path_escaped,
+            property = params.property,
+            value = value_lua,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Set the same property on all instances matching a ClassName filter.
+    /// Optionally scoped to a parent path. Returns count of modified instances.
+    #[tool(description = "Set a property on all instances of a ClassName (e.g., set all Parts to Anchored=true)")]
+    async fn mass_set_property(
+        &self,
+        Parameters(params): Parameters<MassSetPropertyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let value_lua = json_value_to_luau(&params.value, &params.property);
+        let scope = luau_scope_snippet(&params.parent);
+
+        let code = format!(
+            "local count = 0\n\
+            local errors = {{}}\n\
+            do\n\
+                {scope}\n\
+                for _, inst in root:GetDescendants() do\n\
+                    if inst.ClassName == \"{class_name}\" then\n\
+                        local ok, err = pcall(function()\n\
+                            inst.{property} = {value}\n\
+                        end)\n\
+                        if ok then\n\
+                            count = count + 1\n\
+                        else\n\
+                            table.insert(errors, inst:GetFullName() .. \": \" .. tostring(err))\n\
+                        end\n\
+                    end\n\
+                end\n\
+            end\n\
+            local result = \"Set {property} on \" .. count .. \" {class_name} instances\"\n\
+            if #errors > 0 then\n\
+                result = result .. \"\\nErrors (\" .. #errors .. \"):\\n\" .. table.concat(errors, \"\\n\")\n\
+            end\n\
+            return result",
+            scope = scope,
+            class_name = escape_luau_string(&params.class_name),
+            property = params.property,
+            value = value_lua,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Find instances where a specific property matches a given value.
+    /// Returns paths and classNames of matching instances.
+    #[tool(description = "Find instances with a specific property value (e.g., find Parts where Anchored=false)")]
+    async fn search_by_property(
+        &self,
+        Parameters(params): Parameters<SearchByPropertyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(50).min(200);
+        let class_filter = match &params.class_name {
+            Some(c) => format!("inst.ClassName == \"{}\"", escape_luau_string(c)),
+            None => "true".to_string(),
+        };
+        let scope = luau_scope_snippet(&params.parent);
+        let value_lua = json_value_to_luau(&params.value, &params.property);
+
+        let code = format!(
+            "local results = {{}}\n\
+            local limit = {limit}\n\
+            do\n\
+                {scope}\n\
+                local targetValue = {value}\n\
+                for _, inst in root:GetDescendants() do\n\
+                    if {class_filter} then\n\
+                        local ok, val = pcall(function() return inst.{property} end)\n\
+                        if ok and val == targetValue then\n\
+                            table.insert(results, inst:GetFullName() .. \" [\" .. inst.ClassName .. \"]\")\n\
+                            if #results >= limit then break end\n\
+                        end\n\
+                    end\n\
+                end\n\
+            end\n\
+            if #results == 0 then\n\
+                return \"No instances found where {property} matches\"\n\
+            end\n\
+            local header = \"Found \" .. #results .. \" instances\"\n\
+            if #results >= limit then header = header .. \" (limit reached)\" end\n\
+            return header .. \":\\n\" .. table.concat(results, \"\\n\")",
+            limit = limit,
+            scope = scope,
+            value = value_lua,
+            class_filter = class_filter,
+            property = params.property,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ========================================================================
