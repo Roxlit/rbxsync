@@ -71,6 +71,14 @@ pub struct GitStatusParams {
     pub project_dir: String,
 }
 
+/// Parameters for diff tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DiffParams {
+    /// The project directory to diff
+    #[schemars(description = "The project directory to compare local files vs Studio")]
+    pub project_dir: String,
+}
+
 /// Parameters for run_code tool
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct RunCodeParams {
@@ -523,6 +531,45 @@ impl RbxSyncServer {
                 result.error.unwrap_or_default()
             ))]))
         }
+    }
+
+    /// Compare local project files against instances in Roblox Studio.
+    /// Shows what would be added, removed, or is unchanged if you synced.
+    /// Requires Studio to be connected.
+    #[tool(description = "Compare local files vs Studio - shows added/removed/unchanged instances")]
+    async fn diff(
+        &self,
+        Parameters(params): Parameters<DiffParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let diff = self.client
+            .get_diff(&params.project_dir)
+            .await
+            .map_err(|e| mcp_error(e.to_string()))?;
+
+        let mut lines = vec![format!(
+            "Diff: {} added, {} removed, {} unchanged",
+            diff.added.len(),
+            diff.removed.len(),
+            diff.unchanged
+        )];
+
+        if !diff.added.is_empty() {
+            lines.push(format!("\nAdded ({}):", diff.added.len()));
+            for entry in &diff.added {
+                let class = entry.class_name.as_deref().unwrap_or("?");
+                lines.push(format!("  + {} [{}]", entry.path, class));
+            }
+        }
+
+        if !diff.removed.is_empty() {
+            lines.push(format!("\nRemoved ({}):", diff.removed.len()));
+            for entry in &diff.removed {
+                let class = entry.class_name.as_deref().unwrap_or("?");
+                lines.push(format!("  - {} [{}]", entry.path, class));
+            }
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(lines.join("\n"))]))
     }
 
     /// Execute Luau code in Roblox Studio.
