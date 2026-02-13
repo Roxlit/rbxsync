@@ -323,6 +323,17 @@ pub struct FindInstancesParams {
     pub limit: Option<u32>,
 }
 
+/// Parameters for sourcemap tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SourcemapParams {
+    /// The project directory containing the src/ folder
+    #[schemars(description = "Project directory path (must contain src/ folder)")]
+    pub project_dir: String,
+    /// Output file path (default: sourcemap.json in project directory)
+    #[schemars(description = "Output path (default: <project_dir>/sourcemap.json)")]
+    pub output: Option<String>,
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -1332,6 +1343,158 @@ impl RbxSyncServer {
         }
 
         Ok(CallToolResult::success(vec![Content::text(output.join("\n"))]))
+    }
+
+    /// Generate sourcemap.json for Luau LSP integration.
+    /// Reads the project's src/ directory and generates a sourcemap that maps
+    /// Roblox instances to local file paths, enabling Luau LSP type checking.
+    #[tool(description = "Generate sourcemap.json for Luau LSP - maps instances to file paths")]
+    async fn sourcemap(
+        &self,
+        Parameters(params): Parameters<SourcemapParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let project_dir = std::path::PathBuf::from(&params.project_dir);
+        let src_dir = project_dir.join("src");
+
+        if !src_dir.exists() {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "Error: Source directory not found: {}. Run extract_game first.",
+                src_dir.display()
+            ))]));
+        }
+
+        let output_path = params.output
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| project_dir.join("sourcemap.json"));
+
+        // Generate the sourcemap tree
+        let root = build_sourcemap_node("game", "DataModel", &src_dir, false)
+            .map_err(|e| mcp_error(format!("Failed to build sourcemap: {}", e)))?;
+
+        let json = serde_json::to_string_pretty(&root)
+            .map_err(|e| mcp_error(format!("Failed to serialize sourcemap: {}", e)))?;
+
+        std::fs::write(&output_path, &json)
+            .map_err(|e| mcp_error(format!("Failed to write sourcemap: {}", e)))?;
+
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Sourcemap written to: {}\n\nTo use with Luau LSP, ensure .luaurc exists with:\n{{\n  \"languageMode\": \"strict\"\n}}",
+            output_path.display()
+        ))]))
+    }
+}
+
+/// Build a sourcemap node recursively from the filesystem
+fn build_sourcemap_node(
+    name: &str,
+    class_name: &str,
+    dir_path: &std::path::Path,
+    include_non_scripts: bool,
+) -> anyhow::Result<serde_json::Value> {
+    let mut children = Vec::new();
+    let mut file_paths = vec![dir_path.to_string_lossy().to_string()];
+
+    if dir_path.exists() && dir_path.is_dir() {
+        let mut entries: Vec<_> = std::fs::read_dir(dir_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read directory: {}", e))?
+            .filter_map(|e| e.ok())
+            .collect();
+        entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+
+        for entry in entries {
+            let entry_path = entry.path();
+            let entry_name = entry.file_name().to_string_lossy().to_string();
+
+            if entry_path.is_dir() {
+                let child_class = match entry_name.as_str() {
+                    "Workspace" => "Workspace",
+                    "ReplicatedStorage" => "ReplicatedStorage",
+                    "ReplicatedFirst" => "ReplicatedFirst",
+                    "ServerScriptService" => "ServerScriptService",
+                    "ServerStorage" => "ServerStorage",
+                    "StarterGui" => "StarterGui",
+                    "StarterPack" => "StarterPack",
+                    "StarterPlayer" => "StarterPlayer",
+                    "StarterPlayerScripts" => "StarterPlayerScripts",
+                    "StarterCharacterScripts" => "StarterCharacterScripts",
+                    "Lighting" => "Lighting",
+                    "SoundService" => "SoundService",
+                    "Chat" => "Chat",
+                    "Teams" => "Teams",
+                    _ => "Folder",
+                };
+
+                let has_init = entry_path.join("init.luau").exists()
+                    || entry_path.join("init.server.luau").exists()
+                    || entry_path.join("init.client.luau").exists();
+
+                let actual_class = if has_init {
+                    if entry_path.join("init.server.luau").exists() {
+                        "Script"
+                    } else if entry_path.join("init.client.luau").exists() {
+                        "LocalScript"
+                    } else {
+                        "ModuleScript"
+                    }
+                } else {
+                    child_class
+                };
+
+                if include_non_scripts || has_init || actual_class != "Folder" {
+                    let child_node = build_sourcemap_node(&entry_name, actual_class, &entry_path, include_non_scripts)?;
+                    children.push(child_node);
+                }
+            } else if let Some(ext) = entry_path.extension() {
+                if ext == "luau" || ext == "lua" {
+                    let (script_name, script_class) = parse_script_name(&entry_name);
+                    if script_name == "init" {
+                        continue;
+                    }
+                    children.push(serde_json::json!({
+                        "name": script_name,
+                        "className": script_class,
+                        "filePaths": [entry_path.to_string_lossy()]
+                    }));
+                } else if ext == "rbxjson" && include_non_scripts {
+                    let instance_name = entry_path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    let class_name = if let Ok(content) = std::fs::read_to_string(&entry_path) {
+                        serde_json::from_str::<serde_json::Value>(&content)
+                            .ok()
+                            .and_then(|v| v.get("className").and_then(|c| c.as_str()).map(String::from))
+                            .unwrap_or_else(|| "Instance".to_string())
+                    } else {
+                        "Instance".to_string()
+                    };
+                    children.push(serde_json::json!({
+                        "name": instance_name,
+                        "className": class_name,
+                        "filePaths": [entry_path.to_string_lossy()]
+                    }));
+                }
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "name": name,
+        "className": class_name,
+        "filePaths": file_paths,
+        "children": children
+    }))
+}
+
+/// Parse script name and class from filename
+fn parse_script_name(filename: &str) -> (String, &'static str) {
+    let name = filename.trim_end_matches(".luau").trim_end_matches(".lua");
+    if name.ends_with(".server") {
+        (name.trim_end_matches(".server").to_string(), "Script")
+    } else if name.ends_with(".client") {
+        (name.trim_end_matches(".client").to_string(), "LocalScript")
+    } else {
+        (name.to_string(), "ModuleScript")
     }
 }
 
