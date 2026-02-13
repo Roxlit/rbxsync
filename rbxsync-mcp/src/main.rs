@@ -323,6 +323,148 @@ pub struct FindInstancesParams {
     pub limit: Option<u32>,
 }
 
+/// Parameters for set_property tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SetPropertyParams {
+    /// Instance path (e.g., "Workspace/SpawnLocation")
+    #[schemars(description = "Instance path (e.g., 'Workspace/SpawnLocation')")]
+    pub path: String,
+    /// Property name (e.g., "Anchored", "Transparency")
+    #[schemars(description = "Property name (e.g., 'Anchored', 'Transparency', 'Name')")]
+    pub property: String,
+    /// Value to set. Strings, numbers, booleans, or objects for Vector3/Color3.
+    #[schemars(description = "Value - string, number, boolean, or {\"X\":1,\"Y\":2,\"Z\":3} for Vector3")]
+    pub value: serde_json::Value,
+}
+
+/// Parameters for mass_set_property tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct MassSetPropertyParams {
+    /// ClassName to filter by (e.g., "Part", "MeshPart")
+    #[schemars(description = "ClassName filter (e.g., 'Part', 'MeshPart')")]
+    #[serde(rename = "className")]
+    pub class_name: String,
+    /// Optional parent path to scope the search
+    #[schemars(description = "Optional parent path to scope search")]
+    pub parent: Option<String>,
+    /// Property name to set
+    #[schemars(description = "Property name to set")]
+    pub property: String,
+    /// Value to set on all matching instances
+    #[schemars(description = "Property value to set on all matches")]
+    pub value: serde_json::Value,
+}
+
+/// Parameters for search_by_property tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SearchByPropertyParams {
+    /// Property name to search by
+    #[schemars(description = "Property name to search by")]
+    pub property: String,
+    /// Value to match
+    #[schemars(description = "Property value to match")]
+    pub value: serde_json::Value,
+    /// Optional ClassName filter
+    #[schemars(description = "Optional ClassName filter")]
+    #[serde(rename = "className")]
+    pub class_name: Option<String>,
+    /// Optional parent path to scope the search
+    #[schemars(description = "Optional parent path to scope search")]
+    pub parent: Option<String>,
+    /// Maximum results (default: 50)
+    #[schemars(description = "Max results (default: 50)")]
+    pub limit: Option<u32>,
+}
+
+/// Convert a JSON value to a Luau literal expression for property assignment.
+fn json_value_to_luau(value: &serde_json::Value, _property: &str) -> String {
+    match value {
+        serde_json::Value::Bool(b) => format!("{}", b),
+        serde_json::Value::Number(n) => format!("{}", n),
+        serde_json::Value::String(s) => {
+            // Check for enum-style values like "Enum.Material.Plastic"
+            if s.starts_with("Enum.") {
+                s.clone()
+            } else if s.starts_with("Color3") || s.starts_with("Vector3")
+                || s.starts_with("CFrame") || s.starts_with("UDim")
+                || s.starts_with("BrickColor")
+            {
+                s.clone()
+            } else {
+                format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+            }
+        }
+        serde_json::Value::Object(map) => {
+            // Detect type from keys
+            let has_x = map.contains_key("X") || map.contains_key("x");
+            let has_y = map.contains_key("Y") || map.contains_key("y");
+            let has_z = map.contains_key("Z") || map.contains_key("z");
+            let has_r = map.contains_key("R") || map.contains_key("r");
+            let has_g = map.contains_key("G") || map.contains_key("g");
+            let has_b = map.contains_key("B") || map.contains_key("b");
+
+            if has_r && has_g && has_b {
+                let r = map.get("R").or(map.get("r")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let g = map.get("G").or(map.get("g")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let b = map.get("B").or(map.get("b")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                // If values > 1, assume 0-255 range
+                if r > 1.0 || g > 1.0 || b > 1.0 {
+                    format!("Color3.fromRGB({}, {}, {})", r as u8, g as u8, b as u8)
+                } else {
+                    format!("Color3.new({}, {}, {})", r, g, b)
+                }
+            } else if has_x && has_y && has_z {
+                let x = map.get("X").or(map.get("x")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let y = map.get("Y").or(map.get("y")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let z = map.get("Z").or(map.get("z")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                format!("Vector3.new({}, {}, {})", x, y, z)
+            } else if has_x && has_y {
+                let x = map.get("X").or(map.get("x")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let y = map.get("Y").or(map.get("y")).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                format!("Vector2.new({}, {})", x, y)
+            } else {
+                // Fallback: try to use as-is
+                format!("\"{}\"", value)
+            }
+        }
+        _ => "nil".to_string(),
+    }
+}
+
+/// Escape a string for use inside a Luau string literal.
+fn escape_luau_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// Generate Luau code to navigate to an instance by path.
+fn luau_navigate_snippet() -> &'static str {
+    r#"local function navigate(path)
+    local parts = string.split(path, "/")
+    local current = game:GetService(parts[1])
+    for i = 2, #parts do
+        current = current:FindFirstChild(parts[i])
+        if not current then return nil end
+    end
+    return current
+end"#
+}
+
+/// Generate Luau code to find a scoped root from a parent path.
+fn luau_scope_snippet(parent: &Option<String>) -> String {
+    match parent {
+        Some(p) => format!(
+            r#"local parts = string.split("{}", "/")
+local root = game:GetService(parts[1])
+for i = 2, #parts do
+    root = root:FindFirstChild(parts[i])
+    if not root then return "Error: Parent not found" end
+end"#,
+            escape_luau_string(p)
+        ),
+        None => "local root = game".to_string(),
+    }
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
