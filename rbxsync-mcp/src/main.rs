@@ -340,19 +340,38 @@ impl RbxSyncServer {
         }
     }
 
+    /// Check server connection and return a user-friendly error if not connected.
+    /// Returns Ok(None) if connected, Ok(Some(result)) with error message if not.
+    async fn require_connection(&self) -> Result<Option<CallToolResult>, McpError> {
+        match self.client.check_health().await {
+            Ok(true) => Ok(None),
+            Ok(false) => Ok(Some(CallToolResult::success(vec![Content::text(
+                "Error: RbxSync server is running but not healthy. Check 'rbxsync serve' output for errors.",
+            )]))),
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("Connection refused") || msg.contains("connect") {
+                    Ok(Some(CallToolResult::success(vec![Content::text(
+                        "Error: Cannot connect to RbxSync server. Make sure 'rbxsync serve' is running.",
+                    )])))
+                } else {
+                    Ok(Some(CallToolResult::success(vec![Content::text(format!(
+                        "Error: RbxSync server connection check failed: {}",
+                        msg
+                    ))])))
+                }
+            }
+        }
+    }
+
     /// Extract a Roblox game from Studio to git-friendly files on disk.
     #[tool(description = "Extract a Roblox game from Studio to git-friendly files")]
     async fn extract_game(
         &self,
         Parameters(params): Parameters<ExtractParams>,
     ) -> Result<CallToolResult, McpError> {
-        // Check connection
-        let health = self.client.check_health().await.map_err(|e| mcp_error(e.to_string()))?;
-
-        if !health {
-            return Ok(CallToolResult::success(vec![Content::text(
-                "Error: Not connected to RbxSync server. Make sure 'rbxsync serve' is running and Studio plugin is active.",
-            )]));
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
         }
 
         // Start extraction
@@ -396,6 +415,10 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<SyncParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
+
         // Use incremental sync - only reads files modified since last sync
         let incremental = self.client.read_incremental(&params.project_dir).await.map_err(|e| mcp_error(e.to_string()))?;
 
@@ -531,6 +554,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<RunCodeParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client.run_code(&params.code).await.map_err(|e| mcp_error(e.to_string()))?;
         Ok(CallToolResult::success(vec![Content::text(result)]))
     }
@@ -546,6 +572,10 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<RunTestParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
+
         // Start the test
         let start_result = self.client
             .start_test(params.duration, params.mode.as_deref())
@@ -640,6 +670,9 @@ impl RbxSyncServer {
     /// sync your changes, then run a new test.
     #[tool(description = "Stop any running playtest. Call before making code changes.")]
     async fn stop_test(&self) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client.stop_test().await.map_err(|e| mcp_error(e.to_string()))?;
 
         if result.success {
@@ -666,6 +699,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotObserveParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .bot_observe(&params.observe_type, params.radius, params.query.as_deref())
             .await
@@ -696,6 +732,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotMoveParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .bot_move(params.position, params.object_name.as_deref())
             .await
@@ -740,6 +779,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotActionParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .bot_action(&params.action, params.name.as_deref())
             .await
@@ -773,6 +815,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotCommandParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .bot_command(&params.command_type, &params.command, params.args.clone())
             .await
@@ -807,6 +852,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotQueryServerParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         // Send as a dedicated bot query server command
         let result = self.client
             .bot_query_server(&params.code)
@@ -850,6 +898,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<BotWaitForParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let context = params.context.as_deref().unwrap_or("server");
         let command = if context == "server" { "waitForServer" } else { "waitFor" };
 
@@ -1040,6 +1091,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<ReadPropertiesParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .read_properties(&params.path)
             .await
@@ -1108,6 +1162,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<ExploreHierarchyParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .explore_hierarchy(params.path.as_deref(), params.depth)
             .await
@@ -1179,6 +1236,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<FindInstancesParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         // Require at least one filter
         if params.class_name.is_none() && params.name.is_none() && params.parent.is_none() {
             return Ok(CallToolResult::success(vec![Content::text(
@@ -1245,6 +1305,9 @@ impl RbxSyncServer {
         &self,
         Parameters(params): Parameters<InsertModelParams>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(err) = self.require_connection().await? {
+            return Ok(err);
+        }
         let result = self.client
             .insert_model(params.asset_id, params.parent.as_deref())
             .await
@@ -1353,17 +1416,36 @@ impl ServerHandler for RbxSyncServer {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Check for --debug flag and enable RBXSYNC_DEBUG if present
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--debug") {
+        std::env::set_var("RBXSYNC_DEBUG", "1");
+    }
+
     // Set up logging to stderr (stdio is for MCP protocol)
+    // When --debug or RBXSYNC_DEBUG=1 is set, enable debug-level tracing
+    let default_filter = if std::env::var("RBXSYNC_DEBUG").map(|v| v == "1" || v.to_lowercase() == "true").unwrap_or(false) {
+        "debug"
+    } else {
+        "info"
+    };
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
                 .with_writer(std::io::stderr)
                 .with_ansi(false),
         )
-        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_filter))
+        )
         .init();
 
     tracing::info!("Starting RbxSync MCP server...");
+    if std::env::var("RBXSYNC_DEBUG").map(|v| v == "1").unwrap_or(false) {
+        tracing::info!("Debug mode enabled (RBXSYNC_DEBUG=1)");
+    }
 
     let service = RbxSyncServer::new().serve(stdio()).await?;
     service.waiting().await?;
