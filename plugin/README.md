@@ -25,7 +25,7 @@ This builds `RbxSync.rbxm` and copies it to your Studio plugins folder.
 
 1. Build the plugin:
    ```bash
-   rojo build plugin/default.project.json -o build/RbxSync.rbxm
+   rbxsync build-plugin
    ```
 
 2. Copy `build/RbxSync.rbxm` to:
@@ -174,11 +174,11 @@ MyGame/
 ### Building
 
 ```bash
-# Using rbxsync CLI
+# Using rbxsync CLI (recommended)
 rbxsync build-plugin
 
-# Using Rojo directly
-rojo build plugin/default.project.json -o build/RbxSync.rbxm
+# Using rbxsync CLI with auto-install to Studio plugins folder
+rbxsync build-plugin --install
 ```
 
 ### Testing Changes
