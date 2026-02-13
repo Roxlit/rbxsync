@@ -323,6 +323,28 @@ pub struct FindInstancesParams {
     pub limit: Option<u32>,
 }
 
+/// Parameters for get_selection tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetSelectionParams {
+    /// If true, include properties of selected instances
+    #[schemars(description = "Include properties of selected instances (default: false)")]
+    pub include_properties: Option<bool>,
+}
+
+/// Parameters for get_class_info tool
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetClassInfoParams {
+    /// Roblox class name (e.g., "Part", "Script", "Model")
+    #[schemars(description = "ClassName to get info for (e.g., 'Part', 'Script', 'Model')")]
+    #[serde(rename = "className")]
+    pub class_name: String,
+}
+
+/// Escape a string for use inside a Luau string literal.
+fn escape_luau_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 fn mcp_error(msg: impl Into<String>) -> McpError {
     McpError {
         code: ErrorCode(-32603),
@@ -901,6 +923,143 @@ impl RbxSyncServer {
                 result.data
             ))]))
         }
+    }
+
+    // ========================================================================
+    // Selection & Reflection Tools (Issue #134)
+    // ========================================================================
+
+    /// Get the currently selected instances in Studio.
+    /// Returns paths, classNames, and optionally properties.
+    #[tool(description = "Get the currently selected instances in Roblox Studio")]
+    async fn get_selection(
+        &self,
+        Parameters(params): Parameters<GetSelectionParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let include_props = params.include_properties.unwrap_or(false);
+        let props_code = if include_props {
+            r#"
+        local props = {}
+        pcall(function()
+            props.Name = inst.Name
+            props.ClassName = inst.ClassName
+            if inst:IsA("BasePart") then
+                props.Position = tostring(inst.Position)
+                props.Size = tostring(inst.Size)
+                props.Anchored = inst.Anchored
+                props.Material = tostring(inst.Material)
+            end
+            if inst:IsA("LuaSourceContainer") then
+                local src = inst.Source
+                props.SourceLines = #string.split(src, "\n")
+            end
+        end)
+        local propStr = ""
+        for k, v in props do
+            propStr = propStr .. "\n    " .. k .. " = " .. tostring(v)
+        end
+        table.insert(lines, "  " .. inst:GetFullName() .. " [" .. inst.ClassName .. "]" .. propStr)"#
+        } else {
+            r#"table.insert(lines, "  " .. inst:GetFullName() .. " [" .. inst.ClassName .. "]")"#
+        };
+
+        let code = format!(
+            r#"local Selection = game:GetService("Selection")
+local selected = Selection:Get()
+if #selected == 0 then return "No instances selected in Studio" end
+local lines = {{"Selected " .. #selected .. " instances:"}}
+for _, inst in selected do
+    {props_code}
+end
+return table.concat(lines, "\n")"#,
+            props_code = props_code,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
+    }
+
+    /// Get metadata about a Roblox class including its properties, inheritance, and default values.
+    /// Creates a temporary instance to inspect, so only works for classes that can be instantiated.
+    #[tool(description = "Get Roblox class info (properties, inheritance) by creating a temporary instance")]
+    async fn get_class_info(
+        &self,
+        Parameters(params): Parameters<GetClassInfoParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let class_escaped = escape_luau_string(&params.class_name);
+
+        let code = format!(
+            r#"local ok, inst = pcall(Instance.new, "{class_name}")
+if not ok then return "Error: Cannot create instance of class '{class_name}'. It may be abstract or restricted." end
+
+local lines = {{}}
+table.insert(lines, "Class: " .. inst.ClassName)
+
+-- Inheritance chain
+local chain = {{}}
+local current = inst
+while current do
+    table.insert(chain, 1, current.ClassName)
+    local parent = nil
+    pcall(function()
+        if current:IsA("Instance") and current.ClassName ~= "Instance" then
+            parent = current
+        end
+    end)
+    break
+end
+-- Check common base classes
+local bases = {{}}
+for _, base in {{"Instance", "PVInstance", "BasePart", "Part", "FormFactorPart", "GuiObject", "GuiBase2d", "LayerCollector", "BaseScript", "LuaSourceContainer", "Model", "JointInstance"}} do
+    if inst:IsA(base) then table.insert(bases, base) end
+end
+table.insert(lines, "Inherits: " .. table.concat(bases, " > "))
+
+-- Get properties by inspecting the instance
+local props = {{}}
+local skip = {{Parent = true, Archivable = true}}
+for _, prop in inst:GetPropertyChangedSignal("Name"):Connect(function() end) or {{}} do end
+
+-- Use serialization approach to find properties
+local HttpService = game:GetService("HttpService")
+local propNames = {{}}
+
+-- Common properties to check based on class type
+local checkProps = {{"Name", "Parent"}}
+if inst:IsA("BasePart") then
+    for _, p in {{"Anchored", "CanCollide", "CanQuery", "CanTouch", "CastShadow", "Color", "Material", "Position", "Orientation", "Size", "Transparency", "Shape", "TopSurface", "BottomSurface", "Massless", "RootPriority"}} do
+        table.insert(checkProps, p)
+    end
+end
+if inst:IsA("LuaSourceContainer") then
+    table.insert(checkProps, "Source")
+    table.insert(checkProps, "Disabled")
+end
+if inst:IsA("GuiObject") then
+    for _, p in {{"BackgroundColor3", "BackgroundTransparency", "BorderColor3", "BorderSizePixel", "Position", "Size", "Visible", "ZIndex", "LayoutOrder", "AnchorPoint"}} do
+        table.insert(checkProps, p)
+    end
+end
+if inst:IsA("Model") then
+    table.insert(checkProps, "PrimaryPart")
+    table.insert(checkProps, "WorldPivot")
+end
+
+table.insert(lines, "\nProperties:")
+for _, propName in checkProps do
+    local valOk, val = pcall(function() return inst[propName] end)
+    if valOk then
+        table.insert(lines, "  " .. propName .. " = " .. tostring(val) .. " (" .. typeof(val) .. ")")
+    end
+end
+
+inst:Destroy()
+return table.concat(lines, "\n")"#,
+            class_name = class_escaped,
+        );
+
+        let result = self.client.run_code(&code).await.map_err(|e| mcp_error(e.to_string()))?;
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     // ========================================================================
