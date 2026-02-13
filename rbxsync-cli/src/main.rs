@@ -438,6 +438,8 @@ fn check_duplicate_installations() {
         format!("{}/.local/bin/rbxsync", home),
     ];
 
+    let mut duplicates: Vec<(String, String)> = Vec::new();
+
     for path_str in &paths_to_check {
         let path = std::path::Path::new(path_str);
 
@@ -455,28 +457,52 @@ fn check_duplicate_installations() {
         }
 
         // Found a different installation - check its version
-        // Set env var to prevent recursive check
-        if let Ok(output) = std::process::Command::new(path)
+        let version = if let Ok(output) = std::process::Command::new(path)
             .arg("--version")
             .env("RBXSYNC_VERSION_CHECK", "1")
             .output()
         {
             let version_output = String::from_utf8_lossy(&output.stdout);
-            let other_version = version_output
+            version_output
                 .split_whitespace()
                 .last()
-                .unwrap_or("unknown");
+                .unwrap_or("unknown")
+                .to_string()
+        } else {
+            "unknown".to_string()
+        };
 
-            if other_version != current_version {
-                eprintln!("⚠️  Warning: Multiple rbxsync installations detected with different versions!");
-                eprintln!("   Running:  {} (v{})", current_exe.display(), current_version);
-                eprintln!("   Found:    {} (v{})", path_str, other_version);
-                eprintln!();
-                eprintln!("   This can cause confusion. To fix, remove the older version:");
-                eprintln!("   sudo rm {}", path_str);
-                eprintln!();
+        duplicates.push((path_str.clone(), version));
+    }
+
+    if !duplicates.is_empty() {
+        eprintln!(
+            "⚠️  Warning: {} other rbxsync installation(s) found!",
+            duplicates.len()
+        );
+        eprintln!(
+            "   Active:  {} (v{})",
+            current_exe.display(),
+            current_version
+        );
+        for (path, version) in &duplicates {
+            let label = if version != current_version {
+                "DIFFERENT VERSION"
+            } else {
+                "duplicate"
+            };
+            eprintln!("   Other:   {} (v{}) [{}]", path, version, label);
+        }
+        eprintln!();
+        eprintln!("   Remove duplicates to avoid confusion:");
+        for (path, _) in &duplicates {
+            if path.starts_with("/usr/") {
+                eprintln!("     sudo rm {}", path);
+            } else {
+                eprintln!("     rm {}", path);
             }
         }
+        eprintln!();
     }
 }
 
