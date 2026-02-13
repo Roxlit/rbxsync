@@ -70,14 +70,31 @@ fn apply_tree_mapping(datamodel_path: &str, tree_mapping: &HashMap<String, Strin
     }
 }
 
-/// Recursively copy a directory
+/// Directories to skip during recursive copy operations
+const SKIP_DIRS: &[&str] = &[".rbxsync-trash", ".rbxsync-backup", ".rbxsync", ".git", "node_modules"];
+
+/// Recursively copy a directory, skipping system directories and
+/// preventing circular copies (dst inside src).
 fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    let resolved_src = src.canonicalize().unwrap_or_else(|_| src.clone());
+    let resolved_dst = dst.canonicalize().unwrap_or_else(|_| dst.clone());
+
+    if resolved_dst.starts_with(&resolved_src) {
+        tracing::warn!("Skipping circular copy: {:?} is inside {:?}", dst, src);
+        return Ok(());
+    }
+
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
         let path = entry.path();
         let dest_path = dst.join(entry.file_name());
         if path.is_dir() {
+            if let Some(name) = entry.file_name().to_str() {
+                if SKIP_DIRS.contains(&name) {
+                    continue;
+                }
+            }
             copy_dir_recursive(&path, &dest_path)?;
         } else {
             std::fs::copy(&path, &dest_path)?;
