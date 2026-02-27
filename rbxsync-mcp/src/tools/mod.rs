@@ -19,6 +19,7 @@ pub struct RbxSyncClient {
     base_url: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct HealthResponse {
     #[serde(default)]
@@ -27,6 +28,7 @@ pub struct HealthResponse {
     pub version: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ExtractStartResponse {
     #[serde(rename = "sessionId")]
@@ -34,6 +36,7 @@ pub struct ExtractStartResponse {
     pub status: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ExtractStatusResponse {
     #[serde(rename = "sessionId")]
@@ -46,6 +49,7 @@ pub struct ExtractStatusResponse {
     pub error: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ExtractFinalizeResponse {
     pub success: bool,
@@ -57,12 +61,7 @@ pub struct ExtractFinalizeResponse {
     pub total_instances: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SyncReadTreeResponse {
-    pub instances: Vec<serde_json::Value>,  // Raw JSON instances
-    pub count: i32,
-}
-
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct IncrementalSyncResponse {
     pub success: bool,
@@ -95,6 +94,7 @@ pub fn build_sync_operations(instances: Vec<serde_json::Value>) -> Vec<serde_jso
         .collect()
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SyncBatchResult {
     pub success: bool,
@@ -102,6 +102,7 @@ pub struct SyncBatchResult {
     pub skipped: bool,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SyncBatchResponseData {
     #[serde(default)]
@@ -119,6 +120,7 @@ pub struct SyncBatchResponseData {
     pub reason: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SyncBatchResponse {
     pub success: bool,
@@ -141,6 +143,7 @@ pub struct ChangedFile {
 }
 
 /// Git status from server (matches server's GitStatus struct)
+#[allow(dead_code)]
 #[derive(Debug, Default, Deserialize)]
 pub struct ServerGitStatus {
     pub branch: String,
@@ -185,12 +188,6 @@ pub struct RunCodeResponse {
 }
 
 // Test runner types
-#[derive(Debug, Serialize)]
-pub struct TestRunParams {
-    pub duration: Option<u32>,
-    pub mode: Option<String>,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct TestStartResponse {
     pub success: bool,
@@ -207,6 +204,7 @@ pub struct ConsoleMessage {
     pub timestamp: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TestStatusResponse {
     #[serde(rename = "inProgress", default)]
@@ -221,6 +219,7 @@ pub struct TestStatusResponse {
     pub total_messages: i32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TestFinishResponse {
     #[serde(default)]
@@ -247,6 +246,7 @@ pub struct TestStopResponse {
 /// Generic command response from server
 /// Note: Server returns PluginResponse which has id, success, data, error
 /// The `data` field contains the actual response payload
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CommandResponse<T> {
     pub success: bool,
@@ -260,6 +260,7 @@ pub struct CommandResponse<T> {
 }
 
 /// Raw plugin response for flexible parsing
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct RawPluginResponse {
     pub success: bool,
@@ -281,12 +282,14 @@ pub struct InsertModelResponse {
     pub error: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct DiffEntry {
     pub path: String,
     pub class_name: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct DiffResponse {
     pub added: Vec<DiffEntry>,
@@ -363,21 +366,6 @@ impl RbxSyncClient {
             .post(format!("{}/extract/finalize", self.base_url))
             .json(&serde_json::json!({
                 "session_id": session_id,
-                "project_dir": project_dir
-            }))
-            .send()
-            .await?
-            .json()
-            .await?;
-
-        Ok(resp)
-    }
-
-    pub async fn read_tree(&self, project_dir: &str) -> anyhow::Result<SyncReadTreeResponse> {
-        let resp = self
-            .client
-            .post(format!("{}/sync/read-tree", self.base_url))
-            .json(&serde_json::json!({
                 "project_dir": project_dir
             }))
             .send()
@@ -666,137 +654,6 @@ impl RbxSyncClient {
     }
 
     // ========================================================================
-    // Bot Controller Methods (AI-powered automated gameplay testing)
-    // ========================================================================
-
-    /// Observe game state during playtest
-    pub async fn bot_observe(
-        &self,
-        observe_type: &str,
-        radius: Option<f64>,
-        query: Option<&str>,
-    ) -> anyhow::Result<BotCommandResponse> {
-        let url = format!("{}/bot/observe", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "type": observe_type,
-                "radius": radius,
-                "query": query
-            }))
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("bot_observe", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse bot_observe response: {}. Body: {}", e, body))
-    }
-
-    /// Move character to position or object
-    pub async fn bot_move(
-        &self,
-        position: Option<serde_json::Value>,
-        object_name: Option<&str>,
-    ) -> anyhow::Result<BotCommandResponse> {
-        let url = format!("{}/bot/move", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "position": position,
-                "objectName": object_name
-            }))
-            .timeout(std::time::Duration::from_secs(60)) // Longer timeout for movement
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("bot_move", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse bot_move response: {}. Body: {}", e, body))
-    }
-
-    /// Perform character action
-    pub async fn bot_action(
-        &self,
-        action: &str,
-        name: Option<&str>,
-    ) -> anyhow::Result<BotCommandResponse> {
-        let url = format!("{}/bot/action", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "action": action,
-                "name": name
-            }))
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("bot_action", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse bot_action response: {}. Body: {}", e, body))
-    }
-
-    /// Send generic bot command
-    pub async fn bot_command(
-        &self,
-        command_type: &str,
-        command: &str,
-        args: Option<serde_json::Value>,
-    ) -> anyhow::Result<BotCommandResponse> {
-        let url = format!("{}/bot/command", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "type": command_type,
-                "command": command,
-                "args": args.unwrap_or(serde_json::json!({}))
-            }))
-            .timeout(std::time::Duration::from_secs(60))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("bot_command", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse bot_command response: {}. Body: {}", e, body))
-    }
-
-    /// Execute Luau code on the server during playtest
-    pub async fn bot_query_server(
-        &self,
-        code: &str,
-    ) -> anyhow::Result<BotCommandResponse> {
-        let url = format!("{}/bot/query-server", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "code": code
-            }))
-            .timeout(std::time::Duration::from_secs(60))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("bot_query_server", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse bot_query_server response: {}. Body: {}", e, body))
-    }
-
-    // ========================================================================
     // Harness Methods (Multi-session AI game development tracking)
     // ========================================================================
 
@@ -940,80 +797,6 @@ impl RbxSyncClient {
             .map_err(|e| anyhow::anyhow!("Failed to parse harness_status response: {}. Body: {}", e, body))
     }
 
-    /// Read properties of an instance at the given path
-    pub async fn read_properties(&self, path: &str) -> anyhow::Result<ReadPropertiesResponse> {
-        let url = format!("{}/read-properties", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "path": path
-            }))
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("read_properties", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse read_properties response: {}. Body: {}", e, body))
-    }
-
-    /// Explore the game hierarchy
-    pub async fn explore_hierarchy(
-        &self,
-        path: Option<&str>,
-        depth: Option<u32>,
-    ) -> anyhow::Result<ExploreHierarchyResponse> {
-        let url = format!("{}/explore-hierarchy", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "path": path,
-                "depth": depth.unwrap_or(1).min(10)
-            }))
-            .timeout(std::time::Duration::from_secs(60))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("explore_hierarchy", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse explore_hierarchy response: {}. Body: {}", e, body))
-    }
-
-    /// Find instances matching search criteria
-    pub async fn find_instances(
-        &self,
-        class_name: Option<&str>,
-        name: Option<&str>,
-        parent: Option<&str>,
-        limit: Option<u32>,
-    ) -> anyhow::Result<FindInstancesResponse> {
-        let url = format!("{}/find-instances", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({
-                "className": class_name,
-                "name": name,
-                "parent": parent,
-                "limit": limit.unwrap_or(100).min(1000)
-            }))
-            .timeout(std::time::Duration::from_secs(60))
-            .send()
-            .await?;
-
-        let body = response.text().await?;
-        debug_log_response("find_instances", &body);
-
-        serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("Failed to parse find_instances response: {}. Body: {}", e, body))
-    }
-
     /// Insert a model from the Roblox marketplace by asset ID
     pub async fn insert_model(
         &self,
@@ -1035,20 +818,6 @@ impl RbxSyncClient {
 
         Ok(resp)
     }
-}
-
-// ============================================================================
-// Bot Controller Response Types
-// ============================================================================
-
-/// Generic bot command response
-#[derive(Debug, Deserialize)]
-pub struct BotCommandResponse {
-    pub success: bool,
-    #[serde(default)]
-    pub error: Option<String>,
-    #[serde(default)]
-    pub data: Option<serde_json::Value>,
 }
 
 // ============================================================================
@@ -1140,6 +909,7 @@ pub struct SessionSummary {
 }
 
 /// Response with harness status
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessStatusResponse {
@@ -1157,32 +927,3 @@ pub struct HarnessStatusResponse {
     pub recent_sessions: Vec<SessionSummary>,
 }
 
-/// Response from read_properties
-#[derive(Debug, Deserialize)]
-pub struct ReadPropertiesResponse {
-    pub success: bool,
-    #[serde(default)]
-    pub error: Option<String>,
-    #[serde(default)]
-    pub data: Option<serde_json::Value>,
-}
-
-/// Response from explore_hierarchy
-#[derive(Debug, Deserialize)]
-pub struct ExploreHierarchyResponse {
-    pub success: bool,
-    #[serde(default)]
-    pub error: Option<String>,
-    #[serde(default)]
-    pub data: Option<serde_json::Value>,
-}
-
-/// Response from find_instances
-#[derive(Debug, Deserialize)]
-pub struct FindInstancesResponse {
-    pub success: bool,
-    #[serde(default)]
-    pub error: Option<String>,
-    #[serde(default)]
-    pub data: Option<serde_json::Value>,
-}
