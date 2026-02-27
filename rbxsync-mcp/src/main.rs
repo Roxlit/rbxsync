@@ -661,7 +661,7 @@ impl RbxSyncServer {
     /// Observe current game state during a playtest.
     /// Returns character position, health, inventory, nearby objects/NPCs, and visible UI.
     /// Must be called during an active playtest (after run_test or manual F5).
-    #[tool(description = "Observe game state during playtest - get position, health, inventory, nearby objects")]
+    // DISABLED: bot tools are unstable, fail with timeouts and connection drops
     async fn bot_observe(
         &self,
         Parameters(params): Parameters<BotObserveParams>,
@@ -691,7 +691,7 @@ impl RbxSyncServer {
     /// Move character to a position or named object using pathfinding.
     /// The character will navigate around obstacles using PathfindingService.
     /// Must be called during an active playtest.
-    #[tool(description = "Move character to position {x,y,z} or object name using pathfinding")]
+    // DISABLED: bot tools are unstable
     async fn bot_move(
         &self,
         Parameters(params): Parameters<BotMoveParams>,
@@ -735,7 +735,7 @@ impl RbxSyncServer {
     /// Perform character actions: equip/unequip tools, activate abilities, interact with objects.
     /// Actions: equip, unequip, activate, deactivate, interact, jump
     /// Must be called during an active playtest.
-    #[tool(description = "Perform actions: equip/unequip tools, activate, interact with objects, jump")]
+    // DISABLED: bot tools are unstable
     async fn bot_action(
         &self,
         Parameters(params): Parameters<BotActionParams>,
@@ -768,7 +768,7 @@ impl RbxSyncServer {
     /// Send a generic bot command for advanced control.
     /// Supports movement, actions, UI interactions, and observations.
     /// Must be called during an active playtest.
-    #[tool(description = "Send generic bot command for advanced character control")]
+    // DISABLED: bot tools are unstable
     async fn bot_command(
         &self,
         Parameters(params): Parameters<BotCommandParams>,
@@ -802,7 +802,7 @@ impl RbxSyncServer {
     /// Use this to query game state that only exists on the server (currency, DataStores, services).
     /// Returns the result of the code execution.
     /// Must be called during an active playtest.
-    #[tool(description = "Execute Luau code on game server during playtest - query currency, DataStores, services")]
+    // DISABLED: bot tools are unstable
     async fn bot_query_server(
         &self,
         Parameters(params): Parameters<BotQueryServerParams>,
@@ -845,7 +845,7 @@ impl RbxSyncServer {
     /// Polls the condition at regular intervals until it returns true or timeout.
     /// Use context "server" for server-side state, "client" for client-side.
     /// Must be called during an active playtest.
-    #[tool(description = "Wait for a Luau condition to become true during playtest")]
+    // DISABLED: bot tools are unstable
     async fn bot_wait_for(
         &self,
         Parameters(params): Parameters<BotWaitForParams>,
@@ -1035,7 +1035,7 @@ impl RbxSyncServer {
     /// Read all properties of an instance at the given path.
     /// Returns className, name, and all serialized properties.
     /// Useful for inspecting instance state without running code.
-    #[tool(description = "Read properties of an instance at a path (e.g., 'Workspace/SpawnLocation')")]
+    // DISABLED: returns empty/broken data, use run_code instead
     async fn read_properties(
         &self,
         Parameters(params): Parameters<ReadPropertiesParams>,
@@ -1103,7 +1103,7 @@ impl RbxSyncServer {
     /// Returns a tree of instances with their className, name, and childCount.
     /// Use path to start from a specific location, or omit for top-level services.
     /// Use depth to control how deep to traverse (default 1).
-    #[tool(description = "Explore game hierarchy - returns tree of instances with className and childCount")]
+    // DISABLED: returns "? [?]" instead of real data, use run_code instead
     async fn explore_hierarchy(
         &self,
         Parameters(params): Parameters<ExploreHierarchyParams>,
@@ -1174,7 +1174,7 @@ impl RbxSyncServer {
     /// Find instances matching search criteria.
     /// Searches by className, name pattern, and/or within a specific parent path.
     /// Returns a list of matching instances with their paths.
-    #[tool(description = "Find instances by className, name pattern, or parent path")]
+    // DISABLED: returns "No results" even when instances exist, use run_code instead
     async fn find_instances(
         &self,
         Parameters(params): Parameters<FindInstancesParams>,
