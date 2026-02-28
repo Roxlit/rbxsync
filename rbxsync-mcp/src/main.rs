@@ -398,11 +398,32 @@ impl RbxSyncServer {
     }
 
     /// Execute Luau code in Roblox Studio.
-    #[tool(description = "Execute Luau code in Roblox Studio")]
+    /// IMPORTANT: Keep code under 2000 characters. For larger operations, break into multiple calls.
+    #[tool(description = "Execute Luau code in Roblox Studio. MUST be under 2000 chars - break large operations into multiple small calls (one GUI/model/system per call).")]
     async fn run_code(
         &self,
         Parameters(params): Parameters<RunCodeParams>,
     ) -> Result<CallToolResult, McpError> {
+        const SOFT_LIMIT: usize = 2000;
+        const HARD_LIMIT: usize = 5000;
+
+        if params.code.len() > HARD_LIMIT {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "REJECTED: Code is {} chars (limit: {}). Break this into multiple smaller run_code calls. \
+                 Create one thing per call (one GUI, one model, one system). \
+                 If you need shared helpers, store them in _G first, then reference them in subsequent calls.",
+                params.code.len(), HARD_LIMIT
+            ))]));
+        }
+
+        if params.code.len() > SOFT_LIMIT {
+            let result = self.client.run_code(&params.code).await.map_err(|e| mcp_error(e.to_string()))?;
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "WARNING: Code was {} chars (recommended: <{}). Break into smaller calls next time.\n\n{}",
+                params.code.len(), SOFT_LIMIT, result
+            ))]));
+        }
+
         let result = self.client.run_code(&params.code).await.map_err(|e| mcp_error(e.to_string()))?;
         Ok(CallToolResult::success(vec![Content::text(result)]))
     }
@@ -761,8 +782,29 @@ impl ServerHandler for RbxSyncServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "RbxSync MCP Server - Extract and sync Roblox games with git integration. \
-                 Requires 'rbxsync serve' running and the RbxSync Studio plugin installed."
+                "Roxlit MCP Server - Tools for Roblox Studio development.\n\n\
+                 ## WORKFLOW: Build incrementally, verify each step\n\
+                 When creating things in Studio (GUIs, models, maps, systems):\n\
+                 1. Create ONE thing per run_code call (one GUI, one model, one room, one vehicle)\n\
+                 2. After creating it, VERIFY it looks/works right before moving to the next\n\
+                 3. If something is wrong, fix THAT piece before continuing\n\
+                 4. Never create 5 things at once — if step 3 fails you won't know which one broke\n\n\
+                 Example - building a lobby with 3 GUIs:\n\
+                 - Call 1: Create MainMenuGui → verify\n\
+                 - Call 2: Create SettingsGui → verify\n\
+                 - Call 3: Create LeaderboardGui → verify\n\
+                 NOT: Create all 3 GUIs in one giant call\n\n\
+                 Example - building a room:\n\
+                 - Call 1: Create floor + walls → verify structure\n\
+                 - Call 2: Add furniture → verify placement\n\
+                 - Call 3: Add lighting → verify atmosphere\n\
+                 NOT: Create entire room with 50 parts in one call\n\n\
+                 ## CODE SIZE LIMITS\n\
+                 - Target: under 2000 characters per call\n\
+                 - Warning: 2000-5000 characters (will execute but you should split next time)\n\
+                 - Rejected: 5000+ characters (will NOT execute — split into smaller calls)\n\
+                 - Use _G to store helper functions shared across calls\n\n\
+                 Requires Roxlit launcher running and the Roxlit Studio plugin installed."
                     .to_string(),
             ),
         }
