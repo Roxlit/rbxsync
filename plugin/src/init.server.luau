@@ -4212,7 +4212,7 @@ task.spawn(function()
                         startConsoleCapture()
 
                         -- Send placeId to launcher for linking
-                        Logger.linkPlace(game.PlaceId, getPlaceName())
+                        Logger.linkPlace(game.PlaceId, game.GameId, getPlaceName())
 
                         updateConnectionUI()
                     end
