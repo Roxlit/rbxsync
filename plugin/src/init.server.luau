@@ -1,14 +1,17 @@
 --!strict
 --[[
-    RbxSync Studio Plugin
-    Copyright (c) 2026 Smokestack Games. All rights reserved.
+    Roxlit Studio Plugin
+    Based on RbxSync by Smokestack Games.
 
-    This software is proprietary. Unauthorized copying, modification,
-    distribution, or use is strictly prohibited. See LICENSE for details.
+    Unified plugin that handles:
+    - Bidirectional sync (scripts + instances) via rbxsync server
+    - Studio log capture for Roxlit launcher
+    - Auto-connect when Roxlit launcher is in "Start Development" mode
+    - PlaceId verification to prevent syncing to wrong experience
 
-    Extracts complete game DataModel with ALL properties using reflection.
-    Communicates with local RbxSync server via HTTP.
-    Features configurable project paths and git integration.
+    Communicates with:
+    - rbxsync server on port 44755 (sync, extraction, MCP commands)
+    - Roxlit launcher on port 19556 (log capture, status, placeId linking)
 ]]
 
 local HttpService = game:GetService("HttpService")
@@ -36,6 +39,7 @@ local ChangeTracker = require(script.ChangeTracker)
 local TerrainHandler = require(script.TerrainHandler)
 local CSGHandler = require(script.CSGHandler)
 local BotController = require(script.BotController)
+local Logger = require(script.Logger)
 
 -- Initialize config with plugin reference
 Config.init(plugin)
@@ -71,9 +75,6 @@ local syncSettings = {
     studioToFiles = Config.getAutoExtract(),  -- Auto-extract Studio changes to files
     filesToStudio = true,   -- Sync file changes to Studio (enabled for MCP workflow)
 }
-
--- Debug: log loaded sync settings
-print("[RbxSync Debug] Loaded syncSettings.studioToFiles =", syncSettings.studioToFiles)
 
 -- Extraction settings
 local extractTerrainEnabled = true  -- Extract terrain data on extract
@@ -160,8 +161,6 @@ local function checkForUpdates()
                 if isNewerVersion(latestVersion, PLUGIN_VERSION) then
                     updateAvailableVersion = latestVersion
                     Config.setUpdateAvailable(latestVersion)
-                    print("[RbxSync] Update available: v" .. latestVersion .. " (current: v" .. PLUGIN_VERSION .. ")")
-                    print("[RbxSync] Download at: https://github.com/Smokestack-Games/rbxsync/releases")
                 else
                     updateAvailableVersion = nil
                     Config.setUpdateAvailable(nil)
@@ -272,7 +271,6 @@ local function startConsoleCapture()
         end
     end)
 
-    print("[RbxSync] Console capture enabled")
 end
 
 local function stopConsoleCapture()
@@ -296,7 +294,6 @@ local function stopConsoleCapture()
     -- Flush any remaining messages
     flushConsoleMessages()
 
-    print("[RbxSync] Console capture disabled")
 end
 
 -- Format number with commas (1234 -> "1,234")
@@ -619,8 +616,6 @@ local function extractGame(config: {any})
     end
 
     -- Debug: log what config contains
-    print("[RbxSync Debug] config.project_dir:", config.project_dir or "nil")
-    print("[RbxSync Debug] config.services type:", type(config.services), "length:", config.services and #config.services or "nil")
 
     -- Determine which services to extract (check for non-empty array since empty [] is truthy in Lua)
     local defaultServices = {
@@ -641,18 +636,15 @@ local function extractGame(config: {any})
         "MaterialService",
     }
     local servicesToExtract = (config.services and #config.services > 0) and config.services or defaultServices
-    print("[RbxSync Debug] Using", #servicesToExtract, "services")
 
     -- Collect all instances to serialize
     local allInstances: {Instance} = {}
 
-    print("[RbxSync Debug] Services to extract:", #servicesToExtract)
     for _, serviceName in servicesToExtract do
         local service = game:FindFirstChild(serviceName)
         if service then
             local descendants = service:GetDescendants()
             local count = #descendants
-            print("[RbxSync Debug] Found service:", serviceName, "with", count, "descendants")
             table.insert(allInstances, service)
             for i, descendant in descendants do
                 table.insert(allInstances, descendant)
@@ -662,10 +654,8 @@ local function extractGame(config: {any})
                 end
             end
         else
-            print("[RbxSync Debug] Service not found:", serviceName)
         end
     end
-    print("[RbxSync Debug] Total instances collected:", #allInstances)
 
     -- Build disambiguated paths for all services to handle duplicate sibling names
     -- This needs to happen before serialization so paths are correctly computed
@@ -683,7 +673,6 @@ local function extractGame(config: {any})
 
     -- Extract and send terrain FIRST (before instance chunks) to avoid timeout
     local extractTerrain = config.extractTerrain == true
-    print("[RbxSync Debug] extractTerrain flag:", config.extractTerrain, "resolved to:", extractTerrain)
     if extractTerrain then
         local hasWorkspace = false
         for _, serviceName in servicesToExtract do
@@ -694,10 +683,8 @@ local function extractGame(config: {any})
         end
 
         if hasWorkspace then
-            print("[RbxSync] Extracting terrain (this may take a moment)...")
             local terrainData = TerrainHandler.extractTerrain()
             if terrainData and #terrainData.chunks > 0 then
-                print(string.format("[RbxSync] Sending terrain data: %d chunks", #terrainData.chunks))
 
                 -- Send terrain metadata first (without chunks)
                 local terrainMeta = {
@@ -735,7 +722,7 @@ local function extractGame(config: {any})
                     })
 
                     if not terrainSuccess then
-                        warn("[RbxSync] Failed to send terrain batch:", tostring(terrainResult))
+                        warn("[Roxlit] Failed to send terrain batch:", tostring(terrainResult))
                         allSuccess = false
                         break
                     end
@@ -744,10 +731,8 @@ local function extractGame(config: {any})
                 end
 
                 if allSuccess then
-                    print("[RbxSync] Terrain data sent successfully")
                 end
             else
-                print("[RbxSync] No terrain data found")
             end
         end
     end
@@ -849,7 +834,6 @@ local function extractGame(config: {any})
         operationState.lastExtractDuration = elapsed
         operationState.lastExtractCount = #allInstances
         local msg = string.format("✓ Extracted %d instances (%.1fs)", #allInstances, elapsed)
-        print(msg)
         setStatus(msg, Colors.success, 10)
         -- Update button to success state
         updateExtractButtonState(ExtractButtonState.SUCCESS)
@@ -1216,7 +1200,6 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
     if #operations > 0 then
         local firstDepth = select(2, string.gsub(operations[1].path or "", "/", "")) + 1
         local lastDepth = select(2, string.gsub(operations[#operations].path or "", "/", "")) + 1
-        print(string.format("[RbxSync Debug] Sort check: first depth=%d, last depth=%d, total=%d", firstDepth, lastDepth, #operations))
 
         -- Check for any out-of-order items
         local prevDepth = 0
@@ -1226,13 +1209,11 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
             if depth < prevDepth then
                 outOfOrder += 1
                 if outOfOrder <= 3 then
-                    print(string.format("[RbxSync Debug] Out of order at %d: %s (depth %d) after depth %d", i, op.path or "nil", depth, prevDepth))
                 end
             end
             prevDepth = depth
         end
         if outOfOrder > 0 then
-            print(string.format("[RbxSync Debug] Total out of order: %d", outOfOrder))
         end
     end
 
@@ -1259,7 +1240,6 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
 
             -- Special handling for terrain sync (has terrain chunk data)
             if op.data and op.data.terrain and op.data.className == "Terrain" then
-                print("[RbxSync] Syncing terrain data...")
                 local terrainData = op.data.terrain
                 TerrainHandler.clearTerrain()
                 local ok, chunksApplied = TerrainHandler.applyTerrain(terrainData)
@@ -1309,19 +1289,16 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
         -- Second pass: resolve reference properties (Part0, Part1, etc.)
         local resolved = Sync.resolvePendingReferences()
         if resolved > 0 then
-            print(string.format("[RbxSync] Resolved %d reference properties", resolved))
         end
 
         -- Third pass: reconstruct CSG operations (unions from component parts)
         local csgReconstructed = Sync.reconstructPendingCSG()
         if csgReconstructed > 0 then
-            print(string.format("[RbxSync] Reconstructed %d CSG operations", csgReconstructed))
         end
 
         -- Fourth pass: apply material overrides (must happen after all MaterialVariants are created)
         local materialsApplied = Sync.applyPendingMaterialOverrides()
         if materialsApplied > 0 then
-            print(string.format("[RbxSync] Applied %d material overrides", materialsApplied))
         end
     end)
 
@@ -1331,7 +1308,7 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
 
     -- If sync errored out, report it and cancel the recording
     if not syncOk then
-        warn("[RbxSync] Sync error: " .. tostring(syncErr))
+        warn("[Roxlit] Sync error: " .. tostring(syncErr))
         setStatus("Sync error occurred", Colors.error, 10)
         if recordingId then
             ChangeHistoryService:FinishRecording(recordingId, Enum.FinishRecordingOperation.Cancel)
@@ -1339,33 +1316,18 @@ local function syncBatch(payload: any): {success: boolean, results: {any}?, erro
         return { success = false, results = results, applied = appliedCount, skipped = skippedCount }
     end
 
-    -- Print detailed changes (only things that actually changed)
-    if #changes > 0 then
-        print("[RbxSync] Changes applied:")
-        for _, change in changes do
-            local reasonsStr = ""
-            if change.reasons and #change.reasons > 0 then
-                reasonsStr = " [" .. table.concat(change.reasons, ", ") .. "]"
-            end
-            print(string.format("  %s: %s%s", change.action, change.path, reasonsStr))
-        end
-    end
-
     -- Summary - show actual changes vs unchanged
     if failCount > 0 then
         local msg = string.format("Applied %d, skipped %d unchanged, %d failed", appliedCount, skippedCount, failCount)
-        print(msg .. " (see warnings above)")
         setStatus(msg, Colors.warning, 10)
     elseif appliedCount == 0 then
         local msg = "Already in sync"
-        print(msg .. " (" .. skippedCount .. " instances checked)")
         setStatus(msg, Colors.success, 5)
     else
         local msg = string.format("Applied %d changes", appliedCount)
         if skippedCount > 0 then
             msg = msg .. string.format(" (%d unchanged)", skippedCount)
         end
-        print(msg)
         setStatus(msg, Colors.success, 10)
     end
 
@@ -2097,12 +2059,9 @@ local function pollLoop()
             if not success then
                 isConnected = false
                 ChangeTracker.setConnected(false)
-                print("Disconnected")
                 updateConnectionUI()
             elseif response and response.command then
-                print("[RbxSync Debug] Received command: " .. tostring(response.command))
                 if response.command == "extract:start" then
-                    print("[RbxSync Debug] Extract payload:", HttpService:JSONEncode(response.payload or {}))
                 end
 
                 -- Check if this is a sync command and if files→studio sync is disabled or extraction is in progress
@@ -2111,7 +2070,6 @@ local function pollLoop()
 
                 if isSyncCommand and not syncSettings.filesToStudio then
                     -- Skip sync commands when files→studio is disabled
-                    print("[RbxSync] Skipping sync command (files→studio disabled)")
                     -- Still send response to avoid timeout
                     if response.id then
                         httpPost("/rbxsync/response", {
@@ -2122,7 +2080,6 @@ local function pollLoop()
                     end
                 elseif isSyncCommand and isExtracting then
                     -- Skip sync commands while extraction is in progress to avoid conflicts
-                    print("[RbxSync] Skipping sync command (extraction in progress)")
                     if response.id then
                         httpPost("/rbxsync/response", {
                             id = response.id,
@@ -2171,7 +2128,6 @@ local function pollLoop()
 
                         -- Set waypoint AFTER making changes
                         ChangeHistoryService:SetWaypoint(checkpointName)
-                        print("[RbxSync] Waypoint set: " .. checkpointName)
 
                         -- Send response
                         if response.id then
@@ -2181,12 +2137,10 @@ local function pollLoop()
                                 data = ok and (result and result.data or result) or {},  -- Extract data field if present, otherwise return full result
                                 error = (not ok and tostring(result)) or (result and result.error) or nil,
                             }
-                            print("[RbxSync Debug] Sending response for:", response.command, "id:", response.id)
                             local postOk, postErr = httpPost("/rbxsync/response", responseData)
                             if not postOk then
-                                warn("[RbxSync] Failed to send response:", postErr)
+                                warn("[Roxlit] Failed to send response:", postErr)
                             else
-                                print("[RbxSync Debug] Response sent successfully")
                             end
                         end
                     end)
@@ -2215,7 +2169,6 @@ local function registerWithServer()
 
     if success and not hasLoggedLink then
         hasLoggedLink = true
-        print(string.format("Linked to %s (%s)", projectDir, placeName))
     end
 
     return success
@@ -2237,7 +2190,6 @@ local function unregisterWithServer()
     })
 
     if success then
-        print("[RbxSync] Unregistered from server")
     end
 
     return success
@@ -2255,7 +2207,6 @@ local function unlinkFromServer()
     })
 
     if success then
-        print("[RbxSync] Unlinked from workspace")
     end
 
     return success
@@ -2268,12 +2219,10 @@ local function checkConnection()
     if success ~= isConnected then
         isConnected = success
         if isConnected then
-            print("Connected")
             ChangeTracker.setConnected(true)
             -- Register with server for multi-workspace routing
             registerWithServer()
         else
-            print("Disconnected")
             ChangeTracker.setConnected(false)
         end
     end
@@ -2646,7 +2595,6 @@ connectButton.MouseButton1Click:Connect(function()
         ChangeTracker.setConnected(false)  -- Mark as disconnected
         ChangeTracker.stop()  -- Stop change tracking when disconnected
         stopConsoleCapture()  -- Stop console capture when disconnected
-        print("Disconnected by user")
         updateConnectionUI()
     else
         -- User clicked Connect
@@ -2666,7 +2614,6 @@ connectButton.MouseButton1Click:Connect(function()
                         if not isRelated then
                             hasShownPathMismatch = true
                             lastKnownVscodePath = vscodePath
-                            print("[RbxSync] Path mismatch on connect - showing dialog")
                             showPathMismatchDialog(
                                 vscodePath,
                                 function()  -- onContinue: connect with current path
@@ -2675,7 +2622,6 @@ connectButton.MouseButton1Click:Connect(function()
                                     registerWithServer()
                                     ChangeTracker.setConnected(true)
                                     startConsoleCapture()
-                                    print("Connected (kept Studio path)")
                                     updateConnectionUI()
                                 end,
                                 function()  -- onFixPath: switch to VS Code path
@@ -2689,13 +2635,11 @@ connectButton.MouseButton1Click:Connect(function()
                                     registerWithServer()
                                     ChangeTracker.setConnected(true)
                                     startConsoleCapture()
-                                    print("[RbxSync] Connected with VS Code path: " .. vscodePath)
                                     updateConnectionUI()
                                 end,
                                 function()  -- onCancel: don't connect
                                     hasShownPathMismatch = false
                                     lastKnownVscodePath = nil
-                                    print("Connection cancelled - path mismatch")
                                     updateConnectionUI()
                                 end
                             )
@@ -2726,7 +2670,6 @@ connectButton.MouseButton1Click:Connect(function()
                         end
                         -- Start console capture for E2E testing
                         startConsoleCapture()
-                        print("Connected")
                     end,
                     function()
                         -- User cancelled - discard the changes
@@ -2738,7 +2681,6 @@ connectButton.MouseButton1Click:Connect(function()
                         end
                         -- Start console capture for E2E testing
                         startConsoleCapture()
-                        print("Connected (queued changes discarded)")
                     end,
                     "Sync",
                     "Discard"
@@ -2752,7 +2694,6 @@ connectButton.MouseButton1Click:Connect(function()
                 end
                 -- Start console capture for E2E testing
                 startConsoleCapture()
-                print("Connected")
             end
         else
             isConnected = false
@@ -3787,7 +3728,6 @@ local function showViewportNotification(projectName: string?, host: string?, por
                 ChangeTracker.start()
             end
             startConsoleCapture()
-            print("[RbxSync] Connected via viewport notification")
             updateConnectionUI()
         end
     end)
@@ -3964,7 +3904,6 @@ local function showConnectPrompt()
                             ChangeTracker.start()
                         end
                         startConsoleCapture()
-                        print("Connected")
                         updateConnectionUI()
                     end,
                     function()
@@ -3975,7 +3914,6 @@ local function showConnectPrompt()
                             ChangeTracker.start()
                         end
                         startConsoleCapture()
-                        print("Connected (queued changes discarded)")
                         updateConnectionUI()
                     end,
                     "Sync",
@@ -3987,7 +3925,6 @@ local function showConnectPrompt()
                     ChangeTracker.start()
                 end
                 startConsoleCapture()
-                print("Connected")
                 updateConnectionUI()
             end
         else
@@ -4186,7 +4123,6 @@ filesToStudioCheckbox = createCheckbox(
                                     local parentPath = path:match("(.+)/[^/]+$")
                                     if not parentPath or filePaths[parentPath] then
                                         table.insert(operations, { type = "delete", path = path, className = instance.ClassName })
-                                        print("[RbxSync Debug] Will delete: " .. path)
                                     end
                                 end
                             end
@@ -4239,7 +4175,53 @@ end)
 -- Background Tasks
 -- ============================================================================
 
+-- Start log capture (sends Studio output to Roxlit launcher)
+Logger.start()
+
 task.spawn(pollLoop)
+
+-- Roxlit launcher auto-connect loop: detects when Roxlit is in "Start Development" mode
+-- and auto-connects without user interaction. Falls back to manual connect if launcher
+-- is not running.
+task.spawn(function()
+    while true do
+        if not isConnected and userDisconnected then
+            local launcherStatus = Logger.getLauncherStatus()
+            if launcherStatus and launcherStatus.active then
+                -- Roxlit launcher is in "Start Development" — auto-connect
+                local projectPath = launcherStatus.projectPath
+                if projectPath and projectPath ~= "" then
+                    -- Set project dir from launcher
+                    Config.setProjectDir(projectPath)
+                    if projectDirInput then
+                        projectDirInput.Text = projectPath
+                        updateFolderNameDisplay(projectPath)
+                    end
+
+                    -- Check rbxsync server health
+                    local serverOk, _ = httpGet("/health")
+                    if serverOk then
+                        userDisconnected = false
+                        isConnected = true
+                        dismissViewportNotification()
+                        registerWithServer()
+                        ChangeTracker.setConnected(true)
+                        if syncSettings.studioToFiles then
+                            ChangeTracker.start()
+                        end
+                        startConsoleCapture()
+
+                        -- Send placeId to launcher for linking
+                        Logger.linkPlace(game.PlaceId, getPlaceName())
+
+                        updateConnectionUI()
+                    end
+                end
+            end
+        end
+        task.wait(3) -- Check every 3 seconds
+    end
+end)
 
 -- Connection check loop (respects userDisconnected flag and auto-connect setting)
 task.spawn(function()
@@ -4264,7 +4246,6 @@ task.spawn(function()
             if success ~= isConnected then
                 isConnected = success
                 if isConnected then
-                    print("Connected")
 
                     -- Auto-populate or check for path mismatch with VS Code
                     local currentPath = Config.getProjectDir()
@@ -4275,7 +4256,7 @@ task.spawn(function()
 
                         -- Warn if multiple VS Code workspaces are connected
                         if #infoData.vscode_workspaces > 1 then
-                            warn("[RbxSync] Warning: " .. #infoData.vscode_workspaces .. " VS Code workspaces detected! Make sure you're syncing to the right one:")
+                            warn("[Roxlit] Warning: " .. #infoData.vscode_workspaces .. " VS Code workspaces detected! Make sure you're syncing to the right one:")
                             for i, ws in ipairs(infoData.vscode_workspaces) do
                                 warn("  " .. i .. ". " .. ws)
                             end
@@ -4289,7 +4270,6 @@ task.spawn(function()
                                 projectDirInput.Text = vscodePath
                                 updateFolderNameDisplay(vscodePath)
                             end
-                            print("[RbxSync] Using VS Code workspace: " .. vscodePath)
                         elseif currentPath ~= vscodePath then
                             -- Path mismatch - check if parent/child relationship
                             local isRelated = string.find(currentPath, vscodePath, 1, true) == 1 or
@@ -4299,7 +4279,6 @@ task.spawn(function()
                                 -- Show mismatch dialog
                                 hasShownPathMismatch = true
                                 lastKnownVscodePath = vscodePath
-                                print("[RbxSync] Path mismatch detected - showing dialog")
                                 task.defer(function()
                                     showPathMismatchDialog(
                                         vscodePath,
@@ -4311,7 +4290,6 @@ task.spawn(function()
                                                 updateFolderNameDisplay(vscodePath)
                                             end
                                             registerWithServer()
-                                            print("[RbxSync] Switched to VS Code workspace: " .. vscodePath)
                                         end,
                                         function()  -- onCancel: disconnect
                                             unlinkFromServer()
@@ -4322,7 +4300,6 @@ task.spawn(function()
                                             ChangeTracker.setConnected(false)
                                             ChangeTracker.stop()
                                             stopConsoleCapture()
-                                            print("Disconnected - path mismatch cancelled")
                                             updateConnectionUI()
                                         end
                                     )
@@ -4339,7 +4316,6 @@ task.spawn(function()
                             projectDirInput.Text = infoData.cwd
                             updateFolderNameDisplay(infoData.cwd)
                         end
-                        print("[RbxSync] Using server directory: " .. infoData.cwd)
                     end
 
                     registerWithServer()
@@ -4381,7 +4357,6 @@ task.spawn(function()
                         startConsoleCapture()
                     end
                 else
-                    print("Disconnected")
                     ChangeTracker.setConnected(false)
                     ChangeTracker.stop()
                     stopConsoleCapture()
@@ -4397,7 +4372,6 @@ task.spawn(function()
                 })
                 if statusSuccess and statusData and statusData.success and not statusData.linked then
                     -- VS Code unlinked us - disconnect locally (server already has us as unlinked)
-                    print("[RbxSync] Unlinked by VS Code - disconnecting")
                     isConnected = false
                     userDisconnected = true
                     hasLoggedLink = false
@@ -4425,7 +4399,6 @@ task.spawn(function()
 
                                 if not isRelated then
                                     hasShownPathMismatch = true
-                                    print("[RbxSync] VS Code connected with different path - showing dialog")
                                     task.defer(function()
                                         showPathMismatchDialog(
                                             vscodePath,
@@ -4437,7 +4410,6 @@ task.spawn(function()
                                                     updateFolderNameDisplay(vscodePath)
                                                 end
                                                 registerWithServer()
-                                                print("[RbxSync] Switched to VS Code workspace: " .. vscodePath)
                                             end,
                                             function()  -- onCancel: disconnect
                                                 unlinkFromServer()
@@ -4448,7 +4420,6 @@ task.spawn(function()
                                                 ChangeTracker.setConnected(false)
                                                 ChangeTracker.stop()
                                                 stopConsoleCapture()
-                                                print("Disconnected - path mismatch cancelled")
                                                 updateConnectionUI()
                                             end
                                         )
@@ -4501,7 +4472,8 @@ end)
 -- Check for updates on startup
 task.spawn(checkForUpdates)
 
--- Cleanup when plugin unloads (Studio closes or plugin reloads) - unregister from server
+-- Cleanup when plugin unloads (Studio closes or plugin reloads)
 plugin.Unloading:Connect(function()
+    Logger.stop()
     unregisterWithServer()
 end)

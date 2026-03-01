@@ -173,7 +173,6 @@ local function extractChunk(chunkX: number, chunkY: number, chunkZ: number)
     end)
 
     if not ok then
-        warn("[RbxSync] Failed to read terrain chunk at", chunkX, chunkY, chunkZ, "Error:", materials)
         return nil
     end
 
@@ -206,7 +205,6 @@ function TerrainHandler.extractTerrain()
         return nil
     end
 
-    print("[RbxSync] Extracting terrain...")
 
     local minBound, maxBound = getTerrainBounds()
     if not minBound or not maxBound then
@@ -249,9 +247,6 @@ function TerrainHandler.extractTerrain()
             end
         end
     end
-
-    print(string.format("[RbxSync] Terrain extraction complete: %d/%d non-empty chunks",
-        nonEmptyChunks, totalChunks))
 
     -- Get terrain properties
     local properties = {}
@@ -426,7 +421,6 @@ function TerrainHandler.applyTerrain(data: TerrainData): (boolean, number)
         return true, 0 -- No terrain data, success with 0 chunks
     end
 
-    print(string.format("[RbxSync] Applying terrain: %d chunks", #data.chunks))
 
     local chunkSize = data.chunkSize or CHUNK_SIZE
     local resolution = data.resolution or RESOLUTION
@@ -447,10 +441,8 @@ function TerrainHandler.applyTerrain(data: TerrainData): (boolean, number)
                         end
                     end)
                     if not ok then
-                        warn(string.format("[RbxSync] Failed to set terrain color for %s: %s", matName, tostring(err)))
                     end
                 end
-                print(string.format("[RbxSync] Applied %d terrain material colors", appliedCount))
             else
                 pcall(function()
                     if type(value) == "table" and value.r ~= nil then
@@ -477,7 +469,6 @@ function TerrainHandler.applyTerrain(data: TerrainData): (boolean, number)
         end
     end
 
-    print(string.format("[RbxSync] Terrain applied: %d/%d chunks", appliedChunks, #data.chunks))
 
     return true, appliedChunks
 end

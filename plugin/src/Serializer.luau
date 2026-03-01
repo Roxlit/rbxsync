@@ -458,7 +458,6 @@ function Serializer.serializeInstance(instance: Instance, apiDump: APIDump): any
                 errorCount += 1
                 if errorCount <= 3 then
                     -- Only warn for first few errors to avoid spam
-                    -- warn(string.format("[RbxSync] Could not read %s.%s: %s", className, propName, tostring(value)))
                 end
             end
         end
@@ -539,8 +538,6 @@ function Serializer.serializeInstance(instance: Instance, apiDump: APIDump): any
 
         if next(materialOverrides) then
             serialized.materialOverrides = materialOverrides
-            print(string.format("[RbxSync] Extracted %d material overrides from MaterialService",
-                (function() local c = 0 for _ in materialOverrides do c += 1 end return c end)()))
         end
     end
 

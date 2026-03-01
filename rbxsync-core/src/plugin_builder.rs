@@ -32,8 +32,8 @@ impl Default for PluginBuildConfig {
     fn default() -> Self {
         Self {
             source_dir: PathBuf::from("plugin/src"),
-            output_path: PathBuf::from("build/RbxSync.rbxm"),
-            plugin_name: "RbxSync".to_string(),
+            output_path: PathBuf::from("build/Roxlit.rbxm"),
+            plugin_name: "Roxlit".to_string(),
             obfuscate: true,
             obfuscate_config: None,
         }
@@ -260,8 +260,8 @@ pub fn get_studio_plugins_folder() -> Option<PathBuf> {
     }
 }
 
-/// Check if an existing RbxSync plugin is already installed (possibly from marketplace)
-/// Returns the path to the existing plugin if found, None otherwise
+/// Check if an existing Roxlit or RbxSync plugin is already installed.
+/// Returns the path to the existing plugin if found, None otherwise.
 pub fn find_existing_rbxsync_plugin() -> Option<PathBuf> {
     let plugins_folder = get_studio_plugins_folder()?;
 
@@ -269,12 +269,12 @@ pub fn find_existing_rbxsync_plugin() -> Option<PathBuf> {
         return None;
     }
 
-    // Look for any RbxSync*.rbxm files
+    // Look for Roxlit*.rbxm or RbxSync*.rbxm files
     let entries = fs::read_dir(&plugins_folder).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with("RbxSync") && name.ends_with(".rbxm") {
+            if (name.starts_with("Roxlit") || name.starts_with("RbxSync")) && name.ends_with(".rbxm") {
                 return Some(path);
             }
         }

@@ -7,6 +7,7 @@
 ]]
 
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
 local ScriptEditorService = game:GetService("ScriptEditorService")
 
 local Config = require(script.Parent.Config)
@@ -206,9 +207,6 @@ local function queueChange(instance: Instance, changeType: string, data: any?)
         return  -- Don't log duplicate
     end
 
-    -- New change - log and add to queue
-    print("[RbxSync Debug] Queueing change: " .. changeType .. " " .. path)
-
     pendingChanges[path] = {
         path = path,
         className = instance.ClassName,
@@ -355,10 +353,6 @@ local function sendPendingChanges()
     -- Chunk operations to stay under 1MB limit
     local batches = chunkOperations(operations)
 
-    if #batches > 1 then
-        print("[RbxSync] Chunking sync into " .. #batches .. " batches to stay under 1MB limit")
-    end
-
     -- Send each batch
     local totalFilesWritten = 0
     local allErrors = {}
@@ -372,22 +366,13 @@ local function sendPendingChanges()
                 table.insert(allErrors, err)
             end
         else
-            warn("[RbxSync] Sync batch " .. batchIndex .. "/" .. #batches .. " failed")
             for _, err in errors do
                 table.insert(allErrors, err)
             end
         end
     end
 
-    -- Report results
-    if totalFilesWritten > 0 then
-        print("[RbxSync] Auto-extracted " .. totalFilesWritten .. " file(s)")
-    elseif #operations > 0 and #allErrors == 0 then
-        warn("[RbxSync] Sync sent " .. #operations .. " changes but no files written - check project path")
-    end
-
     if #allErrors > 0 then
-        warn("[RbxSync] Sync errors:")
         for _, err in allErrors do
             warn("  " .. err)
         end
@@ -527,9 +512,6 @@ local function trackInstanceChanges(instance: Instance)
             return
         end
 
-        -- Log the rename
-        print("[RbxSync Debug] Queueing rename: " .. oldPath .. " -> " .. newPath)
-
         -- Queue rename operation (use newPath as key since that's the current identity)
         pendingChanges[newPath] = {
             path = newPath,
@@ -551,10 +533,37 @@ local function trackInstanceChanges(instance: Instance)
     table.insert(connections, nameConnection)
 end
 
+-- Check if an instance is a runtime object that should NOT be tracked
+-- Player characters, their descendants, Camera, and Terrain children are runtime-only
+local function isRuntimeInstance(instance: Instance): boolean
+    -- Walk up the tree to check if any ancestor is a player character
+    local current = instance
+    while current and current ~= game do
+        local parent = current.Parent
+        if parent and parent:IsA("Workspace") then
+            -- Check if this is a player character model
+            for _, player in Players:GetPlayers() do
+                if player.Character == current then
+                    return true
+                end
+            end
+        end
+        -- Camera children are runtime
+        if parent and parent:IsA("Camera") then
+            return true
+        end
+        current = parent
+    end
+    return false
+end
+
 -- Set up tracking for a service
 local function setupServiceTracking(service: Instance)
     -- Track existing descendants and store their paths
     for _, descendant in service:GetDescendants() do
+        if isRuntimeInstance(descendant) then
+            continue
+        end
         -- Store path for deletion tracking
         getInstancePath(descendant, false)
         trackInstanceChanges(descendant)
@@ -565,6 +574,9 @@ local function setupServiceTracking(service: Instance)
 
     -- Track new instances
     local addedConnection = service.DescendantAdded:Connect(function(descendant)
+        if isRuntimeInstance(descendant) then
+            return
+        end
         trackInstanceChanges(descendant)
         if descendant:IsA("LuaSourceContainer") then
             trackScriptChanges(descendant)
@@ -584,7 +596,9 @@ local function setupServiceTracking(service: Instance)
 
     -- Track removed instances
     local removedConnection = service.DescendantRemoving:Connect(function(descendant)
-        print("[RbxSync Debug] DescendantRemoving fired: " .. descendant:GetFullName())
+        if isRuntimeInstance(descendant) then
+            return
+        end
         queueChange(descendant, "delete", nil)
     end)
 
@@ -598,7 +612,6 @@ function ChangeTracker.start()
     end
 
     isTracking = true
-    print("[RbxSync] Auto-extract enabled")
 
     -- Set up tracking for all services
     for _, serviceName in trackedServices do
@@ -628,7 +641,6 @@ function ChangeTracker.stop()
     table.clear(connections)
     table.clear(pendingChanges)
 
-    print("[RbxSync] Auto-extract disabled")
 end
 
 -- Check if tracking is active
@@ -640,9 +652,7 @@ end
 function ChangeTracker.setConnected(connected: boolean)
     isConnectedToServer = connected
     if connected then
-        print("[RbxSync] Change tracking: connected")
     else
-        print("[RbxSync] Change tracking: disconnected (changes will not be queued)")
     end
 end
 
@@ -665,14 +675,12 @@ function ChangeTracker.clearQueue()
     local count = ChangeTracker.getQueuedCount()
     table.clear(pendingChanges)
     if count > 0 then
-        print("[RbxSync] Cleared " .. count .. " queued change(s)")
     end
 end
 
 -- Force send all pending changes immediately (ignores debounce, uses chunking)
 function ChangeTracker.flushQueue()
     if not isConnectedToServer then
-        warn("[RbxSync] Cannot flush queue - not connected")
         return false
     end
 
@@ -698,10 +706,6 @@ function ChangeTracker.flushQueue()
     -- Chunk operations to stay under 1MB limit
     local batches = chunkOperations(operations)
 
-    if #batches > 1 then
-        print("[RbxSync] Chunking flush into " .. #batches .. " batches to stay under 1MB limit")
-    end
-
     -- Send each batch
     local allSuccess = true
     local totalFilesWritten = 0
@@ -712,16 +716,13 @@ function ChangeTracker.flushQueue()
         if success then
             totalFilesWritten = totalFilesWritten + filesWritten
         else
-            warn("[RbxSync] Flush batch " .. batchIndex .. "/" .. #batches .. " failed")
             allSuccess = false
         end
     end
 
     if allSuccess then
-        print("[RbxSync] Synced " .. count .. " queued change(s)")
         return true
     else
-        warn("[RbxSync] Some flush batches failed")
         return false
     end
 end

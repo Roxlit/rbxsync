@@ -35,7 +35,7 @@ end
 -- Load settings from PluginSettings
 function Config.load(): Settings
     if not pluginRef then
-        warn("[RbxSync] Config not initialized with plugin reference")
+        warn("[Roxlit] Config not initialized with plugin reference")
         return Config.defaults
     end
 
@@ -63,7 +63,7 @@ end
 -- Save settings to PluginSettings
 function Config.save(settings: Settings)
     if not pluginRef then
-        warn("[RbxSync] Config not initialized with plugin reference")
+        warn("[Roxlit] Config not initialized with plugin reference")
         return
     end
 
@@ -113,7 +113,7 @@ end
 -- Get current project directory (per-PlaceId)
 function Config.getProjectDir(): string
     if not pluginRef then
-        warn("[RbxSync] Config not initialized with plugin reference")
+        warn("[Roxlit] Config not initialized with plugin reference")
         return ""
     end
 
@@ -132,7 +132,7 @@ end
 -- Set project directory (per-PlaceId)
 function Config.setProjectDir(dir: string)
     if not pluginRef then
-        warn("[RbxSync] Config not initialized with plugin reference")
+        warn("[Roxlit] Config not initialized with plugin reference")
         return
     end
 

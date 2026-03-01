@@ -536,7 +536,6 @@ function Sync.createInstance(data: any, parent: Instance?): Instance?
                         variantName = variantName,
                     })
                 end
-                print(string.format("[RbxSync] Queued %d material overrides for later application", #pendingMaterialOverrides))
             end
             return service
         end
@@ -552,10 +551,8 @@ function Sync.createInstance(data: any, parent: Instance?): Instance?
                 data = data,
                 parent = parent :: Instance,
             })
-            print(string.format("[RbxSync] Queued union '%s' for CSG reconstruction (%d parts)", name, #data.csg.operations))
             return nil  -- Don't create the instance yet
         elseif data.csg.error then
-            warn(string.format("[RbxSync] Union '%s' not separable: %s", name, data.csg.error))
             -- Fall through to create empty shell
         end
     end
@@ -835,13 +832,8 @@ function Sync.applyProperties(instance: Instance, properties: {[string]: any}): 
                 RoughnessMap = true,   -- Important for MaterialVariant
             }
             if importantProps[propName] then
-                warn(string.format("[RbxSync] Cannot set %s.%s: %s (value type: %s)",
+                warn(string.format("[Roxlit] Cannot set %s.%s: %s (value type: %s)",
                     instance.ClassName, propName, tostring(err), typeof(value)))
-            end
-        else
-            -- Debug: log successful MaterialVariant property sets
-            if instance.ClassName == "MaterialVariant" and (propName == "BaseMaterial" or propName == "ColorMap") then
-                print(string.format("[RbxSync Debug] Set MaterialVariant.%s = %s", propName, tostring(value)))
             end
         end
     end
@@ -1036,7 +1028,6 @@ function Sync.updateInstance(instance: Instance, data: any): (boolean, Instance?
                 variantName = variantName,
             })
         end
-        print(string.format("[RbxSync] Queued %d material overrides for later application", #pendingMaterialOverrides))
     end
 
     -- Mark path as recently applied for 50ms deduplication (prevents echo)
@@ -1138,18 +1129,12 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
 
         if newSource and currentSource ~= newSource then
             table.insert(reasons, "source")
-            if DEBUG then
-                print(string.format("[DEBUG] %s.Source differs: len=%d vs len=%d", instance:GetFullName(), #currentSource, #newSource))
-            end
         end
     end
 
     -- Check name
     if data.name and instance.Name ~= data.name then
         table.insert(reasons, "name:" .. instance.Name .. "->" .. data.name)
-        if DEBUG then
-            print(string.format("[DEBUG] %s name differs: '%s' vs '%s'", instance:GetFullName(), instance.Name, data.name))
-        end
     end
 
     -- Check properties (excluding Source which we already checked)
@@ -1225,18 +1210,9 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
                     local newStr = tostring(newValue)
                     if currentStr ~= newStr then
                         table.insert(reasons, propName)
-                        if DEBUG then
-                            print(string.format("[DEBUG] %s.%s differs (userdata): '%s' vs '%s'", instance:GetFullName(), propName, currentStr, newStr))
-                        end
                     end
                 else
                     table.insert(reasons, propName)
-                    if DEBUG then
-                        print(string.format("[DEBUG] %s.%s differs: type=%s/%s, current='%s', new='%s'",
-                            instance:GetFullName(), propName,
-                            type(currentValue), type(newValue),
-                            tostring(currentValue), tostring(newValue)))
-                    end
                 end
             end
         end
@@ -1254,11 +1230,6 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
             local newValue = decodeValue(attrData)
             if currentAttrs[attrName] ~= newValue then
                 table.insert(reasons, "attr:" .. attrName)
-                if DEBUG then
-                    print(string.format("[DEBUG] %s attr '%s' differs: '%s' vs '%s'",
-                        instance:GetFullName(), attrName,
-                        tostring(currentAttrs[attrName]), tostring(newValue)))
-                end
             end
         end
 
@@ -1272,9 +1243,6 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
             end
             if data.attributes[attrName] == nil then
                 table.insert(reasons, "-attr:" .. attrName)
-                if DEBUG then
-                    print(string.format("[DEBUG] %s has extra attr '%s' not in data", instance:GetFullName(), attrName))
-                end
             end
         end
     end
@@ -1286,9 +1254,6 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
         -- Quick length check
         if #currentTags ~= #data.tags then
             table.insert(reasons, "tags")
-            if DEBUG then
-                print(string.format("[DEBUG] %s tags count differs: %d vs %d", instance:GetFullName(), #currentTags, #data.tags))
-            end
         else
             -- Check each tag
             local tagSet = {}
@@ -1298,9 +1263,6 @@ function Sync.instanceNeedsUpdate(instance: Instance, data: any): (boolean, {str
             for _, tag in data.tags do
                 if not tagSet[tag] then
                     table.insert(reasons, "tags")
-                    if DEBUG then
-                        print(string.format("[DEBUG] %s missing tag: '%s'", instance:GetFullName(), tag))
-                    end
                     break
                 end
             end
@@ -1377,7 +1339,6 @@ function Sync.applyPendingMaterialOverrides(): number
     local applied = 0
     local failed = 0
 
-    print(string.format("[RbxSync] Applying %d material overrides...", #pendingMaterialOverrides))
 
     for _, pending in pendingMaterialOverrides do
         local materialName = pending.materialName
@@ -1394,7 +1355,6 @@ function Sync.applyPendingMaterialOverrides(): number
         end)
 
         if not ok or not material then
-            warn(string.format("[RbxSync] Unknown material: %s", materialName))
             failed += 1
             continue
         end
@@ -1402,7 +1362,6 @@ function Sync.applyPendingMaterialOverrides(): number
         -- Verify the MaterialVariant exists
         local variant = MaterialService:FindFirstChild(variantName)
         if not variant then
-            warn(string.format("[RbxSync] MaterialVariant not found: %s", variantName))
             failed += 1
             continue
         end
@@ -1414,15 +1373,12 @@ function Sync.applyPendingMaterialOverrides(): number
 
         if setOk then
             applied += 1
-            print(string.format("[RbxSync] Set material override: %s -> %s", materialName, variantName))
         else
-            warn(string.format("[RbxSync] Failed to set override %s -> %s: %s", materialName, variantName, tostring(err)))
             failed += 1
         end
     end
 
     table.clear(pendingMaterialOverrides)
-    print(string.format("[RbxSync] Material overrides complete: %d applied, %d failed", applied, failed))
     return applied
 end
 
@@ -1433,7 +1389,6 @@ function Sync.reconstructPendingCSG(): number
         return 0
     end
 
-    print(string.format("[RbxSync] Reconstructing %d CSG operations...", #pendingCSGReconstructions))
 
     local reconstructed = 0
     local failed = 0
@@ -1461,18 +1416,15 @@ function Sync.reconstructPendingCSG(): number
                 end
             else
                 missingParts += 1
-                warn(string.format("[RbxSync] CSG part not found: %s", partPath))
             end
         end
 
         if missingParts > 0 then
-            warn(string.format("[RbxSync] Missing %d parts for union '%s', skipping", missingParts, data.name))
             failed += 1
             continue
         end
 
         if #addParts == 0 then
-            warn(string.format("[RbxSync] No add parts for union '%s', skipping", data.name))
             failed += 1
             continue
         end
@@ -1573,9 +1525,7 @@ function Sync.reconstructPendingCSG(): number
             end
 
             reconstructed += 1
-            print(string.format("[RbxSync] Reconstructed union '%s'", data.name))
         else
-            warn(string.format("[RbxSync] Failed to reconstruct union '%s'", data.name))
             -- Clean up temp folder on failure too
             tempFolder:Destroy()
             failed += 1
@@ -1583,7 +1533,6 @@ function Sync.reconstructPendingCSG(): number
     end
 
     table.clear(pendingCSGReconstructions)
-    print(string.format("[RbxSync] CSG reconstruction complete: %d reconstructed, %d failed", reconstructed, failed))
     return reconstructed
 end
 

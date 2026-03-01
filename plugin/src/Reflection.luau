@@ -46,14 +46,12 @@ function Reflection.loadAPIDump(): APIDump?
         return cachedDump
     end
 
-    print("[RbxSync] Fetching API dump...")
 
     local success, result = pcall(function()
         return HttpService:GetAsync(API_DUMP_URL)
     end)
 
     if not success then
-        warn("[RbxSync] Failed to fetch API dump:", result)
 
         -- Try to use a fallback embedded dump
         return Reflection.getFallbackDump()
@@ -64,7 +62,6 @@ function Reflection.loadAPIDump(): APIDump?
     end)
 
     if not ok then
-        warn("[RbxSync] Failed to parse API dump:", dump)
         return nil
     end
 
@@ -86,7 +83,6 @@ function Reflection.loadAPIDump(): APIDump?
         classPropertyCache[class.Name] = properties
     end
 
-    print("[RbxSync] API dump loaded:", #cachedDump.Classes, "classes")
 
     return cachedDump
 end
@@ -95,7 +91,6 @@ end
 function Reflection.getFallbackDump(): APIDump?
     -- This would contain a minimal embedded dump for common classes
     -- For now, return nil to indicate we need the full dump
-    warn("[RbxSync] No fallback API dump available")
     return nil
 end
 
