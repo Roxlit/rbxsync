@@ -55,6 +55,7 @@ local lastExtractTime: number? = nil  -- Track last extraction time for estimate
 local lastInstanceCount: number? = nil  -- Track last instance count
 local hasLoggedLink: boolean = false  -- Prevent spam logging of "Linked to" messages
 local hasShownPathMismatch: boolean = false  -- Prevent showing path mismatch dialog multiple times per session
+local hasShownPlaceIdMismatch: boolean = false  -- Prevent showing placeId mismatch dialog multiple times per session
 local lastKnownVscodePath: string? = nil  -- Track VS Code workspace to detect when it connects
 
 -- Unique session ID for this Studio instance (handles multiple unpublished places with PlaceId=0)
@@ -4180,6 +4181,166 @@ Logger.start()
 
 task.spawn(pollLoop)
 
+-- PlaceId mismatch check: shows a warning popup if the current place doesn't match
+-- the project linked in the launcher. Returns true if safe to proceed, false to abort.
+local function checkPlaceIdMismatch(linkedPlaceId: number): boolean
+    -- Skip check if this place isn't published or if we've already shown the dialog
+    if game.PlaceId == 0 or hasShownPlaceIdMismatch then
+        return true
+    end
+
+    -- No mismatch
+    if game.PlaceId == linkedPlaceId then
+        return true
+    end
+
+    hasShownPlaceIdMismatch = true
+
+    -- Create a BindableEvent to yield until user responds
+    local responded = Instance.new("BindableEvent")
+    local userAccepted = false
+
+    -- Create popup in CoreGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "RoxlitPlaceIdMismatch"
+    screenGui.DisplayOrder = 1002
+    screenGui.IgnoreGuiInset = true
+    screenGui.ResetOnSpawn = false
+
+    local ok = pcall(function()
+        screenGui.Parent = CoreGui
+    end)
+    if not ok then
+        screenGui:Destroy()
+        return true -- Can't show UI, proceed anyway
+    end
+
+    -- Main frame (bottom-right popup)
+    local frame = Instance.new("Frame")
+    frame.Name = "MismatchFrame"
+    frame.Size = UDim2.new(0, 360, 0, 150)
+    frame.Position = UDim2.new(1, 20, 1, -24)
+    frame.AnchorPoint = Vector2.new(1, 1)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Color = Color3.fromRGB(60, 60, 70)
+    stroke.Thickness = 1
+    stroke.Parent = frame
+
+    -- Warning accent bar
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(0, 4, 1, -24)
+    accent.Position = UDim2.new(0, 12, 0, 12)
+    accent.BackgroundColor3 = Colors.warning
+    accent.BorderSizePixel = 0
+    accent.Parent = frame
+    local accentCorner = Instance.new("UICorner")
+    accentCorner.CornerRadius = UDim.new(0, 2)
+    accentCorner.Parent = accent
+
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -40, 0, 20)
+    title.Position = UDim2.new(0, 28, 0, 14)
+    title.BackgroundTransparency = 1
+    title.Text = "Place ID Mismatch"
+    title.TextColor3 = Colors.warning
+    title.TextSize = 14
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    -- Message
+    local msg = Instance.new("TextLabel")
+    msg.Size = UDim2.new(1, -40, 0, 40)
+    msg.Position = UDim2.new(0, 28, 0, 38)
+    msg.BackgroundTransparency = 1
+    msg.Text = string.format(
+        "This place (ID: %d) doesn't match the linked project (ID: %d). Syncing may overwrite the wrong game.",
+        game.PlaceId, linkedPlaceId
+    )
+    msg.TextColor3 = Colors.textSecondary
+    msg.TextSize = 12
+    msg.Font = Enum.Font.Gotham
+    msg.TextXAlignment = Enum.TextXAlignment.Left
+    msg.TextWrapped = true
+    msg.Parent = frame
+
+    -- Buttons container
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Size = UDim2.new(1, -40, 0, 32)
+    btnContainer.Position = UDim2.new(0, 28, 1, -46)
+    btnContainer.BackgroundTransparency = 1
+    btnContainer.Parent = frame
+
+    -- Cancel button
+    local cancelBtn = Instance.new("TextButton")
+    cancelBtn.Size = UDim2.new(0, 100, 1, 0)
+    cancelBtn.Position = UDim2.new(1, -210, 0, 0)
+    cancelBtn.BackgroundColor3 = Colors.surface
+    cancelBtn.Text = "Cancel"
+    cancelBtn.TextColor3 = Colors.textSecondary
+    cancelBtn.TextSize = 12
+    cancelBtn.Font = Enum.Font.GothamMedium
+    cancelBtn.Parent = btnContainer
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 6)
+    cancelCorner.Parent = cancelBtn
+
+    -- Continue button
+    local continueBtn = Instance.new("TextButton")
+    continueBtn.Size = UDim2.new(0, 100, 1, 0)
+    continueBtn.Position = UDim2.new(1, -100, 0, 0)
+    continueBtn.BackgroundColor3 = Colors.warning
+    continueBtn.Text = "Continue"
+    continueBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    continueBtn.TextSize = 12
+    continueBtn.Font = Enum.Font.GothamBold
+    continueBtn.Parent = btnContainer
+    local continueCorner = Instance.new("UICorner")
+    continueCorner.CornerRadius = UDim.new(0, 6)
+    continueCorner.Parent = continueBtn
+
+    -- Animate in
+    game:GetService("TweenService"):Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -16, 1, -24)
+    }):Play()
+
+    -- Button handlers
+    cancelBtn.MouseButton1Click:Connect(function()
+        userAccepted = false
+        responded:Fire()
+    end)
+
+    continueBtn.MouseButton1Click:Connect(function()
+        userAccepted = true
+        responded:Fire()
+    end)
+
+    -- Wait for user response
+    responded.Event:Wait()
+
+    -- Animate out and destroy
+    local tweenOut = game:GetService("TweenService"):Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Position = UDim2.new(1, 20, 1, -24)
+    })
+    tweenOut:Play()
+    tweenOut.Completed:Connect(function()
+        screenGui:Destroy()
+    end)
+    responded:Destroy()
+
+    return userAccepted
+end
+
 -- Roxlit launcher auto-connect loop: detects when Roxlit is in "Start Development" mode
 -- and auto-connects without user interaction. Falls back to manual connect if launcher
 -- is not running.
@@ -4191,6 +4352,16 @@ task.spawn(function()
                 -- Roxlit launcher is in "Start Development" — auto-connect
                 local projectPath = launcherStatus.projectPath
                 if projectPath and projectPath ~= "" then
+                    -- Verify placeId before connecting
+                    local linkedPlaceId = launcherStatus.linkedPlaceId
+                    if linkedPlaceId and linkedPlaceId > 0 then
+                        local shouldConnect = checkPlaceIdMismatch(linkedPlaceId)
+                        if not shouldConnect then
+                            task.wait(3)
+                            continue
+                        end
+                    end
+
                     -- Set project dir from launcher
                     Config.setProjectDir(projectPath)
                     if projectDirInput then
@@ -4205,14 +4376,35 @@ task.spawn(function()
                         isConnected = true
                         dismissViewportNotification()
                         registerWithServer()
+
+                        -- Send placeId to launcher for linking
+                        Logger.linkPlace(game.PlaceId, game.GameId, getPlaceName())
+
+                        -- Pre-sync backup: extract current Studio state before Rojo overwrites it.
+                        -- The launcher defers starting rojo serve until we POST /backup-done.
+                        if game.PlaceId > 0 then
+                            setStatus("Creating backup before sync...", Colors.info, 0)
+                            extractGame({ project_dir = projectPath })
+                            -- Wait for extraction to finish
+                            while isExtracting do
+                                task.wait(0.5)
+                            end
+                        end
+
+                        -- Signal launcher that backup is complete — it can now start rojo serve
+                        pcall(function()
+                            HttpService:PostAsync(
+                                "http://127.0.0.1:19556/backup-done",
+                                "{}",
+                                Enum.HttpContentType.ApplicationJson
+                            )
+                        end)
+
                         ChangeTracker.setConnected(true)
                         if syncSettings.studioToFiles then
                             ChangeTracker.start()
                         end
                         startConsoleCapture()
-
-                        -- Send placeId to launcher for linking
-                        Logger.linkPlace(game.PlaceId, game.GameId, getPlaceName())
 
                         updateConnectionUI()
                     end
