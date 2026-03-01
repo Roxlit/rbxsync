@@ -4380,26 +4380,6 @@ task.spawn(function()
                         -- Send placeId to launcher for linking
                         Logger.linkPlace(game.PlaceId, game.GameId, getPlaceName())
 
-                        -- Pre-sync backup: extract current Studio state before Rojo overwrites it.
-                        -- The launcher defers starting rojo serve until we POST /backup-done.
-                        if game.PlaceId > 0 then
-                            setStatus("Creating backup before sync...", Colors.info, 0)
-                            extractGame({ project_dir = projectPath })
-                            -- Wait for extraction to finish
-                            while isExtracting do
-                                task.wait(0.5)
-                            end
-                        end
-
-                        -- Signal launcher that backup is complete — it can now start rojo serve
-                        pcall(function()
-                            HttpService:PostAsync(
-                                "http://127.0.0.1:19556/backup-done",
-                                "{}",
-                                Enum.HttpContentType.ApplicationJson
-                            )
-                        end)
-
                         ChangeTracker.setConnected(true)
                         if syncSettings.studioToFiles then
                             ChangeTracker.start()
